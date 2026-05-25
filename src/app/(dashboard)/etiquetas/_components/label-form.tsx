@@ -1,0 +1,569 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
+import { Printer, AlertTriangle, CheckCircle } from 'lucide-react'
+
+type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
+type MenuItem = { id: string; nome: string }
+type Employee = { id: string; nome: string }
+type Unit = { id: string; name: string; cnpj?: string | null; address?: string | null }
+type PrintPoint = { id: string; name: string; icone: string | null }
+
+const CATEGORIA_ANVISA_OPTIONS = [
+  { value: 'proteina_animal_cozida', label: 'Proteína Animal Cozida' },
+  { value: 'proteina_animal_crua', label: 'Proteína Animal Crua' },
+  { value: 'pescado_cru', label: 'Pescado Cru' },
+  { value: 'pescado_cozido', label: 'Pescado Cozido' },
+  { value: 'vegetal_cozido', label: 'Vegetal Cozido' },
+  { value: 'vegetal_cru', label: 'Vegetal Cru' },
+  { value: 'arroz_massa_cereais', label: 'Arroz / Massa / Cereais' },
+  { value: 'molho_caldo', label: 'Molho / Caldo' },
+  { value: 'laticinios', label: 'Laticínios' },
+  { value: 'sobremesa', label: 'Sobremesa' },
+  { value: 'fritura', label: 'Fritura' },
+]
+
+const METODOS = [
+  'Resfriado 0-5°C',
+  'Refrigerado 5-10°C',
+  'Congelado -18°C',
+  'Temperatura ambiente',
+]
+
+const SELOS = ['Nenhum', 'SIF', 'SISP', 'SIM'] as const
+
+const AVATAR_COLORS = [
+  'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-orange-600',
+  'bg-red-600', 'bg-cyan-600', 'bg-pink-600', 'bg-yellow-600',
+]
+
+function getColor(id: string) {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h)
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
+}
+
+function getInitials(nome: string) {
+  const p = nome.trim().split(' ')
+  if (p.length === 1) return p[0].slice(0, 2).toUpperCase()
+  return (p[0][0] + p[p.length - 1][0]).toUpperCase()
+}
+
+function nowLocalISO(): string {
+  const sp = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${sp.getFullYear()}-${p(sp.getMonth() + 1)}-${p(sp.getDate())}T${p(sp.getHours())}:${p(sp.getMinutes())}`
+}
+
+export function LabelForm({
+  ingredients,
+  menuItems,
+  employees,
+  units,
+}: {
+  ingredients: Ingredient[]
+  menuItems: MenuItem[]
+  employees: Employee[]
+  units: Unit[]
+}) {
+  const [search, setSearch] = useState('')
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null } | null>(null)
+  const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
+  const [categoria, setCategoria] = useState('')
+  const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(false)
+  const [pesoG, setPesoG] = useState('')
+  const [selectedEmployee, setSelectedEmployee] = useState<string>('')
+  const [empSearch, setEmpSearch] = useState('')
+  const [selectedUnit, setSelectedUnit] = useState<string>('')
+  const [setor, setSetor] = useState('')
+  const [lote, setLote] = useState('')
+  const [selo, setSelo] = useState<'Nenhum' | 'SIF' | 'SISP' | 'SIM'>('Nenhum')
+  const [validadeFornecedor, setValidadeFornecedor] = useState('')
+  const [metodo, setMetodo] = useState('')
+  const [dataManipulacao, setDataManipulacao] = useState(nowLocalISO())
+  const [validade, setValidade] = useState('')
+  const [validadeReadonly, setValidadeReadonly] = useState(false)
+  const [prazoHoras, setPrazoHoras] = useState<number | null>(null)
+  const [shelfLifeSource, setShelfLifeSource] = useState<'custom' | 'anvisa' | null>(null)
+  const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
+  const [printPointId, setPrintPointId] = useState('')
+  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; unit?: Unit } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [conflictLabel, setConflictLabel] = useState<{ id: string; nome: string; data_manipulacao: string; validade: string; employee_name: string } | null>(null)
+  const [showConflictModal, setShowConflictModal] = useState(false)
+  const [conflictResolution, setConflictResolution] = useState<'none' | 'overwrite' | 'keep'>('none')
+
+  const searchResults = search.length >= 2
+    ? [
+        ...ingredients.filter(i => i.nome.toLowerCase().includes(search.toLowerCase())).map(i => ({ ...i, tipo: 'ingrediente' as const })),
+        ...menuItems.filter(m => m.nome.toLowerCase().includes(search.toLowerCase())).map(m => ({ id: m.id, nome: m.nome, tipo: 'preparacao' as const, categoria_anvisa: null })),
+      ].slice(0, 8)
+    : []
+
+  const filteredEmployees = empSearch
+    ? employees.filter(e => e.nome.toLowerCase().includes(empSearch.toLowerCase()))
+    : employees
+
+  useEffect(() => {
+    if (!selectedProduct || !selectedUnit) return
+    const ingredientId = selectedProduct.tipo === 'ingrediente' ? selectedProduct.id : undefined
+    if (!ingredientId) return
+    let cancelled = false
+    fetch(`/api/labels/check-conflict?ingredient_id=${ingredientId}&unit_id=${selectedUnit}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled && data.conflict) {
+          setConflictLabel(data.conflict)
+          setShowConflictModal(true)
+          setConflictResolution('none')
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [selectedProduct, selectedUnit])
+
+  useEffect(() => {
+    if (!metodo) {
+      setValidadeReadonly(false)
+      setPrazoHoras(null)
+      setShelfLifeSource(null)
+      return
+    }
+
+    const ingredientId = selectedProduct?.tipo === 'ingrediente' ? selectedProduct.id : null
+
+    // Precisa de pelo menos ingredient_id ou categoria para buscar
+    if (!ingredientId && !categoria) {
+      setValidadeReadonly(false)
+      setPrazoHoras(null)
+      setShelfLifeSource(null)
+      return
+    }
+
+    let cancelled = false
+    const params = new URLSearchParams({ metodo })
+    if (ingredientId) params.set('ingredient_id', ingredientId)
+    if (categoria) params.set('categoria', categoria)
+
+    fetch(`/api/shelf-life-rule?${params}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return
+        if (data.prazo_horas) {
+          setPrazoHoras(data.prazo_horas)
+          setValidadeReadonly(true)
+          setShelfLifeSource(data.source ?? null)
+        } else {
+          setPrazoHoras(null)
+          setValidadeReadonly(false)
+          setShelfLifeSource(null)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [categoria, metodo, selectedProduct])
+
+  useEffect(() => {
+    if (!prazoHoras || !dataManipulacao) return
+    const base = new Date(dataManipulacao)
+    base.setHours(base.getHours() + prazoHoras)
+    const p = (n: number) => String(n).padStart(2, '0')
+    setValidade(`${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`)
+  }, [prazoHoras, dataManipulacao])
+
+  useEffect(() => {
+    if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
+    fetch(`/api/print-points?unit_id=${selectedUnit}`)
+      .then(r => r.json())
+      .then(data => { setPrintPoints(data.print_points ?? []); setPrintPointId('') })
+      .catch(() => {})
+  }, [selectedUnit])
+
+  function handleSelectProduct(p: { id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null }) {
+    setSelectedProduct(p)
+    setSearch(p.nome)
+    setTipo(p.tipo === 'ingrediente' ? 'ingrediente' : 'preparacao')
+    setCategoria('')
+    setCategoriaFromCadastro(false)
+    setPrazoHoras(null)
+    setValidadeReadonly(false)
+    setShelfLifeSource(null)
+    setValidade('')
+    if (p.tipo === 'ingrediente' && p.categoria_anvisa) {
+      setCategoria(p.categoria_anvisa)
+      setCategoriaFromCadastro(true)
+    }
+    setConflictLabel(null)
+    setConflictResolution('none')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedProduct || !selectedUnit || !dataManipulacao || !validade) return
+    if (conflictLabel && conflictResolution === 'none') {
+      setShowConflictModal(true)
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    if (conflictLabel && conflictResolution === 'overwrite') {
+      await fetch(`/api/labels/${conflictLabel.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'descartada' }),
+      })
+    }
+
+    const payload = {
+      unit_id: selectedUnit,
+      employee_id: selectedEmployee || null,
+      ingredient_id: selectedProduct.tipo === 'ingrediente' ? selectedProduct.id : null,
+      menu_item_id: selectedProduct.tipo === 'preparacao' ? selectedProduct.id : null,
+      tipo,
+      nome: selectedProduct.nome,
+      peso_kg: pesoG ? Number(pesoG) / 1000 : null,
+      setor: setor || null,
+      lote: lote || null,
+      selo: selo !== 'Nenhum' ? selo : null,
+      validade_fornecedor: validadeFornecedor || null,
+      metodo_conservacao: metodo || null,
+      data_manipulacao: new Date(dataManipulacao).toISOString(),
+      validade: new Date(validade).toISOString(),
+      print_point_id: printPointId || null,
+      status: 'ativa',
+    }
+
+    const res = await fetch('/api/labels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      setError(data.error || 'Erro ao salvar etiqueta.')
+      setSaving(false)
+      return
+    }
+
+    const { id } = await res.json()
+    const unitObj = units.find(u => u.id === selectedUnit)
+    setSavedLabel({ id, nome: selectedProduct.nome, unit: unitObj })
+    setSaving(false)
+  }
+
+  function handlePrint() {
+    if (!savedLabel) return
+    const canvas = document.getElementById('label-qr-canvas') as HTMLCanvasElement | null
+    const qrDataUrl = canvas?.toDataURL('image/png') ?? ''
+    const unit = savedLabel.unit
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
+<style>@page{size:10cm 6cm;margin:0}body{margin:0;padding:0;font-family:monospace}
+.label{width:10cm;height:6cm;padding:4mm;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt}
+.header{font-size:9pt;font-weight:bold}.sub{font-size:7pt;color:#555}
+.row{display:flex;gap:4mm;align-items:flex-start}.qr{flex-shrink:0}.info{flex:1}
+.tag{display:inline-block;border:1px solid #000;padding:0 2mm;font-size:7pt;border-radius:2px}
+</style></head><body>
+<div class="label">
+  <div class="header">${unit?.name ?? ''}</div>
+  ${unit?.cnpj ? `<div class="sub">CNPJ: ${unit.cnpj}</div>` : ''}
+  ${unit?.address ? `<div class="sub">${unit.address}</div>` : ''}
+  <div class="row">
+    <div class="qr"><img src="${qrDataUrl}" width="60" height="60"/></div>
+    <div class="info">
+      <div style="font-size:10pt;font-weight:bold">${savedLabel.nome}</div>
+      <div class="sub">Manipulação: ${new Date(dataManipulacao).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</div>
+      <div class="sub">Validade: ${new Date(validade).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</div>
+      ${metodo ? `<div class="sub">${metodo}</div>` : ''}
+      ${pesoG ? `<div class="sub">Peso: ${Number(pesoG).toLocaleString('pt-BR')} g</div>` : ''}
+      ${lote ? `<div class="sub">Lote: ${lote}</div>` : ''}
+      ${selo !== 'Nenhum' ? `<span class="tag">${selo}</span>` : ''}
+    </div>
+  </div>
+  <div class="sub">#${savedLabel.id.slice(0, 8).toUpperCase()}</div>
+</div>
+</body></html>`
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    setTimeout(() => w.print(), 250)
+  }
+
+  return (
+    <div className="rounded-xl border border-neutral-800 bg-neutral-900">
+      <div className="border-b border-neutral-800 px-5 py-4">
+        <p className="text-sm font-semibold text-white">Nova Etiqueta</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Produto */}
+          <div className="relative">
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Produto *</label>
+            <input
+              value={search}
+              onChange={e => { setSearch(e.target.value); if (!e.target.value) setSelectedProduct(null) }}
+              placeholder="Buscar produto (mín. 2 letras)"
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
+            />
+            {searchResults.length > 0 && !selectedProduct && (
+              <div className="absolute z-10 mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 shadow-lg">
+                {searchResults.map(r => (
+                  <button key={r.id} type="button" onClick={() => handleSelectProduct(r)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-white hover:bg-neutral-800 transition-colors">
+                    <span>{r.nome}</span>
+                    <span className="text-xs text-neutral-500 capitalize">{r.tipo}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Unidade */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Unidade *</label>
+            <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value)} required
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="">Selecionar unidade</option>
+              {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          </div>
+
+          {/* Categoria ANVISA — oculta quando há validade customizada do Suflex */}
+          {selectedProduct && shelfLifeSource !== 'custom' && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-400 mb-1">Categoria ANVISA</label>
+              {categoriaFromCadastro ? (
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-700 bg-emerald-900/20 px-3 py-2">
+                  <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span className="text-sm text-emerald-300">
+                    {CATEGORIA_ANVISA_OPTIONS.find(o => o.value === categoria)?.label ?? categoria}
+                  </span>
+                  <span className="ml-auto text-xs text-emerald-600">Do cadastro do produto</span>
+                </div>
+              ) : (
+                <>
+                  <select value={categoria} onChange={e => setCategoria(e.target.value)}
+                    className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+                    <option value="">Selecionar categoria</option>
+                    {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  {selectedProduct.tipo === 'ingrediente' && !categoria && (
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-400">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>Sem categoria — <a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Método de conservação */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Método de conservação</label>
+            <select value={metodo} onChange={e => setMetodo(e.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="">Selecionar método</option>
+              {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+
+          {/* Peso */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Peso (gramas)</label>
+            <input type="number" value={pesoG} onChange={e => setPesoG(e.target.value)} min="0" step="1"
+              placeholder="ex: 1500"
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          </div>
+
+          {/* Setor */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Setor</label>
+            <input value={setor} onChange={e => setSetor(e.target.value)} placeholder="ex: Cozinha Quente"
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          </div>
+
+          {/* Lote */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Lote</label>
+            <input value={lote} onChange={e => setLote(e.target.value)} placeholder="ex: L2024001"
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          </div>
+
+          {/* Validade fornecedor */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Validade original (fornecedor)</label>
+            <input type="date" value={validadeFornecedor} onChange={e => setValidadeFornecedor(e.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+          </div>
+
+          {/* Data manipulação */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Data de manipulação *</label>
+            <input type="datetime-local" value={dataManipulacao} onChange={e => setDataManipulacao(e.target.value)} required
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+          </div>
+
+          {/* Validade */}
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Validade *</label>
+            {validadeReadonly ? (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-700 bg-emerald-900/20 px-3 py-2">
+                <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span className="text-sm text-emerald-300">
+                  {validade ? new Date(validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                </span>
+                <span className="ml-auto text-xs text-emerald-600">
+                  {shelfLifeSource === 'custom' ? `Suflex · ${prazoHoras}h` : `ANVISA · ${prazoHoras}h`}
+                </span>
+              </div>
+            ) : (
+              <input type="datetime-local" value={validade} onChange={e => setValidade(e.target.value)} required
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+            )}
+          </div>
+        </div>
+
+        {/* Selo */}
+        <div>
+          <label className="block text-xs font-medium text-neutral-400 mb-2">Selo de inspeção</label>
+          <div className="flex gap-2">
+            {SELOS.map(s => (
+              <button key={s} type="button" onClick={() => setSelo(s)}
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  selo === s ? 'border-white bg-white text-neutral-900' : 'border-neutral-700 text-neutral-400 hover:text-white'
+                }`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Responsável */}
+        <div>
+          <label className="block text-xs font-medium text-neutral-400 mb-2">Responsável</label>
+          {employees.length > 6 && (
+            <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar funcionário"
+              className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          )}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {filteredEmployees.map(e => (
+              <button key={e.id} type="button" onClick={() => setSelectedEmployee(e.id)}
+                className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors min-h-[80px] ${
+                  selectedEmployee === e.id ? 'border-emerald-500 bg-emerald-900/20' : 'border-neutral-800 bg-neutral-800/50 hover:border-neutral-600'
+                }`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white ${getColor(e.id)}`}>
+                  {getInitials(e.nome)}
+                </div>
+                <span className="text-xs text-neutral-300 leading-tight">{e.nome.split(' ')[0]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Ponto de impressão */}
+        {printPoints.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-neutral-400 mb-1">Ponto de impressão</label>
+            <select value={printPointId} onChange={e => setPrintPointId(e.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="">Sem ponto de impressão</option>
+              {printPoints.map(p => <option key={p.id} value={p.id}>{p.icone ? `${p.icone} ` : ''}{p.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-red-400">{error}</p>}
+
+        {conflictLabel && conflictResolution === 'none' && (
+          <div className="rounded-lg border border-amber-700 bg-amber-900/20 px-4 py-3 text-sm text-amber-300">
+            <AlertTriangle className="mb-1 h-4 w-4" />
+            Etiqueta ativa para este produto nesta unidade.{' '}
+            <a href="/validades" className="underline">Ver detalhes</a>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={saving || !selectedProduct || !selectedUnit || (selectedProduct?.tipo === 'ingrediente' && !categoria && shelfLifeSource !== 'custom')}
+          className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-40 transition-colors"
+        >
+          {saving ? 'Salvando...' : 'Gerar Etiqueta'}
+        </button>
+      </form>
+
+      {/* Conflito Modal */}
+      {showConflictModal && conflictLabel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-900 p-6 space-y-4">
+            <h2 className="font-semibold text-white">Etiqueta ativa encontrada</h2>
+            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-3 text-sm space-y-1">
+              <p className="text-white font-medium">{conflictLabel.nome}</p>
+              <p className="text-neutral-400">Manipulação: {new Date(conflictLabel.data_manipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+              <p className="text-neutral-400">Validade: {new Date(conflictLabel.validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+              <p className="text-neutral-400">Responsável: {conflictLabel.employee_name}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => { setConflictResolution('overwrite'); setShowConflictModal(false) }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors">
+                Sobrepor (descartar a existente)
+              </button>
+              <button onClick={() => { setConflictResolution('keep'); setShowConflictModal(false) }}
+                className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                Gerar nova (manter a existente)
+              </button>
+              <button onClick={() => { setShowConflictModal(false) }}
+                className="text-sm text-neutral-500 hover:text-neutral-300 transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview */}
+      {savedLabel && (
+        <div className="border-t border-neutral-800 p-5 space-y-4">
+          <p className="text-sm font-medium text-emerald-400">Etiqueta gerada com sucesso!</p>
+          <div
+            style={{ width: '10cm', aspectRatio: '10/6', background: '#fff', color: '#000', fontFamily: 'monospace', padding: '4mm', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '8pt' }}
+            className="rounded border"
+          >
+            <div>
+              <div style={{ fontWeight: 'bold', fontSize: '9pt' }}>
+                {units.find(u => u.id === selectedUnit)?.name ?? ''}
+              </div>
+              {units.find(u => u.id === selectedUnit)?.cnpj && (
+                <div style={{ fontSize: '7pt', color: '#555' }}>CNPJ: {units.find(u => u.id === selectedUnit)!.cnpj}</div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '4mm', alignItems: 'flex-start' }}>
+              <QRCodeCanvas id="label-qr-canvas" value={savedLabel.id} size={60} />
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '10pt' }}>{savedLabel.nome}</div>
+                <div style={{ fontSize: '7pt', color: '#555' }}>Manip: {new Date(dataManipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</div>
+                <div style={{ fontSize: '7pt', color: '#555' }}>Val: {new Date(validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</div>
+                {metodo && <div style={{ fontSize: '7pt', color: '#555' }}>{metodo}</div>}
+                {pesoG && <div style={{ fontSize: '7pt', color: '#555' }}>Peso: {Number(pesoG).toLocaleString('pt-BR')} g</div>}
+                {lote && <div style={{ fontSize: '7pt', color: '#555' }}>Lote: {lote}</div>}
+                {selo !== 'Nenhum' && <span style={{ border: '1px solid #000', padding: '0 2px', fontSize: '7pt' }}>{selo}</span>}
+              </div>
+            </div>
+            <div style={{ fontSize: '7pt', color: '#999' }}>#{savedLabel.id.slice(0, 8).toUpperCase()}</div>
+          </div>
+          <button onClick={handlePrint}
+            className="flex items-center gap-2 rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:text-white transition-colors">
+            <Printer className="h-4 w-4" />
+            Imprimir Etiqueta
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
