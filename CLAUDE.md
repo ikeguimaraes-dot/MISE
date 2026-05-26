@@ -724,3 +724,53 @@ npx tsc --noEmit  # type check sem build
 
 **Para rodar via Claude Code** (quando o terminal do usuário não tem permissão no Desktop):
 - Usar `! npm run dev` no prompt — o Claude Code já tem acesso à pasta
+
+---
+
+## 13. REPOSITÓRIO GIT E DEPLOY
+
+### Estrutura do repositório
+
+O projeto está na raiz de `/Desktop/MISE` — os arquivos (`src/`, `package.json`, etc.) estão no root do repo, **não** em `mise-backoffice/`.
+
+> ⚠️ Existe um subdiretório `mise-backoffice/` com uma cópia duplicada dos arquivos. Ignorar — o código ativo está no root. Todos os commits e deploys devem ser feitos a partir de `/Desktop/MISE`.
+
+### GitHub
+- **Repo**: https://github.com/ikeguimaraes-dot/MISE
+- **Branch**: `main`
+- **Commits iniciais**:
+  - `07e0e5d` — feat: MISE Backoffice v1 (66 arquivos, 11.563 linhas)
+  - `ff0b043` — fix: move project to root for Vercel deploy
+
+**⚠️ Problema de credenciais no terminal do usuário:**
+O keychain do macOS está configurado com a conta `grupomeeteat-lang` como padrão para GitHub. Para fazer `git push` a partir do terminal, usar o token do `gh` CLI:
+
+```bash
+TOKEN=$(gh auth token)
+git remote set-url origin "https://ikeguimaraes-dot:${TOKEN}@github.com/ikeguimaraes-dot/MISE.git"
+git push
+# Depois limpar o token da URL:
+git remote set-url origin https://github.com/ikeguimaraes-dot/MISE.git
+```
+
+O `gh` CLI está autenticado como `ikeguimaraes-dot` (keyring) com todos os escopos necessários.
+
+### Vercel
+- **URL de produção**: https://mise-backoffice.vercel.app
+- **Projeto**: `mise-backoffice` sob a conta `grupomeeteat-3433s-projects`
+- **Dashboard**: https://vercel.com/grupomeeteat-3433s-projects/mise-backoffice
+
+**Variáveis de ambiente configuradas em Production:**
+- `NEXT_PUBLIC_SUPABASE_URL` ✅
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` ✅
+- `SUPABASE_SERVICE_ROLE_KEY` ✅
+
+**Para novo deploy de produção (rodar a partir de `/Desktop/MISE`):**
+```bash
+npx vercel --prod --yes
+```
+
+**Para adicionar/atualizar variável:**
+```bash
+echo "valor" | npx vercel env add NOME_VAR production
+```
