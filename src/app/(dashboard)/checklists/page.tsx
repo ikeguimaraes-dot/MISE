@@ -26,16 +26,21 @@ export default async function ChecklistsPage() {
   const supabase = createServiceClient()
 
   const [
-    { data: templates },
-    { data: items },
-    { data: lastExecs },
-    { data: units },
+    { data: templates, error: errTemplates },
+    { data: items, error: errItems },
+    { data: lastExecs, error: errExecs },
+    { data: units, error: errUnits },
   ] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('*').eq('ativo', true).order('nome'),
     supabase.schema('mise').from('checklist_template_items').select('template_id', { count: 'exact' }),
     supabase.schema('mise').from('checklist_executions').select('template_id, percentual, concluido_em').eq('status', 'concluido').order('concluido_em', { ascending: false }),
     supabase.from('units').select('id, name').eq('active', true),
   ])
+
+  console.error('MISE DEBUG templates:', errTemplates)
+  console.error('MISE DEBUG items:', errItems)
+  console.error('MISE DEBUG execs:', errExecs)
+  console.error('MISE DEBUG units:', errUnits)
 
   // Count items per template
   const itemCountMap: Record<string, number> = {}
