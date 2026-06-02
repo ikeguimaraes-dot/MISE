@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const template_id = searchParams.get('template_id')
 
   const supabase = createServiceClient()
-  let query = supabase.schema('mise').from('checklist_execucoes').select('*')
+  let query = supabase.schema('mise').from('checklist_executions').select('*')
   if (unit_id) query = query.eq('unit_id', unit_id)
   if (status) query = query.eq('status', status)
   if (template_id) query = query.eq('template_id', template_id)
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .schema('mise')
-    .from('checklist_execucoes')
+    .from('checklist_executions')
     .insert({
       template_id: body.template_id,
       unit_id: body.unit_id ?? null,

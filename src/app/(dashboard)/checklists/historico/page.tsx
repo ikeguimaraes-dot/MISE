@@ -24,7 +24,7 @@ export default async function ChecklistHistoricoPage() {
     { data: templates },
     { data: units },
   ] = await Promise.all([
-    supabase.schema('mise').from('checklist_execucoes').select('*').eq('status', 'concluido').order('concluido_em', { ascending: false }).limit(200),
+    supabase.schema('mise').from('checklist_executions').select('*').eq('status', 'concluido').order('concluido_em', { ascending: false }).limit(200),
     supabase.schema('mise').from('checklist_templates').select('id, nome'),
     supabase.from('units').select('id, name'),
   ])

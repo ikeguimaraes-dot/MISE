@@ -10,7 +10,7 @@ export async function POST(
 
   const { data: execucao, error: execError } = await supabase
     .schema('mise')
-    .from('checklist_execucoes')
+    .from('checklist_executions')
     .select('*')
     .eq('id', execution_id)
     .single()
@@ -59,7 +59,7 @@ export async function POST(
 
   const { error } = await supabase
     .schema('mise')
-    .from('checklist_execucoes')
+    .from('checklist_executions')
     .update({
       status: 'concluido',
       pontuacao_total: pontuacaoTotal,

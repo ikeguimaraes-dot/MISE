@@ -8,7 +8,7 @@ export default async function ExecutarChecklistPage({ params }: { params: Promis
 
   const { data: execucao, error } = await supabase
     .schema('mise')
-    .from('checklist_execucoes')
+    .from('checklist_executions')
     .select('*')
     .eq('id', executionId)
     .single()

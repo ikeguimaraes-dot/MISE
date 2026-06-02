@@ -40,7 +40,7 @@ export async function POST(
 
   // If turno item answered, update execution turno
   if (resposta?.valor && body.is_turno_item) {
-    await supabase.schema('mise').from('checklist_execucoes')
+    await supabase.schema('mise').from('checklist_executions')
       .update({ turno: resposta.valor })
       .eq('id', execution_id)
   }
