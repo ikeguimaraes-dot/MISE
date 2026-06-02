@@ -24,7 +24,7 @@ export default async function ChecklistTemplatePage({ params }: { params: Promis
 
   const [{ data: template }, { data: items }, { data: units }] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('*').eq('id', id).single(),
-    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', id).eq('ativo', true).order('ordem'),
+    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', id).order('ordem'),
     supabase.from('units').select('id, name').eq('active', true),
   ])
 

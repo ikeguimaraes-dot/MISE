@@ -40,7 +40,7 @@ export default async function ChecklistExecucaoRelatorioPage({ params }: { param
 
   const { data: execucao, error } = await supabase
     .schema('mise')
-    .from('checklist_executions')
+    .from('checklist_execucoes')
     .select('*')
     .eq('id', id)
     .single()
@@ -52,17 +52,14 @@ export default async function ChecklistExecucaoRelatorioPage({ params }: { param
     { data: items },
     { data: respostas },
     { data: units },
-    { data: employees },
   ] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('*').eq('id', execucao.template_id).single(),
-    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', execucao.template_id).eq('ativo', true).order('ordem'),
+    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', execucao.template_id).order('ordem'),
     supabase.schema('mise').from('checklist_responses').select('*').eq('execution_id', id),
     supabase.from('units').select('id, name'),
-    supabase.from('employees').select('id, nome'),
   ])
 
   const unitsMap = Object.fromEntries((units ?? []).map(u => [u.id, u.name]))
-  const employeesMap = Object.fromEntries((employees ?? []).map(e => [e.id, e.nome]))
   const respostasMap = Object.fromEntries((respostas ?? []).map(r => [r.item_id, r]))
 
   return (
@@ -77,9 +74,8 @@ export default async function ChecklistExecucaoRelatorioPage({ params }: { param
             <div>
               <h1 className="text-xl font-bold text-white">{template?.nome ?? 'Relatório de Execução'}</h1>
               <div className="mt-2 flex flex-wrap gap-3 text-sm text-neutral-400">
-                <span>📅 {execucao.submitted_at ? fmtDate(execucao.submitted_at) : '—'}</span>
+                <span>📅 {execucao.concluido_em ? fmtDate(execucao.concluido_em) : fmtDate(execucao.iniciado_em)}</span>
                 {execucao.turno && <span>🕐 {execucao.turno}</span>}
-                {execucao.employee_id && <span>👤 {employeesMap[execucao.employee_id] ?? '—'}</span>}
                 <span>🏠 {unitsMap[execucao.unit_id] ?? '—'}</span>
               </div>
             </div>

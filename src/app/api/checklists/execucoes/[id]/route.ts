@@ -10,7 +10,7 @@ export async function GET(
 
   const { data: execucao, error } = await supabase
     .schema('mise')
-    .from('checklist_executions')
+    .from('checklist_execucoes')
     .select('*')
     .eq('id', id)
     .single()

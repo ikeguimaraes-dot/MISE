@@ -10,7 +10,7 @@ export async function POST(
 
   const { data: execucao, error: execError } = await supabase
     .schema('mise')
-    .from('checklist_executions')
+    .from('checklist_execucoes')
     .select('*')
     .eq('id', execution_id)
     .single()
@@ -19,7 +19,7 @@ export async function POST(
 
   const [{ data: items }, { data: respostas }] = await Promise.all([
     supabase.schema('mise').from('checklist_template_items').select('*')
-      .eq('template_id', execucao.template_id).eq('ativo', true),
+      .eq('template_id', execucao.template_id),
     supabase.schema('mise').from('checklist_responses').select('*')
       .eq('execution_id', execution_id),
   ])
@@ -59,13 +59,13 @@ export async function POST(
 
   const { error } = await supabase
     .schema('mise')
-    .from('checklist_executions')
+    .from('checklist_execucoes')
     .update({
       status: 'concluido',
       pontuacao_total: pontuacaoTotal,
       pontuacao_obtida: pontuacaoObtida,
       percentual,
-      submitted_at: new Date().toISOString(),
+      concluido_em: new Date().toISOString(),
     })
     .eq('id', execution_id)
 

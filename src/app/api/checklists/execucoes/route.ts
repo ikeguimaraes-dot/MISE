@@ -8,31 +8,29 @@ export async function GET(request: Request) {
   const template_id = searchParams.get('template_id')
 
   const supabase = createServiceClient()
-  let query = supabase.schema('mise').from('checklist_executions').select('*')
+  let query = supabase.schema('mise').from('checklist_execucoes').select('*')
   if (unit_id) query = query.eq('unit_id', unit_id)
   if (status) query = query.eq('status', status)
   if (template_id) query = query.eq('template_id', template_id)
 
-  const { data, error } = await query.order('created_at', { ascending: false })
+  const { data, error } = await query.order('iniciado_em', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ execucoes: data ?? [] })
 }
 
 export async function POST(request: Request) {
   const body = await request.json()
-  if (!body.template_id || !body.unit_id) {
-    return NextResponse.json({ error: 'template_id e unit_id são obrigatórios' }, { status: 400 })
+  if (!body.template_id) {
+    return NextResponse.json({ error: 'template_id é obrigatório' }, { status: 400 })
   }
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .schema('mise')
-    .from('checklist_executions')
+    .from('checklist_execucoes')
     .insert({
       template_id: body.template_id,
-      unit_id: body.unit_id,
-      employee_id: body.employee_id ?? null,
+      unit_id: body.unit_id ?? null,
       turno: body.turno ?? null,
-      data_execucao: body.data_execucao ?? new Date().toISOString().split('T')[0],
       status: 'em_andamento',
     })
     .select('id')

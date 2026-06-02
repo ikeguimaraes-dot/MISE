@@ -23,17 +23,14 @@ export default async function ChecklistHistoricoPage() {
     { data: execucoes },
     { data: templates },
     { data: units },
-    { data: employees },
   ] = await Promise.all([
-    supabase.schema('mise').from('checklist_executions').select('*').eq('status', 'concluido').order('submitted_at', { ascending: false }).limit(200),
+    supabase.schema('mise').from('checklist_execucoes').select('*').eq('status', 'concluido').order('concluido_em', { ascending: false }).limit(200),
     supabase.schema('mise').from('checklist_templates').select('id, nome'),
     supabase.from('units').select('id, name'),
-    supabase.from('employees').select('id, nome'),
   ])
 
   const templatesMap = Object.fromEntries((templates ?? []).map(t => [t.id, t.nome]))
   const unitsMap = Object.fromEntries((units ?? []).map(u => [u.id, u.name]))
-  const employeesMap = Object.fromEntries((employees ?? []).map(e => [e.id, e.nome]))
 
   return (
     <div className="p-6 max-w-5xl">
@@ -61,7 +58,6 @@ export default async function ChecklistHistoricoPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Data</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Checklist</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Turno</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Responsável</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Unidade</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-500 uppercase tracking-wider">Score</th>
               </tr>
@@ -70,7 +66,7 @@ export default async function ChecklistHistoricoPage() {
               {execucoes.map(ex => (
                 <tr key={ex.id} className="hover:bg-neutral-900 transition-colors">
                   <td className="px-4 py-3 text-neutral-400 whitespace-nowrap">
-                    {ex.submitted_at ? fmtDate(ex.submitted_at) : fmtDate(ex.created_at)}
+                    {fmtDate(ex.concluido_em ?? ex.iniciado_em)}
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/checklists/historico/${ex.id}`} className="font-medium text-white hover:text-emerald-400 transition-colors">
@@ -78,7 +74,6 @@ export default async function ChecklistHistoricoPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-neutral-400">{ex.turno ?? '—'}</td>
-                  <td className="px-4 py-3 text-neutral-400">{ex.employee_id ? (employeesMap[ex.employee_id] ?? ex.employee_id) : '—'}</td>
                   <td className="px-4 py-3 text-neutral-400">{unitsMap[ex.unit_id] ?? '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={`inline-block rounded px-2 py-0.5 text-xs font-bold ${scoreColor(ex.percentual)}`}>
