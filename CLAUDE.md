@@ -176,6 +176,14 @@ UPDATE public.employees SET mise_ativo = true WHERE ativo = true AND departament
 -- mise.ingredient_shelf_life ✅ JÁ CRIADA E POPULADA
 -- 798 validades customizadas importadas do Suflex
 -- Colunas: ingredient_id (FK public.ingredients), metodo_conservacao, prazo_horas
+
+-- ⚠️ ATENÇÃO — nome correto das tabelas do módulo Checklists:
+-- mise.checklist_executions  (inglês — NÃO checklist_execucoes)
+-- mise.checklist_templates
+-- mise.checklist_template_items
+-- mise.checklist_responses
+-- O código usa sempre o nome em inglês. Renomear no banco se necessário:
+-- ALTER TABLE mise.checklist_execucoes RENAME TO checklist_executions;
 ```
 
 ### 4.4 Migration do módulo de Cadastros
@@ -756,21 +764,27 @@ git remote set-url origin https://github.com/ikeguimaraes-dot/MISE.git
 O `gh` CLI está autenticado como `ikeguimaraes-dot` (keyring) com todos os escopos necessários.
 
 ### Vercel
-- **URL de produção**: https://mise-backoffice.vercel.app
-- **Projeto**: `mise-backoffice` sob a conta `grupomeeteat-3433s-projects`
-- **Dashboard**: https://vercel.com/grupomeeteat-3433s-projects/mise-backoffice
+- **URL de produção**: https://mise-backoffice-nine.vercel.app
+- **Projeto**: conta **Henrique's projects** (`henriques-projects-0f1cdf7f`)
+- **Deploy automático**: cada push na `main` do repo `ikeguimaraes-dot/MISE` dispara deploy automático — não é necessário rodar `vercel --prod` manualmente.
 
 **Variáveis de ambiente configuradas em Production:**
 - `NEXT_PUBLIC_SUPABASE_URL` ✅
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` ✅
 - `SUPABASE_SERVICE_ROLE_KEY` ✅
 
-**Para novo deploy de produção (rodar a partir de `/Desktop/MISE`):**
+**Para deploy manual (se necessário):**
 ```bash
-npx vercel --prod --yes
+npx vercel --prod --scope henriques-projects-0f1cdf7f
 ```
 
 **Para adicionar/atualizar variável:**
 ```bash
 echo "valor" | npx vercel env add NOME_VAR production
 ```
+
+### Bugs resolvidos — histórico
+
+**Bug: checklists não apareciam em `/checklists`**
+- **Causa combinada**: (1) nome da tabela no código era `checklist_execucoes` mas o banco usa `checklist_executions`; (2) as variáveis de ambiente da Vercel estavam configuradas na conta antiga (`grupomeeteat-3433s-projects`), não na conta `henriques-projects-0f1cdf7f` onde o projeto foi migrado. Sem `SUPABASE_SERVICE_ROLE_KEY` correta, todas as queries ao schema `mise` retornam erro silencioso.
+- **Resolução**: corrigido o nome da tabela no código + reconfiguradas as env vars na Vercel correta.
