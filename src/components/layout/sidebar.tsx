@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
-  Package, FolderTree, Printer, Users, KeyRound, FileText,
+  Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -60,9 +60,11 @@ function NavItem({ href, label, icon: Icon, pathname }: {
 export function Sidebar({
   role = 'admin',
   isPinUser = false,
+  hasChecklists = true,
 }: {
   role?: 'admin' | 'gerente' | 'cozinheiro'
   isPinUser?: boolean
+  hasChecklists?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -80,6 +82,7 @@ export function Sidebar({
   }
 
   const showAdminSections = role !== 'cozinheiro'
+  const showChecklists = role !== 'cozinheiro' || hasChecklists
 
   return (
     <aside className="flex h-screen w-56 flex-col border-r border-neutral-800 bg-neutral-950 px-3 py-4">
@@ -94,6 +97,24 @@ export function Sidebar({
             <NavItem key={href} href={href} label={label} icon={icon} pathname={pathname} />
           ))}
         </div>
+
+        {showChecklists && (
+          <div>
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+              Checklists
+            </p>
+            <div className="flex flex-col gap-1">
+              {showAdminSections ? (
+                <>
+                  <NavItem href="/checklists" label="Templates" icon={ClipboardCheck} pathname={pathname} />
+                  <NavItem href="/checklists/historico" label="Histórico" icon={ClipboardCheck} pathname={pathname} />
+                </>
+              ) : (
+                <NavItem href="/checklists" label="Executar" icon={ClipboardCheck} pathname={pathname} />
+              )}
+            </div>
+          </div>
+        )}
 
         <div>
           <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
