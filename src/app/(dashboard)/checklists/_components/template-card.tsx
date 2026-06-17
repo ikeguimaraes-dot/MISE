@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MoreVertical, Pencil, Copy } from 'lucide-react'
+import { MoreVertical, Pencil, Copy, Trash2 } from 'lucide-react'
 
 const TIPO_COLORS: Record<string, string> = {
   abertura: 'border-l-emerald-500 bg-emerald-500/5',
@@ -42,6 +42,7 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const colorClass = TIPO_COLORS[template.tipo ?? ''] ?? 'border-l-neutral-600 bg-neutral-800/30'
@@ -55,6 +56,25 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
     if (menuOpen) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [menuOpen])
+
+  async function handleExcluir() {
+    setMenuOpen(false)
+    if (!confirm(`Excluir "${template.nome}"? Esta ação não pode ser desfeita.`)) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/checklists/${template.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(`Erro ao excluir: ${data.error}`)
+        return
+      }
+      router.refresh()
+    } catch {
+      alert('Erro ao excluir checklist.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   async function handleDuplicar() {
     setMenuOpen(false)
@@ -75,7 +95,7 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
   }
 
   return (
-    <div className={`rounded-lg border border-neutral-800 border-l-4 ${colorClass} bg-neutral-900 p-5 flex flex-col gap-3 ${duplicating ? 'opacity-60' : ''}`}>
+    <div className={`rounded-lg border border-neutral-800 border-l-4 ${colorClass} bg-neutral-900 p-5 flex flex-col gap-3 ${duplicating || deleting ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold text-white leading-tight">{template.nome}</h3>
         <div className="flex items-center gap-1 shrink-0">
@@ -109,6 +129,15 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
                 >
                   <Copy className="h-3.5 w-3.5" />
                   Duplicar
+                </button>
+                <div className="my-1 border-t border-neutral-800" />
+                <button
+                  onClick={handleExcluir}
+                  disabled={deleting}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir
                 </button>
               </div>
             )}
