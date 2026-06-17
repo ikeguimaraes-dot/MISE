@@ -8,6 +8,7 @@ export async function POST(
   const { id: execution_id } = await params
   const body = await request.json()
   const { item_id, resposta, comentario, foto_url, nao_aplicavel } = body
+  console.log('[responder]', JSON.stringify({ item_id, foto_url, resposta, has_foto: foto_url != null }))
 
   if (!item_id) {
     return NextResponse.json({ error: 'item_id é obrigatório' }, { status: 400 })
