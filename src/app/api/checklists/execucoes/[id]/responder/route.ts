@@ -25,6 +25,7 @@ export async function POST(
     .maybeSingle()
 
   if (existing) {
+    await supabase.schema('mise').from('debug_responder').insert({ execution_id, item_id, foto_url: foto_url ?? null, resposta: resposta ?? null, branch: 'update' })
     const { error } = await supabase
       .schema('mise')
       .from('checklist_responses')
@@ -32,6 +33,7 @@ export async function POST(
       .eq('id', existing.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   } else {
+    await supabase.schema('mise').from('debug_responder').insert({ execution_id, item_id, foto_url: foto_url ?? null, resposta: resposta ?? null, branch: 'insert' })
     const { error } = await supabase
       .schema('mise')
       .from('checklist_responses')
