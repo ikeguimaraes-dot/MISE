@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Trash2, Plus, GripVertical } from 'lucide-react'
+import { Trash2, Plus, Pencil, Check, X } from 'lucide-react'
 
 const TIPO_RESPOSTA_OPTIONS = [
   { value: 'sim_nao', label: 'Sim / Não' },
@@ -30,6 +30,13 @@ type Item = {
   ordem: number
 }
 
+type EditState = {
+  titulo: string
+  descricao: string
+  tipo_resposta: string
+  opcoes_str: string
+}
+
 type Props = {
   templateId: string
   initialItems: Item[]
@@ -37,6 +44,9 @@ type Props = {
 
 export function EditarClient({ templateId, initialItems }: Props) {
   const [items, setItems] = useState<Item[]>(initialItems)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editState, setEditState] = useState<EditState>({ titulo: '', descricao: '', tipo_resposta: 'sim_nao', opcoes_str: '' })
+  const [saving, setSaving] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   const [titulo, setTitulo] = useState('')
@@ -46,7 +56,54 @@ export function EditarClient({ templateId, initialItems }: Props) {
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState('')
 
-  const needsOpcoes = tipoResposta === 'selecao' || tipoResposta === 'checklist_multiplo'
+  const needsOpcoesEdit = editState.tipo_resposta === 'selecao' || editState.tipo_resposta === 'checklist_multiplo'
+  const needsOpcoesAdd = tipoResposta === 'selecao' || tipoResposta === 'checklist_multiplo'
+
+  function startEdit(item: Item) {
+    setEditingId(item.id)
+    setEditState({
+      titulo: item.titulo,
+      descricao: item.descricao ?? '',
+      tipo_resposta: item.tipo_resposta,
+      opcoes_str: item.opcoes?.join(', ') ?? '',
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+  }
+
+  async function handleSaveEdit(itemId: string) {
+    if (!editState.titulo.trim()) return
+    setSaving(true)
+    const opcoes = needsOpcoesEdit
+      ? editState.opcoes_str.split(',').map(s => s.trim()).filter(Boolean)
+      : null
+
+    try {
+      const res = await fetch(`/api/checklists/${templateId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: editState.titulo.trim(),
+          descricao: editState.descricao.trim() || null,
+          tipo_resposta: editState.tipo_resposta,
+          opcoes: opcoes && opcoes.length > 0 ? opcoes : null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Erro ao salvar.')
+        return
+      }
+      setItems(prev => prev.map(i => i.id === itemId ? data.item : i))
+      setEditingId(null)
+    } catch {
+      alert('Erro ao salvar item.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   async function handleRemover(itemId: string) {
     setRemovingId(itemId)
@@ -71,7 +128,7 @@ export function EditarClient({ templateId, initialItems }: Props) {
     setAdding(true)
     setAddError('')
 
-    const opcoes = needsOpcoes
+    const opcoes = needsOpcoesAdd
       ? opcoesStr.split(',').map(s => s.trim()).filter(Boolean)
       : null
 
@@ -118,35 +175,112 @@ export function EditarClient({ templateId, initialItems }: Props) {
         ) : (
           <div className="divide-y divide-neutral-800/60">
             {items.map(item => (
-              <div key={item.id} className="flex items-start gap-3 px-4 py-3">
-                <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-neutral-700" />
-                <span className="mt-0.5 min-w-[1.5rem] text-right text-xs font-mono text-neutral-600">{item.ordem}.</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium">{item.titulo}</p>
-                  {item.descricao && (
-                    <p className="text-xs text-neutral-500 mt-0.5">{item.descricao}</p>
-                  )}
-                  {item.opcoes && item.opcoes.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {item.opcoes.map((op, i) => (
-                        <span key={i} className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">{op}</span>
-                      ))}
+              <div key={item.id}>
+                {editingId === item.id ? (
+                  /* Modo edição inline */
+                  <div className="px-4 py-4 bg-neutral-800/40 space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-neutral-400 mb-1">Título</label>
+                        <input
+                          value={editState.titulo}
+                          onChange={e => setEditState(s => ({ ...s, titulo: e.target.value }))}
+                          className="w-full rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-400 focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-400 mb-1">Tipo de resposta</label>
+                        <select
+                          value={editState.tipo_resposta}
+                          onChange={e => setEditState(s => ({ ...s, tipo_resposta: e.target.value, opcoes_str: '' }))}
+                          className="w-full rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none"
+                        >
+                          {TIPO_RESPOSTA_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-neutral-400 mb-1">Descrição</label>
+                        <input
+                          value={editState.descricao}
+                          onChange={e => setEditState(s => ({ ...s, descricao: e.target.value }))}
+                          placeholder="Instrução adicional"
+                          className="w-full rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none"
+                        />
+                      </div>
+                      {needsOpcoesEdit && (
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-medium text-neutral-400 mb-1">
+                            Opções <span className="text-neutral-600">(separadas por vírgula)</span>
+                          </label>
+                          <input
+                            value={editState.opcoes_str}
+                            onChange={e => setEditState(s => ({ ...s, opcoes_str: e.target.value }))}
+                            placeholder="ex: Conforme, Não conforme, N/A"
+                            className="w-full rounded-lg border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none"
+                          />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-800 text-neutral-400">
-                    {TIPO_RESPOSTA_LABEL[item.tipo_resposta] ?? item.tipo_resposta}
-                  </span>
-                  <button
-                    onClick={() => handleRemover(item.id)}
-                    disabled={removingId === item.id}
-                    className="flex h-7 w-7 items-center justify-center rounded text-neutral-600 hover:bg-red-900/30 hover:text-red-400 transition-colors disabled:opacity-40"
-                    aria-label="Remover item"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSaveEdit(item.id)}
+                        disabled={saving || !editState.titulo.trim()}
+                        className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-40 transition-colors"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        {saving ? 'Salvando...' : 'Salvar'}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="flex items-center gap-1.5 rounded-lg border border-neutral-700 px-3 py-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Modo visualização */
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <span className="mt-0.5 min-w-[1.5rem] text-right text-xs font-mono text-neutral-600">{item.ordem}.</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-medium">{item.titulo}</p>
+                      {item.descricao && (
+                        <p className="text-xs text-neutral-500 mt-0.5">{item.descricao}</p>
+                      )}
+                      {item.opcoes && item.opcoes.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {item.opcoes.map((op, i) => (
+                            <span key={i} className="rounded border border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-400">{op}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-neutral-800 text-neutral-400">
+                        {TIPO_RESPOSTA_LABEL[item.tipo_resposta] ?? item.tipo_resposta}
+                      </span>
+                      <button
+                        onClick={() => startEdit(item)}
+                        disabled={!!editingId}
+                        className="flex h-7 w-7 items-center justify-center rounded text-neutral-600 hover:bg-neutral-800 hover:text-white transition-colors disabled:opacity-30"
+                        aria-label="Editar item"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRemover(item.id)}
+                        disabled={removingId === item.id || !!editingId}
+                        className="flex h-7 w-7 items-center justify-center rounded text-neutral-600 hover:bg-red-900/30 hover:text-red-400 transition-colors disabled:opacity-30"
+                        aria-label="Remover item"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -173,7 +307,6 @@ export function EditarClient({ templateId, initialItems }: Props) {
                 className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
               />
             </div>
-
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1">Tipo de resposta *</label>
               <select
@@ -186,7 +319,6 @@ export function EditarClient({ templateId, initialItems }: Props) {
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-xs font-medium text-neutral-400 mb-1">Descrição (opcional)</label>
               <input
@@ -196,8 +328,7 @@ export function EditarClient({ templateId, initialItems }: Props) {
                 className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
               />
             </div>
-
-            {needsOpcoes && (
+            {needsOpcoesAdd && (
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-neutral-400 mb-1">
                   Opções <span className="text-neutral-600">(separadas por vírgula)</span>
