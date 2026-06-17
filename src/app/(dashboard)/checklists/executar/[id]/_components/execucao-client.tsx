@@ -184,6 +184,7 @@ export function ExecucaoClient({
       resposta: { valor },
       comentario: currentAnswer?.comentario ?? '',
       nao_aplicavel: false,
+      foto_url: currentAnswer?.foto_url ?? null,
     }
     const requiresComment = currentItem.requer_comentario === 'inconformidade' && valor === 'nao'
     updateAnswer(currentItem.id, answer)
@@ -197,7 +198,7 @@ export function ExecucaoClient({
 
   async function handleSelecao(valor: string) {
     if (!currentItem) return
-    const answer: LocalAnswer = { resposta: { valor }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false }
+    const answer: LocalAnswer = { resposta: { valor }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
     updateAnswer(currentItem.id, answer)
     await saveToServer(currentItem.id, answer)
     setTimeout(goNext, 300)
@@ -207,7 +208,7 @@ export function ExecucaoClient({
     if (!currentItem) return
     const current = Array.isArray(currentAnswer?.resposta?.selecionados) ? [...(currentAnswer!.resposta!.selecionados as string[])] : []
     const updated = checked ? [...current, opcao] : current.filter(o => o !== opcao)
-    const answer: LocalAnswer = { resposta: { selecionados: updated }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false }
+    const answer: LocalAnswer = { resposta: { selecionados: updated }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
     updateAnswer(currentItem.id, answer)
     await saveToServer(currentItem.id, answer)
   }
@@ -251,7 +252,7 @@ export function ExecucaoClient({
     lastPos.current = null
     if (!canvasRef.current || !currentItem) return
     const dataUrl = canvasRef.current.toDataURL('image/png')
-    const answer: LocalAnswer = { resposta: { assinatura: dataUrl }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false }
+    const answer: LocalAnswer = { resposta: { assinatura: dataUrl }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
     updateAnswer(currentItem.id, answer)
     await saveToServer(currentItem.id, answer)
   }
@@ -502,7 +503,7 @@ export function ExecucaoClient({
                   className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-4 py-3 text-white focus:outline-none focus:border-emerald-500 text-lg"
                   value={(currentAnswer?.resposta?.data as string) ?? ''}
                   onChange={async e => {
-                    const answer: LocalAnswer = { resposta: { data: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false }
+                    const answer: LocalAnswer = { resposta: { data: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
                     updateAnswer(currentItem.id, answer)
                     if (e.target.value) await saveToServer(currentItem.id, answer)
                   }}
@@ -517,7 +518,7 @@ export function ExecucaoClient({
                   placeholder="Digite sua resposta..."
                   value={(currentAnswer?.resposta?.texto as string) ?? ''}
                   onChange={async e => {
-                    const answer: LocalAnswer = { resposta: { texto: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false }
+                    const answer: LocalAnswer = { resposta: { texto: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
                     updateAnswer(currentItem.id, answer)
                     await saveToServer(currentItem.id, answer)
                   }}
