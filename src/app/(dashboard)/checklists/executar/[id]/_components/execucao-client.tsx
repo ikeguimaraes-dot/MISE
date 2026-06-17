@@ -123,7 +123,7 @@ export function ExecucaoClient({
     }
   }, [executionId])
 
-  const handlePhotoSelect = useCallback(async (itemId: string, file: File) => {
+  async function handlePhotoSelect(itemId: string, file: File) {
     setUploadingPhoto(itemId)
     try {
       const fd = new FormData()
@@ -137,27 +137,23 @@ export function ExecucaoClient({
         return
       }
       const { url } = await res.json()
-      setAnswers(prev => {
-        const current = prev[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
-        const updated = { ...current, foto_url: url }
-        saveToServer(itemId, updated)
-        return { ...prev, [itemId]: updated }
-      })
+      const current = answers[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
+      const updated = { ...current, foto_url: url }
+      setAnswers(prev => ({ ...prev, [itemId]: updated }))
+      await saveToServer(itemId, updated)
     } catch (e) {
       console.error('Erro de rede ao fazer upload da foto:', e)
     } finally {
       setUploadingPhoto(null)
     }
-  }, [executionId, saveToServer])
+  }
 
-  const handleRemovePhoto = useCallback(async (itemId: string) => {
-    setAnswers(prev => {
-      const current = prev[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
-      const updated = { ...current, foto_url: null }
-      saveToServer(itemId, updated)
-      return { ...prev, [itemId]: updated }
-    })
-  }, [saveToServer])
+  async function handleRemovePhoto(itemId: string) {
+    const current = answers[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
+    const updated = { ...current, foto_url: null }
+    setAnswers(prev => ({ ...prev, [itemId]: updated }))
+    await saveToServer(itemId, updated)
+  }
 
   function updateAnswer(itemId: string, patch: Partial<LocalAnswer>) {
     setAnswers(prev => {
