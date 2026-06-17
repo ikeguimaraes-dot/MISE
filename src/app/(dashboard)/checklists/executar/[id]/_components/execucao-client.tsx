@@ -95,7 +95,7 @@ export function ExecucaoClient({
   const saveToServer = useCallback(async (itemId: string, answer: LocalAnswer) => {
     setSaving(true)
     try {
-      await fetch(`/api/checklists/execucoes/${executionId}/responder`, {
+      const res = await fetch(`/api/checklists/execucoes/${executionId}/responder`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -105,8 +105,15 @@ export function ExecucaoClient({
           nao_aplicavel: answer.nao_aplicavel,
         }),
       })
-    } catch { /* ignore network errors, answer is still in state */ }
-    finally { setSaving(false) }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error('Erro ao salvar resposta:', res.status, err)
+      }
+    } catch (e) {
+      console.error('Erro de rede ao salvar resposta:', e)
+    } finally {
+      setSaving(false)
+    }
   }, [executionId])
 
   function updateAnswer(itemId: string, patch: Partial<LocalAnswer>) {
