@@ -136,6 +136,15 @@ export default async function ChecklistExecucaoRelatorioPage({ params }: { param
                           })}
                         </ul>
                       )}
+                      {r.foto_url && (
+                        <a href={r.foto_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+                          <img
+                            src={r.foto_url}
+                            alt="Foto do item"
+                            className="h-16 w-16 object-cover rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
+                          />
+                        </a>
+                      )}
                     </>
                   ) : (
                     <p className="text-xs text-neutral-600 mt-0.5">Sem resposta</p>

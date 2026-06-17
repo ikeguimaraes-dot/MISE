@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Loader2, Camera, X } from 'lucide-react'
 
 type Item = {
   id: string
@@ -20,12 +20,14 @@ type StoredResponse = {
   resposta: Record<string, unknown> | null
   comentario: string | null
   nao_aplicavel: boolean
+  foto_url: string | null
 }
 
 type LocalAnswer = {
   resposta: Record<string, unknown> | null
   comentario: string
   nao_aplicavel: boolean
+  foto_url?: string | null
 }
 
 function getOpcoes(item: Item): string[] {
@@ -71,11 +73,15 @@ export function ExecucaoClient({
         resposta: r.resposta,
         comentario: r.comentario ?? '',
         nao_aplicavel: r.nao_aplicavel,
+        foto_url: r.foto_url ?? null,
       }
     }
     return init
   })
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const photoTargetItemId = useRef<string | null>(null)
   const [showSummary, setShowSummary] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<{ percentual: number; pontuacao_total: number; pontuacao_obtida: number } | null>(null)
@@ -103,6 +109,7 @@ export function ExecucaoClient({
           resposta: answer.resposta,
           comentario: answer.comentario || null,
           nao_aplicavel: answer.nao_aplicavel,
+          foto_url: answer.foto_url ?? null,
         }),
       })
       if (!res.ok) {
@@ -115,6 +122,42 @@ export function ExecucaoClient({
       setSaving(false)
     }
   }, [executionId])
+
+  const handlePhotoSelect = useCallback(async (itemId: string, file: File) => {
+    setUploadingPhoto(itemId)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('execution_id', executionId)
+      fd.append('item_id', itemId)
+      const res = await fetch('/api/checklists/upload-foto', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error('Erro ao fazer upload da foto:', res.status, err)
+        return
+      }
+      const { url } = await res.json()
+      setAnswers(prev => {
+        const current = prev[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
+        const updated = { ...current, foto_url: url }
+        saveToServer(itemId, updated)
+        return { ...prev, [itemId]: updated }
+      })
+    } catch (e) {
+      console.error('Erro de rede ao fazer upload da foto:', e)
+    } finally {
+      setUploadingPhoto(null)
+    }
+  }, [executionId, saveToServer])
+
+  const handleRemovePhoto = useCallback(async (itemId: string) => {
+    setAnswers(prev => {
+      const current = prev[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
+      const updated = { ...current, foto_url: null }
+      saveToServer(itemId, updated)
+      return { ...prev, [itemId]: updated }
+    })
+  }, [saveToServer])
 
   function updateAnswer(itemId: string, patch: Partial<LocalAnswer>) {
     setAnswers(prev => {
@@ -531,10 +574,55 @@ export function ExecucaoClient({
                   />
                 </div>
               )}
+
+              {/* Photo */}
+              <div className="flex items-center gap-3 pt-1">
+                {currentAnswer?.foto_url ? (
+                  <div className="relative shrink-0">
+                    <img
+                      src={currentAnswer.foto_url}
+                      alt="Foto"
+                      className="h-20 w-20 object-cover rounded-lg border border-neutral-700"
+                    />
+                    <button
+                      onClick={() => handleRemovePhoto(currentItem.id)}
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-neutral-800 border border-neutral-600 flex items-center justify-center hover:bg-red-900"
+                    >
+                      <X className="h-3 w-3 text-neutral-300" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { photoTargetItemId.current = currentItem.id; photoInputRef.current?.click() }}
+                    disabled={uploadingPhoto === currentItem.id}
+                    className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 border border-neutral-800 rounded-lg px-3 py-2 hover:border-neutral-600 disabled:opacity-40 transition-colors"
+                  >
+                    {uploadingPhoto === currentItem.id
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Camera className="h-3.5 w-3.5" />}
+                    Foto
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
+
+      {/* Hidden file input for photo capture */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          const itemId = photoTargetItemId.current
+          if (file && itemId) handlePhotoSelect(itemId, file)
+          e.target.value = ''
+        }}
+      />
 
       {/* Navigation footer */}
       <div className="sticky bottom-0 bg-neutral-950 border-t border-neutral-800 px-4 py-3 flex gap-3">
