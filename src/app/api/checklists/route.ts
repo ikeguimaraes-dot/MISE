@@ -38,7 +38,6 @@ export async function POST(request: Request) {
       opcoes: item.opcoes ?? null,
       peso: typeof item.peso === 'number' ? item.peso : 1,
       ordem: typeof item.ordem === 'number' ? item.ordem : i + 1,
-      ativo: true,
     }))
     const { error: itemsError } = await supabase
       .schema('mise')
