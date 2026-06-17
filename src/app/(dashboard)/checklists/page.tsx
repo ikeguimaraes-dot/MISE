@@ -1,26 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ClipboardCheck, Plus } from 'lucide-react'
-
-const TIPO_COLORS: Record<string, string> = {
-  abertura: 'border-l-emerald-500 bg-emerald-500/5',
-  fechamento: 'border-l-red-500 bg-red-500/5',
-  rotina: 'border-l-blue-500 bg-blue-500/5',
-  relatorio: 'border-l-purple-500 bg-purple-500/5',
-  treinamento: 'border-l-yellow-500 bg-yellow-500/5',
-}
-
-const TIPO_LABEL: Record<string, string> = {
-  abertura: 'Abertura', fechamento: 'Fechamento', rotina: 'Rotina',
-  relatorio: 'Relatório', treinamento: 'Treinamento',
-}
-
-function scoreColor(pct: number | null) {
-  if (pct === null) return 'text-neutral-500'
-  if (pct >= 80) return 'text-emerald-400'
-  if (pct >= 60) return 'text-yellow-400'
-  return 'text-red-400'
-}
+import { TemplateCard } from './_components/template-card'
 
 export default async function ChecklistsPage() {
   const supabase = createServiceClient()
@@ -87,58 +68,15 @@ export default async function ChecklistsPage() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map(t => {
-            const score = lastScoreMap[t.id] ?? null
-            const count = itemCountMap[t.id] ?? 0
-            const colorClass = TIPO_COLORS[t.tipo ?? ''] ?? 'border-l-neutral-600 bg-neutral-800/30'
-            return (
-              <div
-                key={t.id}
-                className={`rounded-lg border border-neutral-800 border-l-4 ${colorClass} bg-neutral-900 p-5 flex flex-col gap-3`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-white leading-tight">{t.nome}</h3>
-                  {t.tipo && (
-                    <span className="shrink-0 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-neutral-800 text-neutral-400">
-                      {TIPO_LABEL[t.tipo] ?? t.tipo}
-                    </span>
-                  )}
-                </div>
-
-                {t.departamento && (
-                  <p className="text-xs text-neutral-500">{t.departamento}</p>
-                )}
-
-                {t.unit_id && (
-                  <p className="text-xs text-neutral-600">{unitsMap[t.unit_id] ?? t.unit_id}</p>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-neutral-500">
-                  <span>{count} {count === 1 ? 'item' : 'itens'}</span>
-                  <span>
-                    Última: <span className={`font-bold ${scoreColor(score)}`}>
-                      {score !== null ? `${score.toFixed(0)}%` : '—'}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="flex gap-2 pt-1">
-                  <Link
-                    href={`/checklists/${t.id}`}
-                    className="flex-1 rounded border border-neutral-700 px-3 py-1.5 text-center text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition-colors"
-                  >
-                    Ver detalhes
-                  </Link>
-                  <Link
-                    href={`/checklists/${t.id}`}
-                    className="flex-1 rounded bg-emerald-700 px-3 py-1.5 text-center text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
-                  >
-                    Executar
-                  </Link>
-                </div>
-              </div>
-            )
-          })}
+          {templates.map(t => (
+            <TemplateCard
+              key={t.id}
+              template={t}
+              score={lastScoreMap[t.id] ?? null}
+              count={itemCountMap[t.id] ?? 0}
+              unitName={t.unit_id ? (unitsMap[t.unit_id] ?? null) : null}
+            />
+          ))}
         </div>
       )}
     </div>
