@@ -32,26 +32,27 @@ export async function POST(
 
   for (const item of (items ?? [])) {
     if (item.peso === 0 || naSet.has(item.id)) continue
-    pontuacaoTotal += item.peso
+    const peso = (item.peso ?? 1)
+    pontuacaoTotal += peso
 
     const r = respostasMap[item.id]
     if (!r) continue
 
     switch (item.tipo_resposta) {
       case 'sim_nao':
-        if (r.resposta?.valor === 'sim') pontuacaoObtida += item.peso
+        if (r.resposta?.valor === 'sim') pontuacaoObtida += peso
         break
       case 'checklist_multiplo': {
         const opcoes = Array.isArray(item.opcoes) ? item.opcoes : []
         const selecionados = Array.isArray(r.resposta?.selecionados) ? r.resposta.selecionados : []
-        if (opcoes.length > 0) pontuacaoObtida += (selecionados.length / opcoes.length) * item.peso
+        if (opcoes.length > 0) pontuacaoObtida += (selecionados.length / opcoes.length) * peso
         break
       }
       case 'assinatura':
-        if (r.resposta?.assinatura) pontuacaoObtida += item.peso
+        if (r.resposta?.assinatura) pontuacaoObtida += peso
         break
       default:
-        if (r.resposta && Object.keys(r.resposta).length > 0) pontuacaoObtida += item.peso
+        if (r.resposta && Object.keys(r.resposta).length > 0) pontuacaoObtida += peso
     }
   }
 
