@@ -36,7 +36,6 @@ export async function POST(
     .from('checklist_template_items')
     .select('*')
     .eq('template_id', id)
-    .or('ativo.is.null,ativo.eq.true')
     .order('ordem')
 
   if (items && items.length > 0) {

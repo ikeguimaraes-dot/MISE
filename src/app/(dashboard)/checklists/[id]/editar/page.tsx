@@ -10,7 +10,7 @@ export default async function EditarChecklistPage({ params }: { params: Promise<
 
   const [{ data: template }, { data: items }] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('id, nome').eq('id', id).single(),
-    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', id).or('ativo.is.null,ativo.eq.true').order('ordem'),
+    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', id).order('ordem'),
   ])
 
   if (!template) notFound()

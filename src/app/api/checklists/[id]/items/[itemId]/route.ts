@@ -11,7 +11,7 @@ export async function DELETE(
   const { error } = await supabase
     .schema('mise')
     .from('checklist_template_items')
-    .update({ ativo: false })
+    .delete()
     .eq('id', itemId)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
