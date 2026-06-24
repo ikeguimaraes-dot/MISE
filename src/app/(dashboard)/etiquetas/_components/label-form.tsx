@@ -262,32 +262,39 @@ export function LabelForm({
     const qrDataUrl = canvas?.toDataURL('image/png') ?? ''
     const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
+    const unit = savedLabel.unit
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
 <style>@page{size:6cm 6cm;margin:0}body{margin:0;padding:0;font-family:monospace}
 .label{width:6cm;height:6cm;padding:4mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt}
 .nome{font-size:12pt;font-weight:bold;line-height:1.1}
+.cnpj{font-size:7pt;margin-top:1mm}
 .metodo{font-size:8pt;margin-top:1mm}
 .sep{border:0;border-top:1px solid #000;margin:2mm 0}
 .dates{font-size:8pt;line-height:1.4}.dates b{font-weight:bold}
+.validade{font-size:12pt;font-weight:bold;line-height:1.2}
 .row{display:flex;justify-content:space-between;align-items:flex-end;gap:2mm}
 .resp{font-size:8pt;font-weight:bold}.qr{flex-shrink:0}
+.endereco{font-size:6pt;line-height:1.2;margin-top:1mm}
 .id{font-size:8pt;margin-top:1mm}
 </style></head><body>
 <div class="label">
   <div>
     <div class="nome">${savedLabel.nome}</div>
+    ${unit?.cnpj ? `<div class="cnpj">CNPJ: ${unit.cnpj}</div>` : ''}
     ${metodo ? `<div class="metodo">${metodo}</div>` : ''}
   </div>
   <hr class="sep"/>
   <div class="dates">
     <div><b>MANIPULAÇÃO:</b> ${fmtDate(dataManipulacao)}</div>
-    <div><b>VALIDADE:</b> ${fmtDate(validade)}</div>
+    <div class="validade">VALIDADE: ${fmtDate(validade)}</div>
+    ${pesoG ? `<div><b>PESO:</b> ${pesoG}g</div>` : ''}
   </div>
   <hr class="sep"/>
   <div class="row">
     <div class="resp">RESP.: ${respNome}</div>
     <div class="qr"><img src="${qrDataUrl}" width="50" height="50"/></div>
   </div>
+  ${unit?.address ? `<div class="endereco">${unit.address}</div>` : ''}
   <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
 </div>
 </body></html>`
