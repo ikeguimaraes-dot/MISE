@@ -1,6 +1,6 @@
 # MISE Backoffice — Guia Completo para Claude Code
 
-> **Leia este arquivo inteiro antes de fazer qualquer coisa.** Contém tudo que você precisa para trabalhar neste projeto sem perguntar nada.
+
 
 ---
 

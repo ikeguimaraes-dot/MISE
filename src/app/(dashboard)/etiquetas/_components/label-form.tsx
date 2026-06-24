@@ -260,31 +260,35 @@ export function LabelForm({
     if (!savedLabel) return
     const canvas = document.getElementById('label-qr-canvas') as HTMLCanvasElement | null
     const qrDataUrl = canvas?.toDataURL('image/png') ?? ''
-    const unit = savedLabel.unit
+    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
-<style>@page{size:10cm 6cm;margin:0}body{margin:0;padding:0;font-family:monospace}
-.label{width:10cm;height:6cm;padding:4mm;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt}
-.header{font-size:9pt;font-weight:bold}.sub{font-size:7pt;color:#555}
-.row{display:flex;gap:4mm;align-items:flex-start}.qr{flex-shrink:0}.info{flex:1}
-.tag{display:inline-block;border:1px solid #000;padding:0 2mm;font-size:7pt;border-radius:2px}
+<style>@page{size:6cm 6cm;margin:0}body{margin:0;padding:0;font-family:monospace}
+.label{width:6cm;height:6cm;padding:4mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt}
+.nome{font-size:12pt;font-weight:bold;line-height:1.1}
+.metodo{font-size:8pt;margin-top:1mm}
+.sep{border:0;border-top:1px solid #000;margin:2mm 0}
+.dates{font-size:8pt;line-height:1.4}.dates b{font-weight:bold}
+.row{display:flex;justify-content:space-between;align-items:flex-end;gap:2mm}
+.resp{font-size:8pt;font-weight:bold}.qr{flex-shrink:0}
+.id{font-size:8pt;margin-top:1mm}
 </style></head><body>
 <div class="label">
-  <div class="header">${unit?.name ?? ''}</div>
-  ${unit?.cnpj ? `<div class="sub">CNPJ: ${unit.cnpj}</div>` : ''}
-  ${unit?.address ? `<div class="sub">${unit.address}</div>` : ''}
-  <div class="row">
-    <div class="qr"><img src="${qrDataUrl}" width="60" height="60"/></div>
-    <div class="info">
-      <div style="font-size:10pt;font-weight:bold">${savedLabel.nome}</div>
-      <div class="sub">Manipulação: ${new Date(dataManipulacao).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</div>
-      <div class="sub">Validade: ${new Date(validade).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</div>
-      ${metodo ? `<div class="sub">${metodo}</div>` : ''}
-      ${pesoG ? `<div class="sub">Peso: ${Number(pesoG).toLocaleString('pt-BR')} g</div>` : ''}
-      ${lote ? `<div class="sub">Lote: ${lote}</div>` : ''}
-      ${selo !== 'Nenhum' ? `<span class="tag">${selo}</span>` : ''}
-    </div>
+  <div>
+    <div class="nome">${savedLabel.nome}</div>
+    ${metodo ? `<div class="metodo">${metodo}</div>` : ''}
   </div>
-  <div class="sub">#${savedLabel.id.slice(0, 8).toUpperCase()}</div>
+  <hr class="sep"/>
+  <div class="dates">
+    <div><b>MANIPULAÇÃO:</b> ${fmtDate(dataManipulacao)}</div>
+    <div><b>VALIDADE:</b> ${fmtDate(validade)}</div>
+  </div>
+  <hr class="sep"/>
+  <div class="row">
+    <div class="resp">RESP.: ${respNome}</div>
+    <div class="qr"><img src="${qrDataUrl}" width="50" height="50"/></div>
+  </div>
+  <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
 </div>
 </body></html>`
     const w = window.open('', '_blank')
