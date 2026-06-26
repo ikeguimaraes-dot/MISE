@@ -3,9 +3,56 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  /* Fundos — base escura quente */
+  --color-base: #1A1614;
+  --color-surface: #221C1A;
+  --color-surface-raised: #2A2320;
+  --color-surface-hover: #322A26;
+
+  /* Bordas */
+  --color-edge: #322A26;
+  --color-edge-strong: #3F352F;
+
+  /* Texto */
+  --color-ink: #FAF6F0;
+  --color-ink-muted: #B5A99E;
+  --color-ink-subtle: #9A8F86;
+  --color-ink-faint: #6B635C;
+
+  /* Brasa — cor de ação principal (laranja neon incandescente) */
+  --color-ember: #FF4D00;
+  --color-ember-hover: #FF6320;
+  --color-ember-soft: #3A2419;
+  --color-ember-ink: #2A1006;
+
+  /* Conforme — verde */
+  --color-fresh: #4A9D7F;
+  --color-fresh-bright: #6FD4AD;
+  --color-fresh-soft: #1E3A30;
+  --color-fresh-ink: #04342C;
+
+  /* Alerta — terracota/vermelho */
+  --color-alert: #C75D4A;
+  --color-alert-bright: #E87A66;
+  --color-alert-soft: #3A1F19;
+  --color-alert-ink: #FFFFFF;
+
+  /* Atenção — dourado */
+  --color-warn: #E0B252;
+  --color-warn-bright: #F0C878;
+  --color-warn-soft: #3A2E19;
+  --color-warn-ink: #412402;
+
+  /* Info — azul (uso pontual) */
+  --color-info: #5B9BD4;
+  --color-info-soft: #1E2C3A;
+  --color-info-ink: #042C53;
+}
+
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #1A1614;
+  --foreground: #FAF6F0;
   --font-geist-sans: 'Geist', sans-serif;
   --font-geist-mono: 'Geist Mono', monospace;
 }
@@ -13,6 +60,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
 }
 
 * {
