@@ -23,10 +23,10 @@ function formatDate(iso: string) {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  ativa: 'text-emerald-400 bg-emerald-400/10',
-  consumida: 'text-blue-400 bg-blue-400/10',
-  descartada: 'text-red-400 bg-red-400/10',
-  vencida: 'text-orange-400 bg-orange-400/10',
+  ativa: 'text-fresh-bright bg-fresh/10',
+  consumida: 'text-info bg-info/10',
+  descartada: 'text-alert-bright bg-alert/10',
+  vencida: 'text-warn-bright bg-warn/10',
 }
 
 export default async function DashboardPage() {
@@ -67,68 +67,68 @@ export default async function DashboardPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-neutral-400">Visão geral do dia</p>
+        <h1 className="text-xl font-bold text-ink">Dashboard</h1>
+        <p className="text-sm text-ink-muted">Visão geral do dia</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: 'Etiquetas Hoje', value: labelsHoje ?? 0, color: 'text-emerald-400' },
-          { label: 'Validades Críticas', value: criticas.length, color: 'text-orange-400' },
-          { label: 'Produções do Dia', value: producoesDia ?? 0, color: 'text-blue-400' },
-          { label: 'Descartes do Dia', value: descartesDia ?? 0, color: 'text-red-400' },
+          { label: 'Etiquetas Hoje', value: labelsHoje ?? 0, color: 'text-fresh' },
+          { label: 'Validades Críticas', value: criticas.length, color: 'text-warn' },
+          { label: 'Produções do Dia', value: producoesDia ?? 0, color: 'text-info' },
+          { label: 'Descartes do Dia', value: descartesDia ?? 0, color: 'text-alert' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-            <p className="text-xs font-medium text-neutral-400">{label}</p>
+          <div key={label} className="rounded-xl border border-edge bg-surface p-4">
+            <p className="text-xs font-medium text-ink-subtle">{label}</p>
             <p className={`mt-1 text-3xl font-bold ${color}`}>{value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-          <div className="border-b border-neutral-800 px-5 py-4">
-            <p className="text-sm font-semibold text-white">Últimas 10 Etiquetas</p>
+        <div className="rounded-xl border border-edge bg-surface">
+          <div className="border-b border-edge px-5 py-4">
+            <p className="text-sm font-semibold text-ink">Últimas 10 Etiquetas</p>
           </div>
-          <div className="divide-y divide-neutral-800">
+          <div className="divide-y divide-edge">
             {(ultimasLabels ?? []).length === 0 && (
-              <p className="px-5 py-4 text-sm text-neutral-500">Nenhuma etiqueta.</p>
+              <p className="px-5 py-4 text-sm text-ink-subtle">Nenhuma etiqueta.</p>
             )}
             {(ultimasLabels ?? []).map(l => (
-              <div key={l.id} className="flex items-center justify-between px-5 py-3 hover:bg-neutral-800/50 transition-colors">
+              <div key={l.id} className="flex items-center justify-between px-5 py-3 hover:bg-surface-raised/50 transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-white">{l.nome}</p>
-                  <p className="text-xs text-neutral-500">{unitsMap[l.unit_id] ?? '—'} · {employeesMap[l.employee_id ?? ''] ?? '—'}</p>
+                  <p className="text-sm font-medium text-ink">{l.nome}</p>
+                  <p className="text-xs text-ink-subtle">{unitsMap[l.unit_id] ?? '—'} · {employeesMap[l.employee_id ?? ''] ?? '—'}</p>
                 </div>
                 <div className="text-right">
                   <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[l.status] ?? ''}`}>
                     {l.status}
                   </span>
-                  <p className="mt-1 text-xs text-neutral-500">{formatDate(l.validade)}</p>
+                  <p className="mt-1 text-xs text-ink-subtle">{formatDate(l.validade)}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-          <div className="border-b border-neutral-800 px-5 py-4">
-            <p className="text-sm font-semibold text-white">Validades Críticas (24h)</p>
+        <div className="rounded-xl border border-edge bg-surface">
+          <div className="border-b border-edge px-5 py-4">
+            <p className="text-sm font-semibold text-ink">Validades Críticas (24h)</p>
           </div>
-          <div className="divide-y divide-neutral-800">
+          <div className="divide-y divide-edge">
             {criticas.length === 0 && (
-              <p className="px-5 py-4 text-sm text-neutral-500">Sem validades críticas.</p>
+              <p className="px-5 py-4 text-sm text-ink-subtle">Sem validades críticas.</p>
             )}
             {criticas.map(l => {
               const diff = new Date(l.validade).getTime() - now.getTime()
               const isExpired = diff < 0
               return (
-                <div key={l.id} className="flex items-center justify-between px-5 py-3 hover:bg-neutral-800/50 transition-colors">
+                <div key={l.id} className="flex items-center justify-between px-5 py-3 hover:bg-surface-raised/50 transition-colors">
                   <div>
-                    <p className="text-sm font-medium text-white">{l.nome}</p>
-                    <p className="text-xs text-neutral-500">{unitsMap[l.unit_id] ?? '—'}</p>
+                    <p className="text-sm font-medium text-ink">{l.nome}</p>
+                    <p className="text-xs text-ink-subtle">{unitsMap[l.unit_id] ?? '—'}</p>
                   </div>
-                  <p className={`text-xs font-medium ${isExpired ? 'text-red-400' : 'text-orange-400'}`}>
+                  <p className={`text-xs font-medium ${isExpired ? 'text-alert-bright' : 'text-warn-bright'}`}>
                     {isExpired ? 'VENCIDA' : `${Math.floor(diff / 3600000)}h restantes`}
                   </p>
                 </div>

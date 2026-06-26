@@ -34,8 +34,8 @@ const METODOS = [
 const SELOS = ['Nenhum', 'SIF', 'SISP', 'SIM'] as const
 
 const AVATAR_COLORS = [
-  'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-orange-600',
-  'bg-red-600', 'bg-cyan-600', 'bg-pink-600', 'bg-yellow-600',
+  'bg-fresh', 'bg-info', 'bg-purple-600', 'bg-orange-600',
+  'bg-alert', 'bg-cyan-600', 'bg-pink-600', 'bg-yellow-600',
 ]
 
 function getColor(id: string) {
@@ -306,29 +306,29 @@ export function LabelForm({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-      <div className="border-b border-neutral-800 px-5 py-4">
-        <p className="text-sm font-semibold text-white">Nova Etiqueta</p>
+    <div className="rounded-xl border border-edge bg-surface">
+      <div className="border-b border-edge px-5 py-4">
+        <p className="text-sm font-semibold text-ink">Nova Etiqueta</p>
       </div>
 
       <form onSubmit={handleSubmit} className="p-5 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Produto */}
           <div className="relative">
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Produto *</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Produto *</label>
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); if (!e.target.value) setSelectedProduct(null) }}
               placeholder="Buscar produto (mín. 2 letras)"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none"
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ink-subtle focus:outline-none"
             />
             {searchResults.length > 0 && !selectedProduct && (
-              <div className="absolute z-10 mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 shadow-lg">
+              <div className="absolute z-10 mt-1 w-full rounded-lg border border-edge-strong bg-surface shadow-lg">
                 {searchResults.map(r => (
                   <button key={r.id} type="button" onClick={() => handleSelectProduct(r)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-white hover:bg-neutral-800 transition-colors">
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-ink hover:bg-surface-raised transition-colors">
                     <span>{r.nome}</span>
-                    <span className="text-xs text-neutral-500 capitalize">{r.tipo}</span>
+                    <span className="text-xs text-ink-subtle capitalize">{r.tipo}</span>
                   </button>
                 ))}
               </div>
@@ -337,9 +337,9 @@ export function LabelForm({
 
           {/* Unidade */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Unidade *</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Unidade *</label>
             <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value)} required
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar unidade</option>
               {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
@@ -348,24 +348,24 @@ export function LabelForm({
           {/* Categoria ANVISA — oculta quando há validade customizada do Suflex */}
           {selectedProduct && shelfLifeSource !== 'custom' && (
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1">Categoria ANVISA</label>
+              <label className="block text-xs font-medium text-ink-muted mb-1">Categoria ANVISA</label>
               {categoriaFromCadastro ? (
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-700 bg-emerald-900/20 px-3 py-2">
-                  <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
-                  <span className="text-sm text-emerald-300">
+                <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
+                  <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
+                  <span className="text-sm text-fresh-bright">
                     {CATEGORIA_ANVISA_OPTIONS.find(o => o.value === categoria)?.label ?? categoria}
                   </span>
-                  <span className="ml-auto text-xs text-emerald-600">Do cadastro do produto</span>
+                  <span className="ml-auto text-xs text-fresh">Do cadastro do produto</span>
                 </div>
               ) : (
                 <>
                   <select value={categoria} onChange={e => setCategoria(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+                    className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
                     <option value="">Selecionar categoria</option>
                     {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                   {selectedProduct.tipo === 'ingrediente' && !categoria && (
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-amber-400">
+                    <div className="mt-1 flex items-center gap-1.5 text-xs text-warn">
                       <AlertTriangle className="h-3 w-3" />
                       <span>Sem categoria — <a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
                     </div>
@@ -377,9 +377,9 @@ export function LabelForm({
 
           {/* Método de conservação */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Método de conservação</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Método de conservação</label>
             <select value={metodo} onChange={e => setMetodo(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar método</option>
               {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -387,68 +387,68 @@ export function LabelForm({
 
           {/* Peso */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Peso (gramas)</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Peso (gramas)</label>
             <input type="number" value={pesoG} onChange={e => setPesoG(e.target.value)} min="0" step="1"
               placeholder="ex: 1500"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
           </div>
 
           {/* Setor */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Setor</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Setor</label>
             <input value={setor} onChange={e => setSetor(e.target.value)} placeholder="ex: Cozinha Quente"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
           </div>
 
           {/* Lote */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Lote</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Lote</label>
             <input value={lote} onChange={e => setLote(e.target.value)} placeholder="ex: L2024001"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
           </div>
 
           {/* Validade fornecedor */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Validade original (fornecedor)</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Validade original (fornecedor)</label>
             <input type="date" value={validadeFornecedor} onChange={e => setValidadeFornecedor(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
           </div>
 
           {/* Data manipulação */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Data de manipulação *</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Data de manipulação *</label>
             <input type="datetime-local" value={dataManipulacao} onChange={e => setDataManipulacao(e.target.value)} required
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
           </div>
 
           {/* Validade */}
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Validade *</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Validade *</label>
             {validadeReadonly ? (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-700 bg-emerald-900/20 px-3 py-2">
-                <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
-                <span className="text-sm text-emerald-300">
+              <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
+                <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
+                <span className="text-sm text-fresh-bright">
                   {validade ? new Date(validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
                 </span>
-                <span className="ml-auto text-xs text-emerald-600">
+                <span className="ml-auto text-xs text-fresh">
                   {shelfLifeSource === 'custom' ? `Suflex · ${prazoHoras}h` : `ANVISA · ${prazoHoras}h`}
                 </span>
               </div>
             ) : (
               <input type="datetime-local" value={validade} onChange={e => setValidade(e.target.value)} required
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+                className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
             )}
           </div>
         </div>
 
         {/* Selo */}
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-2">Selo de inspeção</label>
+          <label className="block text-xs font-medium text-ink-muted mb-2">Selo de inspeção</label>
           <div className="flex gap-2">
             {SELOS.map(s => (
               <button key={s} type="button" onClick={() => setSelo(s)}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-                  selo === s ? 'border-white bg-white text-neutral-900' : 'border-neutral-700 text-neutral-400 hover:text-white'
+                  selo === s ? 'border-ember bg-ember text-ember-ink' : 'border-edge-strong text-ink-muted hover:text-ink'
                 }`}>
                 {s}
               </button>
@@ -458,21 +458,21 @@ export function LabelForm({
 
         {/* Responsável */}
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-2">Responsável</label>
+          <label className="block text-xs font-medium text-ink-muted mb-2">Responsável</label>
           {employees.length > 6 && (
             <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar funcionário"
-              className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+              className="mb-2 w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
           )}
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {filteredEmployees.map(e => (
               <button key={e.id} type="button" onClick={() => setSelectedEmployee(e.id)}
                 className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors min-h-[80px] ${
-                  selectedEmployee === e.id ? 'border-emerald-500 bg-emerald-900/20' : 'border-neutral-800 bg-neutral-800/50 hover:border-neutral-600'
+                  selectedEmployee === e.id ? 'border-ember bg-ember-soft' : 'border-edge bg-surface-raised/50 hover:border-edge-strong'
                 }`}>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white ${getColor(e.id)}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-ink ${getColor(e.id)}`}>
                   {getInitials(e.nome)}
                 </div>
-                <span className="text-xs text-neutral-300 leading-tight">{e.nome.split(' ')[0]}</span>
+                <span className="text-xs text-ink-muted leading-tight">{e.nome.split(' ')[0]}</span>
               </button>
             ))}
           </div>
@@ -481,19 +481,19 @@ export function LabelForm({
         {/* Ponto de impressão */}
         {printPoints.length > 0 && (
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Ponto de impressão</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Ponto de impressão</label>
             <select value={printPointId} onChange={e => setPrintPointId(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Sem ponto de impressão</option>
               {printPoints.map(p => <option key={p.id} value={p.id}>{p.icone ? `${p.icone} ` : ''}{p.name}</option>)}
             </select>
           </div>
         )}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-alert-bright">{error}</p>}
 
         {conflictLabel && conflictResolution === 'none' && (
-          <div className="rounded-lg border border-amber-700 bg-amber-900/20 px-4 py-3 text-sm text-amber-300">
+          <div className="rounded-lg border border-warn/40 bg-warn-soft px-4 py-3 text-sm text-warn-bright">
             <AlertTriangle className="mb-1 h-4 w-4" />
             Etiqueta ativa para este produto nesta unidade.{' '}
             <a href="/validades" className="underline">Ver detalhes</a>
@@ -503,7 +503,7 @@ export function LabelForm({
         <button
           type="submit"
           disabled={saving || !selectedProduct || !selectedUnit || (selectedProduct?.tipo === 'ingrediente' && !categoria && shelfLifeSource !== 'custom')}
-          className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-40 transition-colors"
+          className="rounded-lg bg-ember px-4 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
         >
           {saving ? 'Salvando...' : 'Gerar Etiqueta'}
         </button>
@@ -512,25 +512,25 @@ export function LabelForm({
       {/* Conflito Modal */}
       {showConflictModal && conflictLabel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-md rounded-xl border border-neutral-800 bg-neutral-900 p-6 space-y-4">
-            <h2 className="font-semibold text-white">Etiqueta ativa encontrada</h2>
-            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-3 text-sm space-y-1">
-              <p className="text-white font-medium">{conflictLabel.nome}</p>
-              <p className="text-neutral-400">Manipulação: {new Date(conflictLabel.data_manipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-              <p className="text-neutral-400">Validade: {new Date(conflictLabel.validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-              <p className="text-neutral-400">Responsável: {conflictLabel.employee_name}</p>
+          <div className="w-full max-w-md rounded-xl border border-edge bg-surface p-6 space-y-4">
+            <h2 className="font-semibold text-ink">Etiqueta ativa encontrada</h2>
+            <div className="rounded-lg border border-edge bg-base p-3 text-sm space-y-1">
+              <p className="text-ink font-medium">{conflictLabel.nome}</p>
+              <p className="text-ink-muted">Manipulação: {new Date(conflictLabel.data_manipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+              <p className="text-ink-muted">Validade: {new Date(conflictLabel.validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
+              <p className="text-ink-muted">Responsável: {conflictLabel.employee_name}</p>
             </div>
             <div className="flex flex-col gap-2">
               <button onClick={() => { setConflictResolution('overwrite'); setShowConflictModal(false) }}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors">
+                className="rounded-lg bg-alert px-4 py-2 text-sm font-medium text-alert-ink hover:bg-alert-bright transition-colors">
                 Sobrepor (descartar a existente)
               </button>
               <button onClick={() => { setConflictResolution('keep'); setShowConflictModal(false) }}
-                className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                className="rounded-lg border border-edge-strong px-4 py-2 text-sm font-medium text-ink-muted hover:text-ink transition-colors">
                 Gerar nova (manter a existente)
               </button>
               <button onClick={() => { setShowConflictModal(false) }}
-                className="text-sm text-neutral-500 hover:text-neutral-300 transition-colors">
+                className="text-sm text-ink-subtle hover:text-ink-muted transition-colors">
                 Cancelar
               </button>
             </div>
@@ -540,8 +540,8 @@ export function LabelForm({
 
       {/* Preview */}
       {savedLabel && (
-        <div className="border-t border-neutral-800 p-5 space-y-4">
-          <p className="text-sm font-medium text-emerald-400">Etiqueta gerada com sucesso!</p>
+        <div className="border-t border-edge p-5 space-y-4">
+          <p className="text-sm font-medium text-fresh-bright">Etiqueta gerada com sucesso!</p>
           <div
             style={{ width: '10cm', aspectRatio: '10/6', background: '#fff', color: '#000', fontFamily: 'monospace', padding: '4mm', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '8pt' }}
             className="rounded border"
@@ -569,7 +569,7 @@ export function LabelForm({
             <div style={{ fontSize: '7pt', color: '#999' }}>#{savedLabel.id.slice(0, 8).toUpperCase()}</div>
           </div>
           <button onClick={handlePrint}
-            className="flex items-center gap-2 rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:text-white transition-colors">
+            className="flex items-center gap-2 rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
             <Printer className="h-4 w-4" />
             Imprimir Etiqueta
           </button>

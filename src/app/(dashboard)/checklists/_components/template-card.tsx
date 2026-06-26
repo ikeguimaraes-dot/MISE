@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation'
 import { MoreVertical, Pencil, Copy, Trash2 } from 'lucide-react'
 
 const TIPO_COLORS: Record<string, string> = {
-  abertura: 'border-l-emerald-500 bg-emerald-500/5',
-  fechamento: 'border-l-red-500 bg-red-500/5',
-  rotina: 'border-l-blue-500 bg-blue-500/5',
+  abertura: 'border-l-fresh bg-fresh/5',
+  fechamento: 'border-l-alert bg-alert/5',
+  rotina: 'border-l-info bg-info/5',
   relatorio: 'border-l-purple-500 bg-purple-500/5',
-  treinamento: 'border-l-yellow-500 bg-yellow-500/5',
+  treinamento: 'border-l-warn bg-warn/5',
 }
 
 const TIPO_LABEL: Record<string, string> = {
@@ -19,10 +19,10 @@ const TIPO_LABEL: Record<string, string> = {
 }
 
 function scoreColor(pct: number | null) {
-  if (pct === null) return 'text-neutral-500'
-  if (pct >= 80) return 'text-emerald-400'
-  if (pct >= 60) return 'text-yellow-400'
-  return 'text-red-400'
+  if (pct === null) return 'text-ink-subtle'
+  if (pct >= 80) return 'text-fresh-bright'
+  if (pct >= 60) return 'text-warn-bright'
+  return 'text-alert-bright'
 }
 
 type Props = {
@@ -45,7 +45,7 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
   const [deleting, setDeleting] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const colorClass = TIPO_COLORS[template.tipo ?? ''] ?? 'border-l-neutral-600 bg-neutral-800/30'
+  const colorClass = TIPO_COLORS[template.tipo ?? ''] ?? 'border-l-ink-faint bg-surface-raised/30'
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -95,29 +95,29 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
   }
 
   return (
-    <div className={`rounded-lg border border-neutral-800 border-l-4 ${colorClass} bg-neutral-900 p-5 flex flex-col gap-3 ${duplicating || deleting ? 'opacity-60' : ''}`}>
+    <div className={`rounded-lg border border-edge border-l-4 ${colorClass} bg-surface p-5 flex flex-col gap-3 ${duplicating || deleting ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-white leading-tight">{template.nome}</h3>
+        <h3 className="font-semibold text-ink leading-tight">{template.nome}</h3>
         <div className="flex items-center gap-1 shrink-0">
           {template.tipo && (
-            <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-neutral-800 text-neutral-400">
+            <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-surface-raised text-ink-muted">
               {TIPO_LABEL[template.tipo] ?? template.tipo}
             </span>
           )}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(v => !v)}
-              className="flex h-6 w-6 items-center justify-center rounded text-neutral-500 hover:bg-neutral-800 hover:text-white transition-colors"
+              className="flex h-6 w-6 items-center justify-center rounded text-ink-subtle hover:bg-surface-raised hover:text-ink transition-colors"
               aria-label="Mais opções"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-7 z-20 w-36 rounded-lg border border-neutral-800 bg-neutral-950 shadow-lg py-1">
+              <div className="absolute right-0 top-7 z-20 w-36 rounded-lg border border-edge bg-base shadow-lg py-1">
                 <Link
                   href={`/checklists/${template.id}/editar`}
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink transition-colors"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   Editar
@@ -125,16 +125,16 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
                 <button
                   onClick={handleDuplicar}
                   disabled={duplicating}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors disabled:opacity-50"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink-muted hover:bg-surface-raised hover:text-ink transition-colors disabled:opacity-50"
                 >
                   <Copy className="h-3.5 w-3.5" />
                   Duplicar
                 </button>
-                <div className="my-1 border-t border-neutral-800" />
+                <div className="my-1 border-t border-edge" />
                 <button
                   onClick={handleExcluir}
                   disabled={deleting}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-colors disabled:opacity-50"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-alert hover:bg-alert-soft hover:text-alert-bright transition-colors disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Excluir
@@ -146,14 +146,14 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
       </div>
 
       {template.departamento && (
-        <p className="text-xs text-neutral-500">{template.departamento}</p>
+        <p className="text-xs text-ink-subtle">{template.departamento}</p>
       )}
 
       {template.unit_id && unitName && (
-        <p className="text-xs text-neutral-600">{unitName}</p>
+        <p className="text-xs text-ink-faint">{unitName}</p>
       )}
 
-      <div className="flex items-center justify-between text-xs text-neutral-500">
+      <div className="flex items-center justify-between text-xs text-ink-subtle">
         <span>{count} {count === 1 ? 'item' : 'itens'}</span>
         <span>
           Última: <span className={`font-bold ${scoreColor(score)}`}>
@@ -165,13 +165,13 @@ export function TemplateCard({ template, score, count, unitName }: Props) {
       <div className="flex gap-2 pt-1">
         <Link
           href={`/checklists/${template.id}`}
-          className="flex-1 rounded border border-neutral-700 px-3 py-1.5 text-center text-xs font-medium text-neutral-300 hover:bg-neutral-800 transition-colors"
+          className="flex-1 rounded border border-edge-strong px-3 py-1.5 text-center text-xs font-medium text-ink-muted hover:bg-surface-raised transition-colors"
         >
           Ver detalhes
         </Link>
         <Link
           href={`/checklists/${template.id}`}
-          className="flex-1 rounded bg-emerald-700 px-3 py-1.5 text-center text-xs font-bold text-white hover:bg-emerald-600 transition-colors"
+          className="flex-1 rounded bg-ember px-3 py-1.5 text-center text-xs font-bold text-ember-ink hover:bg-ember-hover transition-colors"
         >
           Executar
         </Link>

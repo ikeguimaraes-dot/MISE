@@ -43,15 +43,15 @@ export default async function ChecklistsPage() {
     <div className="p-6 max-w-6xl">
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <ClipboardCheck className="h-6 w-6 text-emerald-400" />
+          <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
+            <ClipboardCheck className="h-6 w-6 text-ember" />
             Checklists
           </h1>
-          <p className="mt-1 text-sm text-neutral-400">Checklists operacionais — substitui o Checkbits</p>
+          <p className="mt-1 text-sm text-ink-muted">Checklists operacionais — substitui o Checkbits</p>
         </div>
         <Link
           href="/checklists/novo"
-          className="flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 transition-colors"
+          className="flex items-center gap-2 rounded-md bg-ember px-4 py-2 text-sm font-medium text-ember-ink hover:bg-ember-hover transition-colors"
         >
           <Plus className="h-4 w-4" />
           Novo Checklist
@@ -59,10 +59,10 @@ export default async function ChecklistsPage() {
       </div>
 
       {!templates || templates.length === 0 ? (
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-12 text-center">
-          <ClipboardCheck className="mx-auto h-10 w-10 text-neutral-600 mb-3" />
-          <p className="text-neutral-400">Nenhum checklist cadastrado.</p>
-          <Link href="/checklists/novo" className="mt-4 inline-block text-sm text-emerald-400 hover:text-emerald-300">
+        <div className="rounded-lg border border-edge bg-surface p-12 text-center">
+          <ClipboardCheck className="mx-auto h-10 w-10 text-ink-faint mb-3" />
+          <p className="text-ink-muted">Nenhum checklist cadastrado.</p>
+          <Link href="/checklists/novo" className="mt-4 inline-block text-sm text-ember hover:text-ember-hover">
             Criar primeiro checklist →
           </Link>
         </div>
