@@ -16,8 +16,8 @@ export default async function EditarGrupoPage({ params }: { params: Promise<{ id
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Editar Grupo</h1>
-        <p className="text-sm text-neutral-400">{group.name}</p>
+        <h1 className="text-xl font-bold text-ink">Editar Grupo</h1>
+        <p className="text-sm text-ink-muted">{group.name}</p>
       </div>
       <GrupoForm groups={groups ?? []} initial={group} />
     </div>

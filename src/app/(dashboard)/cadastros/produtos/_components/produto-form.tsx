@@ -109,95 +109,95 @@ export function ProdutoForm({
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Nome *</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Nome *</label>
           <input value={nome} onChange={e => setNome(e.target.value)} required
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Código</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Código</label>
           <input value={codigo} onChange={e => setCodigo(e.target.value)} placeholder="ex: PROD001"
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Grupo *</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Grupo *</label>
           <select value={groupId} onChange={e => setGroupId(e.target.value)} required
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Selecionar grupo</option>
             {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Categoria *</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Categoria *</label>
           <select value={categoria} onChange={e => setCategoria(e.target.value)} required
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Selecionar</option>
             {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Categoria ANVISA</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Categoria ANVISA</label>
           <select value={categoriaAnvisa} onChange={e => setCategoriaAnvisa(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Selecionar</option>
             {CATEGORIA_ANVISA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Unidade padrão *</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Unidade padrão *</label>
           <input value={unidade} onChange={e => setUnidade(e.target.value)} required placeholder="ex: kg, un, L"
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Custo padrão (R$)</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Custo padrão (R$)</label>
           <input type="number" value={custo} onChange={e => setCusto(e.target.value)} step="0.01" min="0"
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Fornecedor</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Fornecedor</label>
           <select value={fornecedorId} onChange={e => setFornecedorId(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Sem fornecedor</option>
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Perdas padrão (%)</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Perdas padrão (%)</label>
           <input type="number" value={perdas} onChange={e => setPerdas(e.target.value)} step="0.1" min="0" max="100"
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none" />
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-xs font-medium text-neutral-400 mb-1">Observações</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Observações</label>
           <textarea value={observacoes} onChange={e => setObservacoes(e.target.value)} rows={2}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none resize-none" />
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none resize-none" />
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="text-sm text-neutral-400">Ativo</label>
+        <label className="text-sm text-ink-muted">Ativo</label>
         <button type="button" onClick={() => setAtivo(a => !a)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${ativo ? 'bg-emerald-600' : 'bg-neutral-700'}`}>
-          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${ativo ? 'translate-x-6' : 'translate-x-1'}`} />
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${ativo ? 'bg-fresh' : 'bg-surface-hover'}`}>
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-ink transition-transform ${ativo ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-alert-bright">{error}</p>}
 
       <div className="flex gap-3">
         <button type="submit" disabled={saving}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 transition-colors">
+          className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors">
           {saving ? 'Salvando...' : initial ? 'Salvar alterações' : 'Criar produto'}
         </button>
         <button type="button" onClick={() => router.push('/cadastros/produtos')}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors">
+          className="rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
           Cancelar
         </button>
       </div>

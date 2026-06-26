@@ -54,35 +54,35 @@ export function GrupoForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Nome *</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Nome *</label>
         <input value={name} onChange={e => setName(e.target.value)} required placeholder="Nome do grupo"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none" />
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ink-subtle focus:outline-none" />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Ícone (emoji)</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Ícone (emoji)</label>
         <input value={icone} onChange={e => setIcone(e.target.value)} placeholder="ex: 🥩"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none" />
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ink-subtle focus:outline-none" />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Subgrupo de</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Subgrupo de</label>
         <select value={parentId} onChange={e => setParentId(e.target.value)}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
           <option value="">Sem grupo pai</option>
           {availableParents.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-alert-bright">{error}</p>}
 
       <div className="flex gap-3">
         <button type="submit" disabled={saving}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 transition-colors">
+          className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors">
           {saving ? 'Salvando...' : initial ? 'Salvar alterações' : 'Criar grupo'}
         </button>
         <button type="button" onClick={() => router.push('/cadastros/grupos')}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors">
+          className="rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
           Cancelar
         </button>
       </div>

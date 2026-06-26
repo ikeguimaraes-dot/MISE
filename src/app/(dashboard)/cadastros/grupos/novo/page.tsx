@@ -8,8 +8,8 @@ export default async function NovoGrupoPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Novo Grupo</h1>
-        <p className="text-sm text-neutral-400">Criar categoria de produtos</p>
+        <h1 className="text-xl font-bold text-ink">Novo Grupo</h1>
+        <p className="text-sm text-ink-muted">Criar categoria de produtos</p>
       </div>
       <GrupoForm groups={groups ?? []} />
     </div>

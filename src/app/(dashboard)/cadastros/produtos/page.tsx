@@ -33,11 +33,11 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Produtos</h1>
-          <p className="text-sm text-neutral-400">Insumos e ingredientes</p>
+          <h1 className="text-xl font-bold text-ink">Produtos</h1>
+          <p className="text-sm text-ink-muted">Insumos e ingredientes</p>
         </div>
         <Link href="/cadastros/produtos/novo"
-          className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 transition-colors">
+          className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
           <Plus className="h-4 w-4" />
           Novo produto
         </Link>
@@ -45,69 +45,69 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
 
       <form method="GET" className="flex flex-wrap gap-3">
         <input name="q" defaultValue={q ?? ''} placeholder="Buscar produto..."
-          className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
         <select name="group" defaultValue={group ?? ''}
-          className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none">
+          className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
           <option value="">Todos os grupos</option>
           {(groups ?? []).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
         </select>
         <button type="submit"
-          className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-neutral-100 transition-colors">
+          className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ember-ink hover:bg-ember-hover transition-colors">
           Filtrar
         </button>
         {(q || group) && (
-          <Link href="/cadastros/produtos" className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-400 hover:text-white transition-colors">
+          <Link href="/cadastros/produtos" className="rounded-lg border border-edge-strong px-3 py-1.5 text-sm text-ink-muted hover:text-ink transition-colors">
             Limpar
           </Link>
         )}
       </form>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900">
+      <div className="rounded-xl border border-edge bg-surface">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-800">
+              <tr className="border-b border-edge">
                 {['Nome', 'Código', 'Grupo', 'Categoria', 'Cat. ANVISA', 'Unidade', ''].map(h => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-medium text-neutral-400">{h}</th>
+                  <th key={h} className="px-5 py-3 text-left text-xs font-medium text-ink-muted">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800">
+            <tbody className="divide-y divide-edge">
               {(produtos ?? []).map(p => (
-                <tr key={p.id} className="hover:bg-neutral-800/50 transition-colors">
-                  <td className="px-5 py-3 font-medium text-white">{p.nome}</td>
-                  <td className="px-5 py-3 text-neutral-400">{p.codigo ?? '—'}</td>
-                  <td className="px-5 py-3 text-neutral-400">{groupsMap[p.group_id ?? ''] ?? '—'}</td>
-                  <td className="px-5 py-3 text-neutral-400">{p.categoria}</td>
-                  <td className="px-5 py-3 text-neutral-400">{p.categoria_anvisa ?? <span className="text-amber-500">—</span>}</td>
-                  <td className="px-5 py-3 text-neutral-400">{p.unidade_padrao ?? '—'}</td>
+                <tr key={p.id} className="hover:bg-surface-raised/50 transition-colors">
+                  <td className="px-5 py-3 font-medium text-ink">{p.nome}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.codigo ?? '—'}</td>
+                  <td className="px-5 py-3 text-ink-muted">{groupsMap[p.group_id ?? ''] ?? '—'}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.categoria}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.categoria_anvisa ?? <span className="text-warn-bright">—</span>}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.unidade_padrao ?? '—'}</td>
                   <td className="px-5 py-3">
-                    <Link href={`/cadastros/produtos/${p.id}`} className="text-xs text-neutral-500 hover:text-white transition-colors">
+                    <Link href={`/cadastros/produtos/${p.id}`} className="text-xs text-ink-subtle hover:text-ink transition-colors">
                       Editar
                     </Link>
                   </td>
                 </tr>
               ))}
               {(produtos ?? []).length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-neutral-500">Nenhum produto encontrado.</td></tr>
+                <tr><td colSpan={7} className="px-5 py-8 text-center text-ink-subtle">Nenhum produto encontrado.</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-neutral-800 px-5 py-3">
-            <p className="text-xs text-neutral-500">{count} produtos · página {page} de {totalPages}</p>
+          <div className="flex items-center justify-between border-t border-edge px-5 py-3">
+            <p className="text-xs text-ink-subtle">{count} produtos · página {page} de {totalPages}</p>
             <div className="flex gap-2">
               {page > 1 && (
                 <Link href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(group ? { group } : {}), page: String(page - 1) })}`}
-                  className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-400 hover:text-white transition-colors">
+                  className="rounded border border-edge-strong px-3 py-1 text-xs text-ink-muted hover:text-ink transition-colors">
                   Anterior
                 </Link>
               )}
               {page < totalPages && (
                 <Link href={`?${new URLSearchParams({ ...(q ? { q } : {}), ...(group ? { group } : {}), page: String(page + 1) })}`}
-                  className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-400 hover:text-white transition-colors">
+                  className="rounded border border-edge-strong px-3 py-1 text-xs text-ink-muted hover:text-ink transition-colors">
                   Próxima
                 </Link>
               )}

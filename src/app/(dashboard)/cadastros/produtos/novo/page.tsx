@@ -11,8 +11,8 @@ export default async function NovoProdutoPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Novo Produto</h1>
-        <p className="text-sm text-neutral-400">Cadastrar insumo ou ingrediente</p>
+        <h1 className="text-xl font-bold text-ink">Novo Produto</h1>
+        <p className="text-sm text-ink-muted">Cadastrar insumo ou ingrediente</p>
       </div>
       <ProdutoForm groups={groups ?? []} suppliers={suppliers ?? []} />
     </div>

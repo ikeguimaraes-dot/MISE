@@ -24,10 +24,10 @@ export function EmployeeToggle({ id, miseAtivo }: { id: string; miseAtivo: boole
       onClick={handleToggle}
       disabled={loading}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-        active ? 'bg-emerald-600' : 'bg-neutral-700'
+        active ? 'bg-fresh' : 'bg-surface-hover'
       }`}
     >
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-ink transition-transform ${
         active ? 'translate-x-6' : 'translate-x-1'
       }`} />
     </button>

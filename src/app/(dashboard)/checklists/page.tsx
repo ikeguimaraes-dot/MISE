@@ -44,7 +44,7 @@ export default async function ChecklistsPage() {
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
-            <ClipboardCheck className="h-6 w-6 text-ember" />
+            <ClipboardCheck className="h-6 w-6 text-ink-muted" />
             Checklists
           </h1>
           <p className="mt-1 text-sm text-ink-muted">Checklists operacionais — substitui o Checkbits</p>
