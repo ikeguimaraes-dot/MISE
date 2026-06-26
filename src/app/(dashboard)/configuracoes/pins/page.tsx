@@ -32,7 +32,7 @@ export default function PinsPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-sm text-neutral-400">Carregando...</p>
+        <p className="text-sm text-ink-muted">Carregando...</p>
       </div>
     )
   }
@@ -40,43 +40,43 @@ export default function PinsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">PINs de Acesso</h1>
-        <p className="text-sm text-neutral-400">Gerencie os PINs dos funcionários</p>
+        <h1 className="text-xl font-bold text-ink">PINs de Acesso</h1>
+        <p className="text-sm text-ink-muted">Gerencie os PINs dos funcionários</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Total', value: employees.length, color: 'text-white' },
-          { label: 'Com PIN', value: comPin.length, color: 'text-emerald-400' },
-          { label: 'Sem PIN', value: semPin.length, color: 'text-amber-400' },
+          { label: 'Total', value: employees.length, color: 'text-ink' },
+          { label: 'Com PIN', value: comPin.length, color: 'text-fresh' },
+          { label: 'Sem PIN', value: semPin.length, color: 'text-warn' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-            <p className="text-xs font-medium text-neutral-400">{label}</p>
+          <div key={label} className="rounded-xl border border-edge bg-surface p-4">
+            <p className="text-xs font-medium text-ink-muted">{label}</p>
             <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-        <div className="border-b border-neutral-800 px-5 py-4">
-          <p className="text-sm font-semibold text-white">Funcionários MISE ativos</p>
+      <div className="rounded-xl border border-edge bg-surface">
+        <div className="border-b border-edge px-5 py-4">
+          <p className="text-sm font-semibold text-ink">Funcionários MISE ativos</p>
         </div>
-        <div className="divide-y divide-neutral-800">
+        <div className="divide-y divide-edge">
           {employees.map(e => (
             <div key={e.id} className="flex items-center justify-between px-5 py-3">
               <div>
-                <p className="text-sm font-medium text-white">{e.nome}</p>
-                <p className="text-xs text-neutral-500">
+                <p className="text-sm font-medium text-ink">{e.nome}</p>
+                <p className="text-xs text-ink-subtle">
                   {e.departamento ?? '—'} ·{' '}
                   {pinsMap[e.id]
-                    ? <span className="text-emerald-400">PIN definido · {pinsMap[e.id]}</span>
-                    : <span className="text-amber-400">Sem PIN</span>
+                    ? <span className="text-fresh-bright">PIN definido · {pinsMap[e.id]}</span>
+                    : <span className="text-warn-bright">Sem PIN</span>
                   }
                 </p>
               </div>
               <button
                 onClick={() => setModalEmp(e)}
-                className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-400 hover:text-white transition-colors"
+                className="rounded border border-edge-strong px-3 py-1 text-xs text-ink-muted hover:text-ink transition-colors"
               >
                 {pinsMap[e.id] ? 'Alterar PIN' : 'Definir PIN'}
               </button>

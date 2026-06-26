@@ -30,54 +30,54 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-950">
+    <div className="flex min-h-screen items-center justify-center bg-base">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">MISE</h1>
-          <p className="mt-1 text-sm text-neutral-400">Acesso de gestores</p>
+          <h1 className="text-2xl font-bold text-ink">MISE</h1>
+          <p className="mt-1 text-sm text-ink-muted">Acesso de gestores</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Email</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ember focus:outline-none focus:ring-1 focus:ring-ember"
               placeholder="seu@email.com"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Senha</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Senha</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500"
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ember focus:outline-none focus:ring-1 focus:ring-ember"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-alert-bright">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 transition-colors"
+            className="w-full rounded-lg bg-ember px-4 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        <p className="text-center text-xs text-neutral-600">
+        <p className="text-center text-xs text-ink-faint">
           Cozinheiros usam o{' '}
-          <a href="/pin-login" className="text-neutral-400 underline">login por PIN</a>
+          <a href="/pin-login" className="text-ink-muted underline">login por PIN</a>
         </p>
       </div>
     </div>

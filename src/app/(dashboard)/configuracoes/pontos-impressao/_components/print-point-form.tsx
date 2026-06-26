@@ -64,55 +64,55 @@ export function PrintPointForm({ units, initial }: { units: Unit[]; initial?: In
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Unidade *</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Unidade *</label>
         <select value={unitId} onChange={e => setUnitId(e.target.value)} required
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
           <option value="">Selecionar unidade</option>
           {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Nome *</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Nome *</label>
         <input value={name} onChange={e => setName(e.target.value)} required placeholder="ex: Impressora Cozinha"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Ícone (emoji)</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Ícone (emoji)</label>
         <input value={icone} onChange={e => setIcone(e.target.value)} placeholder="ex: 🖨️"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Rede</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Rede</label>
         <input value={rede} onChange={e => setRede(e.target.value)} placeholder="ex: KPH-Interno"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-neutral-400 mb-1">Endereço IP</label>
+        <label className="block text-xs font-medium text-ink-muted mb-1">Endereço IP</label>
         <input value={ip} onChange={e => setIp(e.target.value)} placeholder="ex: 192.168.1.100"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none" />
+          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
       </div>
 
       <div className="flex items-center gap-3">
-        <label className="text-sm text-neutral-400">Online</label>
+        <label className="text-sm text-ink-muted">Online</label>
         <button type="button" onClick={() => setAtivo(a => !a)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${ativo ? 'bg-emerald-600' : 'bg-neutral-700'}`}>
-          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${ativo ? 'translate-x-6' : 'translate-x-1'}`} />
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${ativo ? 'bg-fresh' : 'bg-surface-hover'}`}>
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-ink transition-transform ${ativo ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-alert-bright">{error}</p>}
 
       <div className="flex gap-3">
         <button type="submit" disabled={saving}
-          className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 transition-colors">
+          className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors">
           {saving ? 'Salvando...' : initial ? 'Salvar alterações' : 'Criar ponto'}
         </button>
         <button type="button" onClick={() => router.push('/configuracoes/pontos-impressao')}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors">
+          className="rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
           Cancelar
         </button>
       </div>

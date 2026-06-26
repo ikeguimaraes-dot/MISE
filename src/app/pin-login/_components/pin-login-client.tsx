@@ -9,8 +9,8 @@ type Employee = {
 }
 
 const AVATAR_COLORS = [
-  'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-orange-600',
-  'bg-red-600', 'bg-cyan-600', 'bg-pink-600', 'bg-yellow-600',
+  'bg-fresh', 'bg-info', 'bg-purple-600', 'bg-orange-600',
+  'bg-alert', 'bg-cyan-600', 'bg-pink-600', 'bg-yellow-600',
 ]
 
 function getColor(id: string) {
@@ -70,23 +70,23 @@ export function PinLoginClient({ employees }: { employees: Employee[] }) {
 
   if (!selected) {
     return (
-      <div className="min-h-screen bg-neutral-950 px-4 py-8">
+      <div className="min-h-screen bg-base px-4 py-8">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold text-white">MISE</h1>
-            <p className="mt-1 text-sm text-neutral-400">Quem está entrando?</p>
+            <h1 className="text-2xl font-bold text-ink">MISE</h1>
+            <p className="mt-1 text-sm text-ink-muted">Quem está entrando?</p>
           </div>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
             {employees.map(emp => (
               <button
                 key={emp.id}
                 onClick={() => handleSelectEmployee(emp)}
-                className="flex flex-col items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 p-4 text-center transition-colors hover:border-neutral-600 hover:bg-neutral-800 min-h-[80px]"
+                className="flex flex-col items-center gap-2 rounded-xl border border-edge bg-surface p-4 text-center transition-colors hover:border-ember hover:bg-surface-raised min-h-[80px]"
               >
-                <div className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white ${getColor(emp.id)}`}>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-ink ${getColor(emp.id)}`}>
                   {getInitials(emp.nome)}
                 </div>
-                <span className="text-xs font-medium text-neutral-300 leading-tight">{emp.nome.split(' ')[0]}</span>
+                <span className="text-xs font-medium text-ink-muted leading-tight">{emp.nome.split(' ')[0]}</span>
               </button>
             ))}
           </div>
@@ -96,26 +96,26 @@ export function PinLoginClient({ employees }: { employees: Employee[] }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-950 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-base px-4">
       <div className="w-full max-w-xs space-y-6">
         <div className="text-center">
-          <div className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold text-white ${getColor(selected.id)}`}>
+          <div className={`mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full text-lg font-bold text-ink ${getColor(selected.id)}`}>
             {getInitials(selected.nome)}
           </div>
-          <p className="text-sm font-medium text-white">{selected.nome}</p>
-          <p className="text-xs text-neutral-500">Digite seu PIN de 4 dígitos</p>
+          <p className="text-sm font-medium text-ink">{selected.nome}</p>
+          <p className="text-xs text-ink-subtle">Digite seu PIN de 4 dígitos</p>
         </div>
 
         <div className="flex justify-center gap-3">
           {[0, 1, 2, 3].map(i => (
             <div
               key={i}
-              className={`h-3 w-3 rounded-full transition-colors ${i < pin.length ? 'bg-white' : 'bg-neutral-700'}`}
+              className={`h-3 w-3 rounded-full transition-colors ${i < pin.length ? 'bg-ember' : 'bg-surface-hover'}`}
             />
           ))}
         </div>
 
-        {error && <p className="text-center text-sm text-red-400">{error}</p>}
+        {error && <p className="text-center text-sm text-alert-bright">{error}</p>}
 
         <div className="grid grid-cols-3 gap-3">
           {['1','2','3','4','5','6','7','8','9'].map(d => (
@@ -123,28 +123,28 @@ export function PinLoginClient({ employees }: { employees: Employee[] }) {
               key={d}
               onClick={() => handleDigit(d)}
               disabled={loading || pin.length >= 4}
-              className="flex h-16 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900 text-xl font-semibold text-white transition-colors hover:bg-neutral-800 active:bg-neutral-700 disabled:opacity-40"
+              className="flex h-16 items-center justify-center rounded-xl border border-edge bg-surface text-xl font-semibold text-ink transition-colors hover:bg-surface-raised active:bg-surface-hover disabled:opacity-40"
             >
               {d}
             </button>
           ))}
           <button
             onClick={() => { setSelected(null); setPin(''); setError('') }}
-            className="flex h-16 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900 text-xs font-medium text-neutral-400 transition-colors hover:bg-neutral-800"
+            className="flex h-16 items-center justify-center rounded-xl border border-edge bg-surface text-xs font-medium text-ink-muted transition-colors hover:bg-surface-raised"
           >
             Trocar
           </button>
           <button
             onClick={() => handleDigit('0')}
             disabled={loading || pin.length >= 4}
-            className="flex h-16 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900 text-xl font-semibold text-white transition-colors hover:bg-neutral-800 active:bg-neutral-700 disabled:opacity-40"
+            className="flex h-16 items-center justify-center rounded-xl border border-edge bg-surface text-xl font-semibold text-ink transition-colors hover:bg-surface-raised active:bg-surface-hover disabled:opacity-40"
           >
             0
           </button>
           <button
             onClick={handleBackspace}
             disabled={loading || pin.length === 0}
-            className="flex h-16 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900 text-sm font-medium text-neutral-400 transition-colors hover:bg-neutral-800 disabled:opacity-40"
+            className="flex h-16 items-center justify-center rounded-xl border border-edge bg-surface text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised disabled:opacity-40"
           >
             ⌫
           </button>

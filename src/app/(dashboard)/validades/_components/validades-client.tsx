@@ -20,11 +20,11 @@ function getBucket(validade: string, now: Date) {
 
 function getUrgencyClass(validade: string, now: Date) {
   const diff = new Date(validade).getTime() - now.getTime()
-  if (diff < 0) return 'text-red-400 bg-red-400/10'
-  if (diff < 6 * 3600000) return 'text-orange-400 bg-orange-400/10'
-  if (diff < 24 * 3600000) return 'text-yellow-400 bg-yellow-400/10'
-  if (diff < 72 * 3600000) return 'text-blue-400 bg-blue-400/10'
-  return 'text-emerald-400 bg-emerald-400/10'
+  if (diff < 0) return 'text-alert-bright bg-alert/10'
+  if (diff < 6 * 3600000) return 'text-warn-bright bg-warn/10'
+  if (diff < 24 * 3600000) return 'text-warn bg-warn/10'
+  if (diff < 72 * 3600000) return 'text-info bg-info/10'
+  return 'text-fresh-bright bg-fresh/10'
 }
 
 function formatDate(iso: string) {
@@ -37,10 +37,10 @@ function formatDate(iso: string) {
 
 function TimeRemaining({ validade, now }: { validade: string; now: Date }) {
   const diff = new Date(validade).getTime() - now.getTime()
-  if (diff < 0) return <span className="text-xs font-medium text-red-400">VENCIDA</span>
+  if (diff < 0) return <span className="text-xs font-medium text-alert-bright">VENCIDA</span>
   const h = Math.floor(diff / 3600000)
   const m = Math.floor((diff % 3600000) / 60000)
-  return <span className="text-xs font-medium text-neutral-400">{h}h {m}m</span>
+  return <span className="text-xs font-medium text-ink-muted">{h}h {m}m</span>
 }
 
 export function ValidadesClient({ initialLabels, units }: { initialLabels: LabelRow[]; units: UnitOption[] }) {
@@ -78,21 +78,21 @@ export function ValidadesClient({ initialLabels, units }: { initialLabels: Label
   }
 
   const CARDS = [
-    { key: 'vencidos', label: 'Vencidos', count: counts.vencidos, color: 'text-red-400', border: 'border-red-800' },
-    { key: 'hoje', label: 'Vencem Hoje', count: counts.hoje, color: 'text-orange-400', border: 'border-orange-800' },
-    { key: 'amanha', label: 'Amanhã', count: counts.amanha, color: 'text-yellow-400', border: 'border-yellow-800' },
-    { key: 'tres_dias', label: 'Próximos 3 dias', count: counts.tres_dias, color: 'text-blue-400', border: 'border-blue-800' },
+    { key: 'vencidos', label: 'Vencidos', count: counts.vencidos, color: 'text-alert', border: 'border-alert' },
+    { key: 'hoje', label: 'Vencem Hoje', count: counts.hoje, color: 'text-warn-bright', border: 'border-warn' },
+    { key: 'amanha', label: 'Amanhã', count: counts.amanha, color: 'text-warn', border: 'border-warn' },
+    { key: 'tres_dias', label: 'Próximos 3 dias', count: counts.tres_dias, color: 'text-info', border: 'border-info' },
   ]
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Validades</h1>
-          <p className="text-sm text-neutral-400">Monitoramento em tempo real</p>
+          <h1 className="text-xl font-bold text-ink">Validades</h1>
+          <p className="text-sm text-ink-muted">Monitoramento em tempo real</p>
         </div>
         <select value={unitFilter} onChange={e => setUnitFilter(e.target.value)}
-          className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none">
+          className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
           <option value="">Todas as unidades</option>
           {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
@@ -101,35 +101,35 @@ export function ValidadesClient({ initialLabels, units }: { initialLabels: Label
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {CARDS.map(({ key, label, count, color, border }) => (
           <button key={key} onClick={() => setBucketFilter(bucketFilter === key ? null : key)}
-            className={`rounded-xl border bg-neutral-900 p-4 text-left transition-all ${
-              bucketFilter === key ? border : 'border-neutral-800 hover:border-neutral-700'
+            className={`rounded-xl border bg-surface p-4 text-left transition-all ${
+              bucketFilter === key ? border : 'border-edge hover:border-edge-strong'
             }`}>
-            <p className="text-xs font-medium text-neutral-400">{label}</p>
+            <p className="text-xs font-medium text-ink-muted">{label}</p>
             <p className={`mt-1 text-3xl font-bold ${color}`}>{count}</p>
           </button>
         ))}
       </div>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-        <div className="border-b border-neutral-800 px-5 py-4 flex items-center justify-between">
-          <p className="text-sm font-semibold text-white">
+      <div className="rounded-xl border border-edge bg-surface">
+        <div className="border-b border-edge px-5 py-4 flex items-center justify-between">
+          <p className="text-sm font-semibold text-ink">
             Etiquetas ativas{bucketFilter ? ` — ${CARDS.find(c => c.key === bucketFilter)?.label}` : ''}
           </p>
-          <p className="text-xs text-neutral-500">{displayed.length} etiqueta{displayed.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-ink-subtle">{displayed.length} etiqueta{displayed.length !== 1 ? 's' : ''}</p>
         </div>
 
-        <div className="divide-y divide-neutral-800">
+        <div className="divide-y divide-edge">
           {displayed.length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-neutral-500">Nenhuma etiqueta neste filtro.</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-subtle">Nenhuma etiqueta neste filtro.</p>
           )}
           {displayed.map(l => (
-            <div key={l.id} className="flex items-center gap-4 px-5 py-3 hover:bg-neutral-800/50 transition-colors">
+            <div key={l.id} className="flex items-center gap-4 px-5 py-3 hover:bg-surface-raised/50 transition-colors">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{l.nome}</p>
-                <p className="text-xs text-neutral-500">{l.unit_name} · {l.employee_name ?? '—'}</p>
+                <p className="text-sm font-medium text-ink truncate">{l.nome}</p>
+                <p className="text-xs text-ink-subtle">{l.unit_name} · {l.employee_name ?? '—'}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xs text-neutral-400">{formatDate(l.validade)}</p>
+                <p className="text-xs text-ink-muted">{formatDate(l.validade)}</p>
                 <TimeRemaining validade={l.validade} now={now} />
               </div>
               <span className={`hidden sm:inline-block rounded-full px-2 py-0.5 text-xs font-medium shrink-0 ${getUrgencyClass(l.validade, now)}`}>
@@ -137,11 +137,11 @@ export function ValidadesClient({ initialLabels, units }: { initialLabels: Label
               </span>
               <div className="flex gap-1 shrink-0">
                 <button onClick={() => handleAction(l.id, 'consumida')}
-                  className="rounded border border-blue-800 px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/20 transition-colors">
+                  className="rounded border border-info px-2 py-1 text-xs text-info hover:bg-info-soft transition-colors">
                   Consumida
                 </button>
                 <button onClick={() => handleAction(l.id, 'descartada')}
-                  className="rounded border border-red-800 px-2 py-1 text-xs text-red-400 hover:bg-red-900/20 transition-colors">
+                  className="rounded border border-alert px-2 py-1 text-xs text-alert hover:bg-alert-soft transition-colors">
                   Descartar
                 </button>
               </div>

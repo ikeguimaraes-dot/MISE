@@ -24,11 +24,11 @@ export default async function PontosImpressaoPage({ searchParams }: { searchPara
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Pontos de Impressão</h1>
-          <p className="text-sm text-neutral-400">Impressoras por unidade</p>
+          <h1 className="text-xl font-bold text-ink">Pontos de Impressão</h1>
+          <p className="text-sm text-ink-muted">Impressoras por unidade</p>
         </div>
         <Link href="/configuracoes/pontos-impressao/novo"
-          className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 transition-colors">
+          className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
           <Plus className="h-4 w-4" />
           Novo ponto
         </Link>
@@ -36,38 +36,38 @@ export default async function PontosImpressaoPage({ searchParams }: { searchPara
 
       <form method="GET" className="flex gap-3">
         <select name="unit" defaultValue={unit ?? ''}
-          className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none">
+          className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
           <option value="">Todas as unidades</option>
           {(units ?? []).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
         <button type="submit"
-          className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-neutral-100 transition-colors">
+          className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ember-ink hover:bg-ember-hover transition-colors">
           Filtrar
         </button>
       </form>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-        <div className="divide-y divide-neutral-800">
+      <div className="rounded-xl border border-edge bg-surface">
+        <div className="divide-y divide-edge">
           {(points ?? []).length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-neutral-500">Nenhum ponto cadastrado.</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-subtle">Nenhum ponto cadastrado.</p>
           )}
           {(points ?? []).map(p => (
-            <div key={p.id} className="flex items-center justify-between px-5 py-3 hover:bg-neutral-800/50 transition-colors">
+            <div key={p.id} className="flex items-center justify-between px-5 py-3 hover:bg-surface-raised/50 transition-colors">
               <div className="flex items-center gap-3">
                 {p.icone && <span className="text-xl">{p.icone}</span>}
                 <div>
-                  <p className="text-sm font-medium text-white">{p.name}</p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-sm font-medium text-ink">{p.name}</p>
+                  <p className="text-xs text-ink-subtle">
                     {unitsMap[p.unit_id] ?? '—'}{p.ip_address ? ` · ${p.ip_address}` : ''}{p.rede ? ` · ${p.rede}` : ''}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`text-xs font-medium ${p.ativo ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                <span className={`text-xs font-medium ${p.ativo ? 'text-fresh-bright' : 'text-ink-subtle'}`}>
                   {p.ativo ? 'Online' : 'Offline'}
                 </span>
                 <Link href={`/configuracoes/pontos-impressao/${p.id}`}
-                  className="text-xs text-neutral-500 hover:text-white transition-colors">
+                  className="text-xs text-ink-subtle hover:text-ink transition-colors">
                   Editar
                 </Link>
               </div>

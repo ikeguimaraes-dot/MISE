@@ -16,8 +16,8 @@ export default async function EditarPontoPage({ params }: { params: Promise<{ id
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Editar Ponto de Impressão</h1>
-        <p className="text-sm text-neutral-400">{point.name}</p>
+        <h1 className="text-xl font-bold text-ink">Editar Ponto de Impressão</h1>
+        <p className="text-sm text-ink-muted">{point.name}</p>
       </div>
       <PrintPointForm units={units ?? []} initial={point} />
     </div>

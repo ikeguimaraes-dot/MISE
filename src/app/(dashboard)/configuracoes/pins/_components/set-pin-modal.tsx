@@ -46,14 +46,14 @@ export function SetPinModal({ employee, onClose, onSuccess }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-sm rounded-xl border border-neutral-800 bg-neutral-900 p-6 space-y-4">
-        <h2 className="font-semibold text-white">PIN — {employee.nome}</h2>
+      <div className="w-full max-w-sm rounded-xl border border-edge bg-surface p-6 space-y-4">
+        <h2 className="font-semibold text-ink">PIN — {employee.nome}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Nível de acesso</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Nível de acesso</label>
             <select value={role} onChange={e => setRole(e.target.value as typeof role)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none">
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="cozinheiro">Cozinheiro</option>
               <option value="gerente">Gerente</option>
               <option value="admin">Admin</option>
@@ -61,7 +61,7 @@ export function SetPinModal({ employee, onClose, onSuccess }: {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">PIN (4 dígitos)</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">PIN (4 dígitos)</label>
             <input
               type="password"
               inputMode="numeric"
@@ -69,12 +69,12 @@ export function SetPinModal({ employee, onClose, onSuccess }: {
               value={pin}
               onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
               required
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none tracking-widest"
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none tracking-widest"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">Confirmar PIN</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Confirmar PIN</label>
             <input
               type="password"
               inputMode="numeric"
@@ -82,19 +82,19 @@ export function SetPinModal({ employee, onClose, onSuccess }: {
               value={pinConfirm}
               onChange={e => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 4))}
               required
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white focus:outline-none tracking-widest"
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none tracking-widest"
             />
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-alert-bright">{error}</p>}
 
           <div className="flex gap-2 pt-1">
             <button type="submit" disabled={saving}
-              className="flex-1 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 transition-colors">
+              className="flex-1 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors">
               {saving ? 'Salvando...' : 'Definir PIN'}
             </button>
             <button type="button" onClick={onClose}
-              className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-400 hover:text-white transition-colors">
+              className="rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
               Cancelar
             </button>
           </div>

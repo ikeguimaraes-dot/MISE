@@ -26,10 +26,10 @@ type Group = {
 type Unit = { id: string; name: string }
 
 const STATUS_BADGE: Record<string, string> = {
-  ativa: 'text-emerald-400 bg-emerald-400/10',
-  consumida: 'text-blue-400 bg-blue-400/10',
-  descartada: 'text-red-400 bg-red-400/10',
-  vencida: 'text-orange-400 bg-orange-400/10',
+  ativa: 'text-fresh-bright bg-fresh/10',
+  consumida: 'text-info bg-info/10',
+  descartada: 'text-alert-bright bg-alert/10',
+  vencida: 'text-warn-bright bg-warn/10',
 }
 
 function fmt(iso: string) {
@@ -151,14 +151,14 @@ th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{fo
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-white">Relatório de Produção</h1>
-        <p className="text-sm text-neutral-400">Etiquetas geradas por período</p>
+        <h1 className="text-xl font-bold text-ink">Relatório de Produção</h1>
+        <p className="text-sm text-ink-muted">Etiquetas geradas por período</p>
       </div>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-5">
+      <div className="rounded-xl border border-edge bg-surface p-5">
         <div className="flex flex-wrap gap-3">
           <select value={periodo} onChange={e => setPeriodo(e.target.value)}
-            className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none">
+            className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
             <option value="hoje">Hoje</option>
             <option value="ontem">Ontem</option>
             <option value="7dias">Últimos 7 dias</option>
@@ -169,20 +169,20 @@ th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{fo
           {periodo === 'custom' && (
             <>
               <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
-                className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none" />
+                className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none" />
               <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
-                className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none" />
+                className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none" />
             </>
           )}
 
           <select value={unitId} onChange={e => setUnitId(e.target.value)}
-            className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white focus:outline-none">
+            className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
             <option value="">Todas as unidades</option>
             {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
 
           <button onClick={handleFetch} disabled={loading}
-            className="rounded-lg bg-white px-4 py-1.5 text-sm font-semibold text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 transition-colors">
+            className="rounded-lg bg-ember px-4 py-1.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors">
             {loading ? 'Buscando...' : 'Buscar'}
           </button>
         </div>
@@ -191,26 +191,26 @@ th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{fo
       {totalLabels > 0 && (
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Etiquetas no período', value: totalLabels, color: 'text-emerald-400' },
-            { label: 'Produtos diferentes', value: groups.length, color: 'text-blue-400' },
-            { label: 'Peso total', value: `${totalPeso.toFixed(2)} kg`, color: 'text-purple-400' },
+            { label: 'Etiquetas no período', value: totalLabels, color: 'text-fresh' },
+            { label: 'Produtos diferentes', value: groups.length, color: 'text-info' },
+            { label: 'Peso total', value: `${totalPeso.toFixed(2)} kg`, color: 'text-ink' },
           ].map(({ label, value, color }) => (
-            <div key={label} className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-              <p className="text-xs font-medium text-neutral-400">{label}</p>
+            <div key={label} className="rounded-xl border border-edge bg-surface p-4">
+              <p className="text-xs font-medium text-ink-muted">{label}</p>
               <p className={`mt-1 text-2xl font-bold ${color}`}>{value}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900">
-        <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
-          <p className="text-sm font-semibold text-white">
+      <div className="rounded-xl border border-edge bg-surface">
+        <div className="flex items-center justify-between border-b border-edge px-5 py-4">
+          <p className="text-sm font-semibold text-ink">
             {unitName} · {dataInicio} a {dataFim}
           </p>
           {totalLabels > 0 && (
             <button onClick={handlePrint}
-              className="flex items-center gap-2 rounded-lg border border-neutral-700 px-3 py-1.5 text-sm text-neutral-400 hover:text-white transition-colors">
+              className="flex items-center gap-2 rounded-lg border border-edge-strong px-3 py-1.5 text-sm text-ink-muted hover:text-ink transition-colors">
               <FileText className="h-4 w-4" />
               Exportar PDF
             </button>
@@ -218,37 +218,37 @@ th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{fo
         </div>
 
         {groups.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-neutral-500">Nenhuma etiqueta no período.</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-subtle">Nenhuma etiqueta no período.</p>
         ) : (
           <div>
             {groups.map(g => (
-              <div key={g.nome} className="border-b border-neutral-800 last:border-0">
-                <div className="flex items-center justify-between bg-neutral-800 px-5 py-3">
-                  <p className="text-sm font-semibold text-white">{g.nome}</p>
-                  <p className="text-xs text-neutral-400">
+              <div key={g.nome} className="border-b border-edge last:border-0">
+                <div className="flex items-center justify-between bg-surface-raised px-5 py-3">
+                  <p className="text-sm font-semibold text-ink">{g.nome}</p>
+                  <p className="text-xs text-ink-muted">
                     {g.total_count} etiqueta{g.total_count !== 1 ? 's' : ''} · {g.total_peso_kg.toFixed(3)} kg
                   </p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-neutral-800">
+                      <tr className="border-b border-edge">
                         {['Manipulação', 'Validade', 'Método', 'Setor', 'Peso', 'Responsável', 'Status'].map(h => (
-                          <th key={h} className="px-5 py-2 text-left text-xs font-medium text-neutral-400">{h}</th>
+                          <th key={h} className="px-5 py-2 text-left text-xs font-medium text-ink-muted">{h}</th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-neutral-800">
+                    <tbody className="divide-y divide-edge">
                       {g.labels.map((l, i) => (
-                        <tr key={l.id} className={i % 2 === 1 ? 'bg-neutral-800/30' : ''}>
-                          <td className="px-5 py-2 text-neutral-300">{fmt(l.data_manipulacao)}</td>
-                          <td className="px-5 py-2 text-neutral-300">{fmt(l.validade)}</td>
-                          <td className="px-5 py-2 text-neutral-400">{l.metodo_conservacao ?? '—'}</td>
-                          <td className="px-5 py-2 text-neutral-400">{l.setor ?? '—'}</td>
-                          <td className="px-5 py-2 text-neutral-400">
+                        <tr key={l.id} className={i % 2 === 1 ? 'bg-surface-raised/30' : ''}>
+                          <td className="px-5 py-2 text-ink-muted">{fmt(l.data_manipulacao)}</td>
+                          <td className="px-5 py-2 text-ink-muted">{fmt(l.validade)}</td>
+                          <td className="px-5 py-2 text-ink-muted">{l.metodo_conservacao ?? '—'}</td>
+                          <td className="px-5 py-2 text-ink-muted">{l.setor ?? '—'}</td>
+                          <td className="px-5 py-2 text-ink-muted">
                             {l.peso_kg != null ? `${(l.peso_kg * 1000).toLocaleString('pt-BR')} g` : '—'}
                           </td>
-                          <td className="px-5 py-2 text-neutral-400">{l.employee_name ?? '—'}</td>
+                          <td className="px-5 py-2 text-ink-muted">{l.employee_name ?? '—'}</td>
                           <td className="px-5 py-2">
                             <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[l.status] ?? ''}`}>
                               {l.status}
@@ -261,9 +261,9 @@ th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{fo
                 </div>
               </div>
             ))}
-            <div className="flex items-center justify-between border-t border-neutral-800 px-5 py-3">
-              <p className="text-xs text-neutral-500">Total: {totalLabels} etiquetas</p>
-              <p className="text-xs text-neutral-500">Peso total: {totalPeso.toFixed(3)} kg</p>
+            <div className="flex items-center justify-between border-t border-edge px-5 py-3">
+              <p className="text-xs text-ink-subtle">Total: {totalLabels} etiquetas</p>
+              <p className="text-xs text-ink-subtle">Peso total: {totalPeso.toFixed(3)} kg</p>
             </div>
           </div>
         )}
