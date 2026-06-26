@@ -67,7 +67,7 @@ const TIPO_RESPOSTA_OPTIONS = [
 ]
 
 const INPUT_CLASS =
-  'w-full rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-500 focus:border-neutral-500 focus:outline-none'
+  'w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ink-subtle focus:outline-none'
 
 // ─── SortableItem ────────────────────────────────────────────────────────────
 
@@ -98,8 +98,8 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-lg border bg-neutral-900 transition-opacity ${
-        isDragging ? 'border-emerald-600/50 shadow-lg opacity-70' : 'border-neutral-800'
+      className={`rounded-lg border bg-surface transition-opacity ${
+        isDragging ? 'border-ember/50 shadow-lg opacity-70' : 'border-edge'
       }`}
       {...attributes}
     >
@@ -108,7 +108,7 @@ function SortableItem({
         <button
           type="button"
           {...listeners}
-          className="mt-2 shrink-0 cursor-grab active:cursor-grabbing text-neutral-700 hover:text-neutral-400 touch-none"
+          className="mt-2 shrink-0 cursor-grab active:cursor-grabbing text-ink-faint hover:text-ink-muted touch-none"
           tabIndex={-1}
           aria-label="Arrastar item"
         >
@@ -153,14 +153,14 @@ function SortableItem({
                 className={`${INPUT_CLASS} flex-1`}
               />
               <div className="flex items-center gap-1 shrink-0">
-                <label className="text-xs text-neutral-500 whitespace-nowrap">Peso</label>
+                <label className="text-xs text-ink-subtle whitespace-nowrap">Peso</label>
                 <input
                   type="number"
                   min={0}
                   step={1}
                   value={item.peso}
                   onChange={e => onChange({ peso: Math.max(0, Number(e.target.value)) })}
-                  className="w-14 rounded-lg border border-neutral-700 bg-neutral-800 px-2 py-2 text-sm text-white text-center focus:outline-none"
+                  className="w-14 rounded-lg border border-edge-strong bg-surface-raised px-2 py-2 text-sm text-ink text-center focus:outline-none"
                 />
               </div>
             </div>
@@ -184,7 +184,7 @@ function SortableItem({
           type="button"
           onClick={onRemove}
           disabled={disabled}
-          className="mt-1 shrink-0 flex h-7 w-7 items-center justify-center rounded text-neutral-600 hover:bg-red-900/30 hover:text-red-400 transition-colors disabled:opacity-30"
+          className="mt-1 shrink-0 flex h-7 w-7 items-center justify-center rounded text-ink-faint hover:bg-alert-soft hover:text-alert-bright transition-colors disabled:opacity-30"
           aria-label="Remover item"
         >
           <X className="h-3.5 w-3.5" />
@@ -202,15 +202,15 @@ function ItemPreview({ item, index }: { item: FormItem; index: number }) {
     : []
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-800/40 p-3">
+    <div className="rounded-lg border border-edge bg-surface-raised/40 p-3">
       <div className="flex items-start gap-2 mb-2">
-        <span className="text-[10px] font-mono text-neutral-600 mt-0.5 shrink-0">{index + 1}.</span>
+        <span className="text-[10px] font-mono text-ink-faint mt-0.5 shrink-0">{index + 1}.</span>
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-white leading-snug">
-            {item.titulo ? item.titulo : <span className="text-neutral-600 italic">Sem título</span>}
+          <p className="text-xs font-semibold text-ink leading-snug">
+            {item.titulo ? item.titulo : <span className="text-ink-faint italic">Sem título</span>}
           </p>
           {item.descricao && (
-            <p className="mt-0.5 text-[10px] text-neutral-500 leading-tight">{item.descricao}</p>
+            <p className="mt-0.5 text-[10px] text-ink-subtle leading-tight">{item.descricao}</p>
           )}
         </div>
       </div>
@@ -218,29 +218,29 @@ function ItemPreview({ item, index }: { item: FormItem; index: number }) {
       <div className="ml-4">
         {item.tipo_resposta === 'sim_nao' && (
           <div className="flex gap-1.5">
-            <div className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-neutral-700 py-1.5 text-[10px] text-neutral-400">
+            <div className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-edge-strong py-1.5 text-[10px] text-ink-muted">
               <CheckCircle2 className="h-3 w-3" /> Conforme
             </div>
-            <div className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-neutral-700 py-1.5 text-[10px] text-neutral-400">
+            <div className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-edge-strong py-1.5 text-[10px] text-ink-muted">
               <XCircle className="h-3 w-3" /> Não conforme
             </div>
           </div>
         )}
 
         {item.tipo_resposta === 'data' && (
-          <div className="rounded border border-neutral-700 bg-neutral-900/50 px-2 py-1 text-[10px] text-neutral-500">
+          <div className="rounded border border-edge-strong bg-surface/50 px-2 py-1 text-[10px] text-ink-subtle">
             DD/MM/AAAA
           </div>
         )}
 
         {item.tipo_resposta === 'texto' && (
-          <div className="rounded border border-neutral-700 bg-neutral-900/50 px-2 py-1 text-[10px] text-neutral-500 h-8">
+          <div className="rounded border border-edge-strong bg-surface/50 px-2 py-1 text-[10px] text-ink-subtle h-8">
             Texto livre...
           </div>
         )}
 
         {item.tipo_resposta === 'assinatura' && (
-          <div className="rounded border border-dashed border-neutral-700 py-3 text-center text-[10px] text-neutral-500">
+          <div className="rounded border border-dashed border-edge-strong py-3 text-center text-[10px] text-ink-subtle">
             Área de assinatura
           </div>
         )}
@@ -248,24 +248,24 @@ function ItemPreview({ item, index }: { item: FormItem; index: number }) {
         {(item.tipo_resposta === 'selecao' || item.tipo_resposta === 'checklist_multiplo') && (
           <div className="space-y-1">
             {opcoes.length === 0 ? (
-              <div className="text-[10px] text-neutral-600 italic">Nenhuma opção definida</div>
+              <div className="text-[10px] text-ink-faint italic">Nenhuma opção definida</div>
             ) : (
               <>
                 {opcoes.slice(0, 4).map((op, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-1.5 rounded border border-neutral-700 px-2 py-1 text-[10px] text-neutral-400"
+                    className="flex items-center gap-1.5 rounded border border-edge-strong px-2 py-1 text-[10px] text-ink-muted"
                   >
                     {item.tipo_resposta === 'checklist_multiplo' ? (
-                      <div className="h-3 w-3 rounded border border-neutral-600 shrink-0" />
+                      <div className="h-3 w-3 rounded border border-ink-faint shrink-0" />
                     ) : (
-                      <div className="h-2.5 w-2.5 rounded-full border border-neutral-600 shrink-0" />
+                      <div className="h-2.5 w-2.5 rounded-full border border-ink-faint shrink-0" />
                     )}
                     {op}
                   </div>
                 ))}
                 {opcoes.length > 4 && (
-                  <div className="text-[10px] text-neutral-600 pl-1">
+                  <div className="text-[10px] text-ink-faint pl-1">
                     +{opcoes.length - 4} mais...
                   </div>
                 )}
@@ -275,7 +275,7 @@ function ItemPreview({ item, index }: { item: FormItem; index: number }) {
         )}
 
         {item.peso === 0 && (
-          <div className="mt-1.5 text-[10px] text-neutral-600">Informativo — não pontua</div>
+          <div className="mt-1.5 text-[10px] text-ink-faint">Informativo — não pontua</div>
         )}
       </div>
     </div>
@@ -380,9 +380,9 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
   if (step === 1) {
     return (
       <div className="max-w-lg">
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6 space-y-4">
+        <div className="rounded-xl border border-edge bg-surface p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">
+            <label className="block text-xs font-medium text-ink-muted mb-1">
               Nome do checklist *
             </label>
             <input
@@ -400,7 +400,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1">Tipo</label>
+              <label className="block text-xs font-medium text-ink-muted mb-1">Tipo</label>
               <select
                 value={header.tipo}
                 onChange={e => setHeader(s => ({ ...s, tipo: e.target.value }))}
@@ -414,7 +414,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-neutral-400 mb-1">Unidade</label>
+              <label className="block text-xs font-medium text-ink-muted mb-1">Unidade</label>
               <select
                 value={header.unit_id}
                 onChange={e => setHeader(s => ({ ...s, unit_id: e.target.value }))}
@@ -431,7 +431,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1">
+            <label className="block text-xs font-medium text-ink-muted mb-1">
               Descrição (opcional)
             </label>
             <textarea
@@ -448,7 +448,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
           <button
             onClick={() => setStep(2)}
             disabled={!header.nome.trim()}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-ember px-5 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
           >
             Próximo <ArrowRight className="h-4 w-4" />
           </button>
@@ -463,17 +463,17 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
       {/* Left — item list */}
       <div className="flex-1 min-w-0">
         {/* Step breadcrumb */}
-        <div className="flex items-center gap-1.5 text-sm text-neutral-500 mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5 text-sm text-ink-subtle mb-4 flex-wrap">
           <button
             onClick={() => setStep(1)}
-            className="hover:text-neutral-300 transition-colors truncate max-w-[200px]"
+            className="hover:text-ink-muted transition-colors truncate max-w-[200px]"
           >
             {header.nome}
           </button>
           <span>/</span>
-          <span className="text-white">Itens</span>
+          <span className="text-ink">Itens</span>
           {validItemCount > 0 && (
-            <span className="text-neutral-600">
+            <span className="text-ink-faint">
               ({validItemCount} {validItemCount === 1 ? 'item' : 'itens'})
             </span>
           )}
@@ -506,7 +506,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
           type="button"
           onClick={addItem}
           disabled={submitting}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-700 py-3 text-sm text-neutral-400 hover:border-neutral-500 hover:text-neutral-300 disabled:opacity-40 transition-colors"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-ember/40 py-3 text-sm text-ember hover:border-ember hover:bg-ember-soft disabled:opacity-40 transition-colors"
         >
           <Plus className="h-4 w-4" />
           Adicionar item
@@ -516,14 +516,14 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
           <button
             onClick={() => setStep(1)}
             disabled={submitting}
-            className="flex items-center gap-1 text-sm text-neutral-400 hover:text-white transition-colors disabled:opacity-40"
+            className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink transition-colors disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" /> Voltar
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting || validItemCount === 0}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-ember px-5 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
           >
             {submitting ? (
               <>
@@ -538,23 +538,23 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
 
       {/* Right — preview */}
       <div className="lg:w-72 lg:sticky lg:top-6 shrink-0">
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 overflow-hidden">
-          <div className="px-4 py-3 border-b border-neutral-800">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500 mb-0.5">
+        <div className="rounded-xl border border-edge bg-surface overflow-hidden">
+          <div className="px-4 py-3 border-b border-edge">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle mb-0.5">
               Preview
             </p>
-            <p className="text-sm font-bold text-white truncate">
+            <p className="text-sm font-bold text-ink truncate">
               {header.nome || 'Nome do checklist'}
             </p>
             {header.tipo && (
-              <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-neutral-800 text-neutral-400">
+              <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-surface-raised text-ink-muted">
                 {TIPOS.find(t => t.value === header.tipo)?.label ?? header.tipo}
               </span>
             )}
           </div>
           <div className="p-3 space-y-2 max-h-[560px] overflow-y-auto">
             {validItemCount === 0 ? (
-              <p className="text-[10px] text-neutral-600 text-center py-6">
+              <p className="text-[10px] text-ink-faint text-center py-6">
                 Adicione itens para ver o preview
               </p>
             ) : (

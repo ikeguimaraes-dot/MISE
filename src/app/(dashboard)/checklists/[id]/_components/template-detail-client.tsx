@@ -33,7 +33,7 @@ export function TemplateDetailClient({ templateId, unitId }: { templateId: strin
     <button
       onClick={handleExecutar}
       disabled={loading}
-      className="flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors shrink-0"
+      className="flex items-center gap-2 rounded-md bg-ember px-4 py-2 text-sm font-bold text-ember-ink hover:bg-ember-hover disabled:opacity-50 transition-colors shrink-0"
     >
       <Play className="h-4 w-4" />
       {loading ? 'Iniciando...' : 'Executar agora'}

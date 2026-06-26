@@ -282,21 +282,21 @@ export function ExecucaoClient({
     const pct = result.percentual
     const color = pct >= 80 ? '#34d399' : pct >= 60 ? '#facc15' : '#f87171'
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-950 px-6 text-center gap-6">
-        <CheckCircle2 className="h-16 w-16 text-emerald-400" />
-        <h2 className="text-2xl font-bold text-white">Checklist concluído!</h2>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-base px-6 text-center gap-6">
+        <CheckCircle2 className="h-16 w-16 text-fresh-bright" />
+        <h2 className="text-2xl font-bold text-ink">Checklist concluído!</h2>
         <div style={{ color }} className="text-6xl font-black">{pct.toFixed(0)}%</div>
-        <p className="text-neutral-400">{Number(result.pontuacao_obtida).toFixed(1)} de {result.pontuacao_total} pontos</p>
+        <p className="text-ink-muted">{Number(result.pontuacao_obtida).toFixed(1)} de {result.pontuacao_total} pontos</p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
             onClick={() => router.push(`/checklists/historico/${executionId}`)}
-            className="w-full rounded-lg bg-emerald-600 py-3 font-bold text-white hover:bg-emerald-500"
+            className="w-full rounded-lg bg-ember py-3 font-bold text-ember-ink hover:bg-ember-hover"
           >
             Ver relatório completo
           </button>
           <button
             onClick={() => router.push('/checklists')}
-            className="w-full rounded-lg border border-neutral-700 py-3 text-neutral-300 hover:bg-neutral-900"
+            className="w-full rounded-lg border border-edge-strong py-3 text-ink-muted hover:bg-surface"
           >
             Voltar aos checklists
           </button>
@@ -309,23 +309,23 @@ export function ExecucaoClient({
   if (showSummary) {
     const unanswered = items.filter(it => !isAnswered(answers[it.id], it))
     return (
-      <div className="flex flex-col min-h-screen bg-neutral-950 px-4 py-6 gap-4 max-w-lg mx-auto">
-        <h2 className="text-xl font-bold text-white">Resumo</h2>
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-center">
-          <div className="text-3xl font-black text-white">{answeredCount}/{items.length}</div>
-          <div className="text-sm text-neutral-400 mt-1">itens respondidos</div>
-          <div className="mt-3 h-2 bg-neutral-800 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
+      <div className="flex flex-col min-h-screen bg-base px-4 py-6 gap-4 max-w-lg mx-auto">
+        <h2 className="text-xl font-bold text-ink">Resumo</h2>
+        <div className="rounded-lg border border-edge bg-surface p-4 text-center">
+          <div className="text-3xl font-black text-ink">{answeredCount}/{items.length}</div>
+          <div className="text-sm text-ink-muted mt-1">itens respondidos</div>
+          <div className="mt-3 h-2 bg-surface-raised rounded-full overflow-hidden">
+            <div className="h-full bg-ember transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
         {unanswered.length > 0 && (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-4">
-            <p className="text-sm font-semibold text-yellow-400 mb-2">{unanswered.length} {unanswered.length === 1 ? 'item sem resposta' : 'itens sem resposta'}:</p>
+          <div className="rounded-lg border border-warn/30 bg-warn/5 p-4">
+            <p className="text-sm font-semibold text-warn-bright mb-2">{unanswered.length} {unanswered.length === 1 ? 'item sem resposta' : 'itens sem resposta'}:</p>
             <ul className="space-y-1">
               {unanswered.map(it => (
-                <li key={it.id} className="text-xs text-neutral-400 flex items-center gap-2">
-                  <span className="text-neutral-600">{it.ordem}.</span> {it.titulo}
+                <li key={it.id} className="text-xs text-ink-muted flex items-center gap-2">
+                  <span className="text-ink-faint">{it.ordem}.</span> {it.titulo}
                 </li>
               ))}
             </ul>
@@ -336,13 +336,13 @@ export function ExecucaoClient({
           <button
             onClick={handleConcluir}
             disabled={submitting}
-            className="w-full rounded-lg bg-emerald-600 py-4 font-bold text-white hover:bg-emerald-500 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full rounded-lg bg-ember py-4 font-bold text-ember-ink hover:bg-ember-hover disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</> : 'Concluir e calcular score'}
           </button>
           <button
             onClick={() => { setShowSummary(false); setCurrentIndex(items.length - 1) }}
-            className="w-full rounded-lg border border-neutral-700 py-3 text-neutral-300 hover:bg-neutral-900"
+            className="w-full rounded-lg border border-edge-strong py-3 text-ink-muted hover:bg-surface"
           >
             Voltar e revisar
           </button>
@@ -351,30 +351,30 @@ export function ExecucaoClient({
     )
   }
 
-  if (!currentItem) return <div className="p-6 text-neutral-400">Nenhum item.</div>
+  if (!currentItem) return <div className="p-6 text-ink-muted">Nenhum item.</div>
 
   const opcoes = getOpcoes(currentItem)
   const answered = isAnswered(currentAnswer ?? undefined, currentItem)
 
   return (
-    <div className="flex flex-col min-h-screen bg-neutral-950">
+    <div className="flex flex-col min-h-screen bg-base">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-neutral-950 border-b border-neutral-800 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-base border-b border-edge px-4 py-3">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-neutral-500 truncate max-w-[200px]">{templateNome}</span>
-          <span className="text-xs text-neutral-400 font-mono">{currentIndex + 1}/{items.length}</span>
+          <span className="text-xs text-ink-subtle truncate max-w-[200px]">{templateNome}</span>
+          <span className="text-xs text-ink-muted font-mono">{currentIndex + 1}/{items.length}</span>
         </div>
-        <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-          <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+        <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
+          <div className="h-full bg-ember transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       {/* Item */}
       <div className="flex-1 px-4 py-6 flex flex-col gap-5 max-w-lg mx-auto w-full">
         <div>
-          <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">Item {currentItem.ordem}</p>
-          <h2 className="text-xl font-bold text-white leading-snug">{currentItem.titulo}</h2>
-          {currentItem.descricao && <p className="mt-1.5 text-sm text-neutral-400">{currentItem.descricao}</p>}
+          <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider mb-1">Item {currentItem.ordem}</p>
+          <h2 className="text-xl font-bold text-ink leading-snug">{currentItem.titulo}</h2>
+          {currentItem.descricao && <p className="mt-1.5 text-sm text-ink-muted">{currentItem.descricao}</p>}
         </div>
 
         {/* Response area */}
@@ -383,14 +383,14 @@ export function ExecucaoClient({
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              className="accent-emerald-500"
+              className="accent-warn"
               checked={currentAnswer?.nao_aplicavel ?? false}
               onChange={e => {
                 updateAnswer(currentItem.id, { nao_aplicavel: e.target.checked, resposta: e.target.checked ? null : currentAnswer?.resposta ?? null })
                 if (e.target.checked && currentAnswer) saveToServer(currentItem.id, { ...currentAnswer, nao_aplicavel: true })
               }}
             />
-            <span className="text-sm text-neutral-400">Não aplicável</span>
+            <span className="text-sm text-ink-muted">Não aplicável</span>
           </label>
 
           {!currentAnswer?.nao_aplicavel && (
@@ -402,8 +402,8 @@ export function ExecucaoClient({
                     onClick={() => handleSimNao('sim')}
                     className={`flex-1 rounded-xl py-6 font-bold text-lg flex flex-col items-center gap-1 transition-all ${
                       currentAnswer?.resposta?.valor === 'sim'
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40'
-                        : 'bg-neutral-900 border border-neutral-700 text-neutral-300 hover:border-emerald-600'
+                        ? 'bg-fresh-soft border border-fresh text-fresh-bright shadow-lg shadow-fresh-soft/40'
+                        : 'bg-surface border border-edge-strong text-ink-muted hover:border-fresh'
                     }`}
                   >
                     <CheckCircle2 className="h-8 w-8" />
@@ -413,8 +413,8 @@ export function ExecucaoClient({
                     onClick={() => handleSimNao('nao')}
                     className={`flex-1 rounded-xl py-6 font-bold text-lg flex flex-col items-center gap-1 transition-all ${
                       currentAnswer?.resposta?.valor === 'nao'
-                        ? 'bg-red-700 text-white shadow-lg shadow-red-900/40'
-                        : 'bg-neutral-900 border border-neutral-700 text-neutral-300 hover:border-red-600'
+                        ? 'bg-alert-soft border border-alert text-alert-bright shadow-lg shadow-alert-soft/40'
+                        : 'bg-surface border border-edge-strong text-ink-muted hover:border-alert'
                     }`}
                   >
                     <XCircle className="h-8 w-8" />
@@ -426,9 +426,9 @@ export function ExecucaoClient({
               {/* Comment required for inconformidade */}
               {needsComment && currentItem.tipo_resposta === 'sim_nao' && (
                 <div>
-                  <label className="block text-xs font-semibold text-red-400 mb-1">Comentário obrigatório</label>
+                  <label className="block text-xs font-semibold text-alert-bright mb-1">Comentário obrigatório</label>
                   <textarea
-                    className="w-full rounded-lg bg-neutral-900 border border-red-500/50 px-3 py-2 text-sm text-white placeholder-neutral-600 resize-none focus:outline-none focus:border-red-400"
+                    className="w-full rounded-lg bg-surface border border-alert/50 px-3 py-2 text-sm text-ink placeholder-ink-faint resize-none focus:outline-none focus:border-alert-bright"
                     rows={3}
                     placeholder="Descreva a inconformidade..."
                     value={currentAnswer?.comentario ?? ''}
@@ -441,7 +441,7 @@ export function ExecucaoClient({
                       setNeedsComment(false)
                       goNext()
                     }}
-                    className="mt-2 w-full rounded-lg bg-red-700 py-2 text-sm font-bold text-white hover:bg-red-600"
+                    className="mt-2 w-full rounded-lg bg-ember py-2 text-sm font-bold text-ember-ink hover:bg-ember-hover"
                   >
                     Registrar e continuar
                   </button>
@@ -457,8 +457,8 @@ export function ExecucaoClient({
                       onClick={() => handleSelecao(op)}
                       className={`w-full rounded-xl px-4 py-4 text-left font-semibold transition-all ${
                         currentAnswer?.resposta?.valor === op
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-neutral-900 border border-neutral-700 text-neutral-200 hover:border-neutral-500'
+                          ? 'bg-ember text-ember-ink'
+                          : 'bg-surface border border-edge-strong text-ink-muted hover:border-ember'
                       }`}
                     >
                       {op}
@@ -479,13 +479,13 @@ export function ExecucaoClient({
                         key={op}
                         className={`flex items-center gap-3 rounded-xl px-4 py-3.5 cursor-pointer transition-all ${
                           checked
-                            ? 'bg-emerald-900/30 border border-emerald-600/50 text-emerald-300'
-                            : 'bg-neutral-900 border border-neutral-700 text-neutral-300 hover:border-neutral-500'
+                            ? 'bg-fresh-soft border border-fresh/50 text-fresh-bright'
+                            : 'bg-surface border border-edge-strong text-ink-muted hover:border-fresh'
                         }`}
                       >
                         <input
                           type="checkbox"
-                          className="accent-emerald-500 h-5 w-5 shrink-0"
+                          className="accent-fresh h-5 w-5 shrink-0"
                           checked={checked}
                           onChange={e => handleCheckMultiplo(op, e.target.checked)}
                         />
@@ -500,7 +500,7 @@ export function ExecucaoClient({
               {currentItem.tipo_resposta === 'data' && (
                 <input
                   type="date"
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-4 py-3 text-white focus:outline-none focus:border-emerald-500 text-lg"
+                  className="w-full rounded-lg bg-surface border border-edge-strong px-4 py-3 text-ink focus:outline-none focus:border-ember text-lg"
                   value={(currentAnswer?.resposta?.data as string) ?? ''}
                   onChange={async e => {
                     const answer: LocalAnswer = { resposta: { data: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
@@ -513,7 +513,7 @@ export function ExecucaoClient({
               {/* TEXTO */}
               {currentItem.tipo_resposta === 'texto' && (
                 <textarea
-                  className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-4 py-3 text-white placeholder-neutral-600 resize-none focus:outline-none focus:border-emerald-500"
+                  className="w-full rounded-lg bg-surface border border-edge-strong px-4 py-3 text-ink placeholder-ink-faint resize-none focus:outline-none focus:border-ember"
                   rows={5}
                   placeholder="Digite sua resposta..."
                   value={(currentAnswer?.resposta?.texto as string) ?? ''}
@@ -528,7 +528,7 @@ export function ExecucaoClient({
               {/* ASSINATURA */}
               {currentItem.tipo_resposta === 'assinatura' && (
                 <div>
-                  <div className="rounded-xl border border-neutral-700 overflow-hidden bg-neutral-900 touch-none">
+                  <div className="rounded-xl border border-edge-strong overflow-hidden bg-surface touch-none">
                     <canvas
                       ref={canvasRef}
                       width={600}
@@ -545,13 +545,13 @@ export function ExecucaoClient({
                     />
                   </div>
                   <div className="mt-2 flex justify-between items-center">
-                    <span className="text-xs text-neutral-500">Assine com o dedo acima</span>
-                    <button onClick={clearCanvas} className="flex items-center gap-1 text-xs text-neutral-400 hover:text-white">
+                    <span className="text-xs text-ink-subtle">Assine com o dedo acima</span>
+                    <button onClick={clearCanvas} className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink">
                       <RotateCcw className="h-3.5 w-3.5" /> Limpar
                     </button>
                   </div>
                   {!!(currentAnswer?.resposta?.assinatura) && (
-                    <p className="text-xs text-emerald-400 mt-1">✓ Assinatura registrada</p>
+                    <p className="text-xs text-fresh-bright mt-1">✓ Assinatura registrada</p>
                   )}
                 </div>
               )}
@@ -559,9 +559,9 @@ export function ExecucaoClient({
               {/* Optional comment (not sim_nao inconformidade) */}
               {currentItem.requer_comentario === 'opcional' && (
                 <div>
-                  <label className="block text-xs text-neutral-500 mb-1">Comentário (opcional)</label>
+                  <label className="block text-xs text-ink-subtle mb-1">Comentário (opcional)</label>
                   <textarea
-                    className="w-full rounded-lg bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm text-white placeholder-neutral-600 resize-none focus:outline-none focus:border-neutral-600"
+                    className="w-full rounded-lg bg-surface border border-edge px-3 py-2 text-sm text-ink placeholder-ink-faint resize-none focus:outline-none focus:border-edge-strong"
                     rows={2}
                     value={currentAnswer?.comentario ?? ''}
                     onChange={e => updateAnswer(currentItem.id, { comentario: e.target.value })}
@@ -579,20 +579,20 @@ export function ExecucaoClient({
                     <img
                       src={currentAnswer.foto_url}
                       alt="Foto"
-                      className="h-20 w-20 object-cover rounded-lg border border-neutral-700"
+                      className="h-20 w-20 object-cover rounded-lg border border-edge"
                     />
                     <button
                       onClick={() => handleRemovePhoto(currentItem.id)}
-                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-neutral-800 border border-neutral-600 flex items-center justify-center hover:bg-red-900"
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-raised border border-edge-strong flex items-center justify-center hover:bg-alert-soft"
                     >
-                      <X className="h-3 w-3 text-neutral-300" />
+                      <X className="h-3 w-3 text-ink-muted" />
                     </button>
                   </div>
                 ) : (
                   <button
                     onClick={() => { photoTargetItemId.current = currentItem.id; photoInputRef.current?.click() }}
                     disabled={uploadingPhoto === currentItem.id}
-                    className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 border border-neutral-800 rounded-lg px-3 py-2 hover:border-neutral-600 disabled:opacity-40 transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-ink-subtle hover:text-ember border border-edge rounded-lg px-3 py-2 hover:border-ember disabled:opacity-40 transition-colors"
                   >
                     {uploadingPhoto === currentItem.id
                       ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -622,11 +622,11 @@ export function ExecucaoClient({
       />
 
       {/* Navigation footer */}
-      <div className="sticky bottom-0 bg-neutral-950 border-t border-neutral-800 px-4 py-3 flex gap-3">
+      <div className="sticky bottom-0 bg-base border-t border-edge px-4 py-3 flex gap-3">
         <button
           onClick={goPrev}
           disabled={currentIndex === 0}
-          className="rounded-lg border border-neutral-700 px-4 py-3 text-neutral-400 hover:bg-neutral-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+          className="rounded-lg border border-edge-strong px-4 py-3 text-ink-muted hover:bg-surface disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
         >
           <ChevronLeft className="h-4 w-4" /> Anterior
         </button>
@@ -634,10 +634,10 @@ export function ExecucaoClient({
           onClick={goNext}
           className={`flex-1 rounded-lg py-3 font-bold flex items-center justify-center gap-1 transition-colors ${
             answered
-              ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+              ? 'bg-ember text-ember-ink hover:bg-ember-hover'
               : currentIndex === items.length - 1
-                ? 'bg-neutral-700 text-white hover:bg-neutral-600'
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                ? 'bg-surface-hover text-ink hover:bg-edge-strong'
+                : 'bg-surface-raised text-ink-muted hover:bg-surface-hover'
           }`}
         >
           {saving && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
