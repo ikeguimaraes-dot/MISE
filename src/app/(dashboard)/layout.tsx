@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen bg-neutral-950">
+    <div className="flex h-screen bg-base">
       <Sidebar role={role} isPinUser={isPinUser} />
       <main className="flex-1 overflow-y-auto">
         {children}

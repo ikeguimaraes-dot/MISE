@@ -47,8 +47,8 @@ function NavItem({ href, label, icon: Icon, pathname }: {
       className={cn(
         'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
         isActive
-          ? 'bg-neutral-800 text-white'
-          : 'text-neutral-400 hover:bg-neutral-900 hover:text-white'
+          ? 'bg-ember-soft text-ember'
+          : 'text-ink-subtle hover:bg-surface hover:text-ink'
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
@@ -85,10 +85,10 @@ export function Sidebar({
   const showChecklists = role !== 'cozinheiro' || hasChecklists
 
   return (
-    <aside className="flex h-screen w-56 flex-col border-r border-neutral-800 bg-neutral-950 px-3 py-4">
+    <aside className="flex h-screen w-56 flex-col border-r border-edge bg-base px-3 py-4">
       <div className="mb-6 px-2">
-        <h1 className="text-lg font-bold tracking-tight text-white">MISE</h1>
-        <p className="text-xs text-neutral-500">Gestão de cozinha</p>
+        <h1 className="text-lg font-bold tracking-tight text-ink">MISE</h1>
+        <p className="text-xs text-ink-subtle">Gestão de cozinha</p>
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 overflow-y-auto">
@@ -100,7 +100,7 @@ export function Sidebar({
 
         {showChecklists && (
           <div>
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
               Checklists
             </p>
             <div className="flex flex-col gap-1">
@@ -117,7 +117,7 @@ export function Sidebar({
         )}
 
         <div>
-          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
             Relatórios
           </p>
           <div className="flex flex-col gap-1">
@@ -130,7 +130,7 @@ export function Sidebar({
         {showAdminSections && (
           <>
             <div>
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
                 Cadastros
               </p>
               <div className="flex flex-col gap-1">
@@ -141,7 +141,7 @@ export function Sidebar({
             </div>
 
             <div>
-              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
                 Configurações
               </p>
               <div className="flex flex-col gap-1">
@@ -156,7 +156,7 @@ export function Sidebar({
 
       <button
         onClick={handleSignOut}
-        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-400 hover:bg-neutral-900 hover:text-white transition-colors"
+        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-ink-subtle hover:bg-surface hover:text-ink transition-colors"
       >
         <LogOut className="h-4 w-4 shrink-0" />
         Sair
