@@ -264,19 +264,20 @@ export function LabelForm({
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
     const unit = savedLabel.unit
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
-<style>@page{size:60mm 60mm;margin:0}
-html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:monospace}
-.label{width:60mm;height:60mm;padding:3mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
-.nome{font-size:12pt;font-weight:bold;line-height:1.05}
-.cnpj{font-size:6pt;margin-top:0.5mm}
-.metodo{font-size:8pt;margin-top:0.5mm}
-.sep{border:0;border-top:1px solid #000;margin:1mm 0}
-.dates{font-size:8pt;line-height:1.3}.dates b{font-weight:bold}
-.validade{font-size:12pt;font-weight:bold;line-height:1.15}
-.row{display:flex;justify-content:space-between;align-items:flex-end;gap:2mm}
-.resp{font-size:8pt;font-weight:bold}.qr{flex-shrink:0}
-.endereco{font-size:5pt;line-height:1.1;margin-top:0.5mm}
-.id{font-size:8pt;margin-top:0.5mm}
+<style>@page{size:60mm 40mm;margin:0}
+html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:monospace}
+.label{width:60mm;height:40mm;padding:2mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:7pt;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
+.nome{font-size:11pt;font-weight:bold;line-height:1.0}
+.cnpj{font-size:5pt;line-height:1.1;margin-top:0.3mm}
+.metodo{font-size:6pt;line-height:1.1;margin-top:0.3mm}
+.dates{font-size:7pt;line-height:1.2}.dates b{font-weight:bold}
+.validade{font-size:11pt;font-weight:bold;line-height:1.1}
+.bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:2mm}
+.binfo{min-width:0}
+.resp{font-size:6pt;font-weight:bold}
+.endereco{font-size:4.5pt;line-height:1.0;margin-top:0.3mm}
+.id{font-size:6pt;margin-top:0.3mm}
+.qr{flex-shrink:0}
 </style></head><body>
 <div class="label">
   <div>
@@ -284,19 +285,19 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     ${unit?.cnpj ? `<div class="cnpj">CNPJ: ${unit.cnpj}</div>` : ''}
     ${metodo ? `<div class="metodo">${metodo}</div>` : ''}
   </div>
-  <hr class="sep"/>
   <div class="dates">
     <div><b>MANIPULAÇÃO:</b> ${fmtDate(dataManipulacao)}</div>
     <div class="validade">VALIDADE: ${fmtDate(validade)}</div>
     ${pesoG ? `<div><b>PESO:</b> ${pesoG}g</div>` : ''}
   </div>
-  <hr class="sep"/>
-  <div class="row">
-    <div class="resp">RESP.: ${respNome}</div>
-    <div class="qr"><img src="${qrDataUrl}" width="50" height="50"/></div>
+  <div class="bottom">
+    <div class="binfo">
+      <div class="resp">RESP.: ${respNome}</div>
+      ${unit?.address ? `<div class="endereco">${unit.address}</div>` : ''}
+      <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
+    </div>
+    <div class="qr"><img src="${qrDataUrl}" width="40" height="40"/></div>
   </div>
-  ${unit?.address ? `<div class="endereco">${unit.address}</div>` : ''}
-  <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
 </div>
 </body></html>`
     const w = window.open('', '_blank')
@@ -306,7 +307,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     setTimeout(() => w.print(), 250)
   }
 
-  // Monta a string de comandos TSPL da etiqueta 60x60mm (480x480 dots @ 203dpi),
+  // Monta a string de comandos TSPL da etiqueta 60x40mm (480x320 dots @ 203dpi),
   // replicando o layout do preview visual. Compartilhada por ambas as variantes RawBT.
   function buildTSPL(): string {
     if (!savedLabel) return ''
@@ -320,53 +321,53 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     const ascii = (s: string) =>
       (s ?? '').normalize('NFD').replace(diacritics, '').replace(/"/g, "'")
 
-    const left = 24
+    const left = 16
     const cmds: string[] = []
-    cmds.push('SIZE 60 mm, 60 mm')
+    cmds.push('SIZE 60 mm, 40 mm')
     cmds.push('GAP 2 mm, 0 mm')
     cmds.push('DIRECTION 1')
     cmds.push('CLS')
 
-    let y = 24
+    let y = 12
     // Nome do produto — fonte grande (font "4" = 24x32)
     cmds.push(`TEXT ${left},${y},"4",0,1,1,"${ascii(savedLabel.nome)}"`)
-    y += 40
+    y += 34
     if (unit?.cnpj) {
       cmds.push(`TEXT ${left},${y},"1",0,1,1,"CNPJ: ${ascii(unit.cnpj)}"`)
-      y += 20
+      y += 16
     }
     if (metodo) {
-      cmds.push(`TEXT ${left},${y},"2",0,1,1,"${ascii(metodo)}"`)
-      y += 26
+      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(metodo)}"`)
+      y += 16
     }
     // Separador
-    y += 6
-    cmds.push(`BAR ${left},${y},432,2`)
-    y += 16
-    // Manipulação — fonte média (font "3" = 16x24)
-    cmds.push(`TEXT ${left},${y},"3",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
-    y += 30
+    y += 2
+    cmds.push(`BAR ${left},${y},448,2`)
+    y += 10
+    // Manipulação — fonte média (font "2" = 12x20)
+    cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIP.: ${fmtDate(dataManipulacao)}"`)
+    y += 24
     // Validade — fonte grande e negrito (mesmo tamanho do nome, font "4")
-    cmds.push(`TEXT ${left},${y},"4",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
-    y += 42
+    cmds.push(`TEXT ${left},${y},"4",0,1,1,"VAL.: ${fmtDate(validade)}"`)
+    y += 36
     if (pesoG) {
-      cmds.push(`TEXT ${left},${y},"3",0,1,1,"PESO: ${pesoG}g"`)
-      y += 30
+      cmds.push(`TEXT ${left},${y},"2",0,1,1,"PESO: ${pesoG}g"`)
+      y += 24
     }
     // Separador
-    y += 4
-    cmds.push(`BAR ${left},${y},432,2`)
-    y += 18
-    // Linha RESP. (esquerda) + QR code (direita)
+    y += 2
+    cmds.push(`BAR ${left},${y},448,2`)
+    y += 8
+    // Linha inferior: RESP./endereco/#ID (esquerda) + QR code (direita)
     const rowY = y
-    cmds.push(`TEXT ${left},${rowY + 28},"3",0,1,1,"RESP.: ${ascii(respNome)}"`)
-    cmds.push(`QRCODE 300,${rowY},M,4,A,0,"${id}"`)
-    y = rowY + 150
+    cmds.push(`TEXT ${left},${rowY + 4},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
+    cmds.push(`QRCODE 366,${rowY},M,3,A,0,"${id}"`)
+    let yLeft = rowY + 28
     if (unit?.address) {
-      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(unit.address)}"`)
-      y += 18
+      cmds.push(`TEXT ${left},${yLeft},"1",0,1,1,"${ascii(unit.address)}"`)
+      yLeft += 18
     }
-    cmds.push(`TEXT ${left},${y},"2",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
+    cmds.push(`TEXT ${left},${yLeft},"2",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
     cmds.push('PRINT 1')
 
     return cmds.join('\r\n') + '\r\n'
