@@ -305,9 +305,10 @@ export function LabelForm({
     setTimeout(() => w.print(), 250)
   }
 
-  // Impressão via RawBT (Android) — envia comandos TSPL crus em base64 para impressora Bluetooth de etiquetas.
-  function handlePrintRawBT() {
-    if (!savedLabel) return
+  // Monta a string de comandos TSPL da etiqueta 60x60mm (480x480 dots @ 203dpi),
+  // replicando o layout do preview visual. Compartilhada por ambas as variantes RawBT.
+  function buildTSPL(): string {
+    if (!savedLabel) return ''
     const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
     const unit = savedLabel.unit
@@ -318,7 +319,6 @@ export function LabelForm({
     const ascii = (s: string) =>
       (s ?? '').normalize('NFD').replace(diacritics, '').replace(/"/g, "'")
 
-    // 60mm @ 203dpi = 480 dots. Layout vertical proporcional ao preview visual.
     const left = 24
     const cmds: string[] = []
     cmds.push('SIZE 60 mm, 60 mm')
@@ -368,17 +368,41 @@ export function LabelForm({
     cmds.push(`TEXT ${left},${y},"2",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
     cmds.push('PRINT 1')
 
-    const tsplCommand = cmds.join('\r\n') + '\r\n'
+    return cmds.join('\r\n') + '\r\n'
+  }
 
-    function tsplToBase64(tspl: string): string {
-      const bytes = new TextEncoder().encode(tspl)
-      let bin = ''
-      bytes.forEach(b => (bin += String.fromCharCode(b)))
-      return btoa(bin)
+  // Bytes UTF-8 → base64 (método seguro, evita corromper bytes >127 que btoa direto quebraria).
+  function tsplToBase64(tspl: string): string {
+    const bytes = new TextEncoder().encode(tspl)
+    let bin = ''
+    bytes.forEach(b => (bin += String.fromCharCode(b)))
+    return btoa(bin)
+  }
+
+  // VARIANTE PRINCIPAL — content-type text/prn força o RawBT a repassar os bytes crus
+  // (passthrough) em vez de rasterizar como texto via engine ESC/POS.
+  function handlePrintRawBT() {
+    if (!savedLabel) return
+    const b64 = tsplToBase64(buildTSPL())
+    const url = `intent:data:text/prn;base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`
+    window.location.href = url
+  }
+
+  // VARIANTE FALLBACK — Job JSON do RawBT com printer "raw_transfer" + comando sendBytes.
+  function handlePrintRawBTJson() {
+    if (!savedLabel) return
+    const b64 = tsplToBase64(buildTSPL())
+    const job = {
+      template: 'none',
+      printer: 'raw_transfer',
+      commands: [{ command: 'sendBytes', base64: b64 }],
     }
-
-    const b64 = tsplToBase64(tsplCommand)
-    const url = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`
+    const url =
+      'intent:#Intent;' +
+      'action=rawbt.action.PRINT;' +
+      'package=ru.a402d.rawbtprinter;' +
+      'S.rawbt.action.extra.JOB_JSON=' + encodeURIComponent(JSON.stringify(job)) + ';' +
+      'end;'
     window.location.href = url
   }
 
@@ -655,6 +679,11 @@ export function LabelForm({
               className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
               <Bluetooth className="h-4 w-4" />
               Imprimir (Bluetooth)
+            </button>
+            <button onClick={handlePrintRawBTJson}
+              className="flex items-center gap-2 rounded-lg border border-ember-soft px-3 py-2 text-xs font-medium text-ember hover:bg-ember-soft transition-colors">
+              <Bluetooth className="h-3.5 w-3.5" />
+              Bluetooth (modo 2)
             </button>
           </div>
         </div>
