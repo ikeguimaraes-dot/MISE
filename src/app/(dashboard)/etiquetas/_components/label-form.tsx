@@ -264,18 +264,19 @@ export function LabelForm({
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
     const unit = savedLabel.unit
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
-<style>@page{size:6cm 6cm;margin:0}body{margin:0;padding:0;font-family:monospace}
-.label{width:6cm;height:6cm;padding:4mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt}
-.nome{font-size:12pt;font-weight:bold;line-height:1.1}
-.cnpj{font-size:7pt;margin-top:1mm}
-.metodo{font-size:8pt;margin-top:1mm}
-.sep{border:0;border-top:1px solid #000;margin:2mm 0}
-.dates{font-size:8pt;line-height:1.4}.dates b{font-weight:bold}
-.validade{font-size:12pt;font-weight:bold;line-height:1.2}
+<style>@page{size:60mm 60mm;margin:0}
+html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:monospace}
+.label{width:60mm;height:60mm;padding:3mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:8pt;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
+.nome{font-size:12pt;font-weight:bold;line-height:1.05}
+.cnpj{font-size:6pt;margin-top:0.5mm}
+.metodo{font-size:8pt;margin-top:0.5mm}
+.sep{border:0;border-top:1px solid #000;margin:1mm 0}
+.dates{font-size:8pt;line-height:1.3}.dates b{font-weight:bold}
+.validade{font-size:12pt;font-weight:bold;line-height:1.15}
 .row{display:flex;justify-content:space-between;align-items:flex-end;gap:2mm}
 .resp{font-size:8pt;font-weight:bold}.qr{flex-shrink:0}
-.endereco{font-size:6pt;line-height:1.2;margin-top:1mm}
-.id{font-size:8pt;margin-top:1mm}
+.endereco{font-size:5pt;line-height:1.1;margin-top:0.5mm}
+.id{font-size:8pt;margin-top:0.5mm}
 </style></head><body>
 <div class="label">
   <div>
