@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { Printer, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Printer, AlertTriangle, CheckCircle, Bluetooth } from 'lucide-react'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -305,6 +305,83 @@ export function LabelForm({
     setTimeout(() => w.print(), 250)
   }
 
+  // Impressão via RawBT (Android) — envia comandos TSPL crus em base64 para impressora Bluetooth de etiquetas.
+  function handlePrintRawBT() {
+    if (!savedLabel) return
+    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
+    const unit = savedLabel.unit
+    const id = savedLabel.id
+
+    // Remove acentos/aspas para os fonts internos (bitmap) da impressora TSPL.
+    const diacritics = new RegExp('[\\u0300-\\u036f]', 'g')
+    const ascii = (s: string) =>
+      (s ?? '').normalize('NFD').replace(diacritics, '').replace(/"/g, "'")
+
+    // 60mm @ 203dpi = 480 dots. Layout vertical proporcional ao preview visual.
+    const left = 24
+    const cmds: string[] = []
+    cmds.push('SIZE 60 mm, 60 mm')
+    cmds.push('GAP 2 mm, 0 mm')
+    cmds.push('DIRECTION 1')
+    cmds.push('CLS')
+
+    let y = 24
+    // Nome do produto — fonte grande (font "4" = 24x32)
+    cmds.push(`TEXT ${left},${y},"4",0,1,1,"${ascii(savedLabel.nome)}"`)
+    y += 40
+    if (unit?.cnpj) {
+      cmds.push(`TEXT ${left},${y},"1",0,1,1,"CNPJ: ${ascii(unit.cnpj)}"`)
+      y += 20
+    }
+    if (metodo) {
+      cmds.push(`TEXT ${left},${y},"2",0,1,1,"${ascii(metodo)}"`)
+      y += 26
+    }
+    // Separador
+    y += 6
+    cmds.push(`BAR ${left},${y},432,2`)
+    y += 16
+    // Manipulação — fonte média (font "3" = 16x24)
+    cmds.push(`TEXT ${left},${y},"3",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
+    y += 30
+    // Validade — fonte grande e negrito (mesmo tamanho do nome, font "4")
+    cmds.push(`TEXT ${left},${y},"4",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
+    y += 42
+    if (pesoG) {
+      cmds.push(`TEXT ${left},${y},"3",0,1,1,"PESO: ${pesoG}g"`)
+      y += 30
+    }
+    // Separador
+    y += 4
+    cmds.push(`BAR ${left},${y},432,2`)
+    y += 18
+    // Linha RESP. (esquerda) + QR code (direita)
+    const rowY = y
+    cmds.push(`TEXT ${left},${rowY + 28},"3",0,1,1,"RESP.: ${ascii(respNome)}"`)
+    cmds.push(`QRCODE 300,${rowY},M,4,A,0,"${id}"`)
+    y = rowY + 150
+    if (unit?.address) {
+      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(unit.address)}"`)
+      y += 18
+    }
+    cmds.push(`TEXT ${left},${y},"2",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
+    cmds.push('PRINT 1')
+
+    const tsplCommand = cmds.join('\r\n') + '\r\n'
+
+    function tsplToBase64(tspl: string): string {
+      const bytes = new TextEncoder().encode(tspl)
+      let bin = ''
+      bytes.forEach(b => (bin += String.fromCharCode(b)))
+      return btoa(bin)
+    }
+
+    const b64 = tsplToBase64(tsplCommand)
+    const url = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`
+    window.location.href = url
+  }
+
   return (
     <div className="rounded-xl border border-edge bg-surface">
       <div className="border-b border-edge px-5 py-4">
@@ -568,11 +645,18 @@ export function LabelForm({
             </div>
             <div style={{ fontSize: '7pt', color: '#999' }}>#{savedLabel.id.slice(0, 8).toUpperCase()}</div>
           </div>
-          <button onClick={handlePrint}
-            className="flex items-center gap-2 rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
-            <Printer className="h-4 w-4" />
-            Imprimir Etiqueta
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={handlePrint}
+              className="flex items-center gap-2 rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
+              <Printer className="h-4 w-4" />
+              Imprimir Etiqueta
+            </button>
+            <button onClick={handlePrintRawBT}
+              className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
+              <Bluetooth className="h-4 w-4" />
+              Imprimir (Bluetooth)
+            </button>
+          </div>
         </div>
       )}
     </div>
