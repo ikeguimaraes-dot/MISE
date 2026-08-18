@@ -10,6 +10,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Machine-to-machine routes authenticate with their own Bearer token.
+  if (request.nextUrl.pathname.startsWith('/api/integrations/kph/')) {
+    return NextResponse.next()
+  }
+
   const miseSession = request.cookies.get('mise-session')
   if (miseSession?.value) {
     return NextResponse.next()

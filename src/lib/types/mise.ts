@@ -120,8 +120,8 @@ export type ChecklistExecution = {
   percentual: number
   turno: string | null
   data_execucao: string
-  started_at: string
-  submitted_at: string | null
+  iniciado_em: string
+  concluido_em: string | null
   created_at: string
 }
 
