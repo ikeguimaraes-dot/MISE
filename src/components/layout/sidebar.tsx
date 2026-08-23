@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
-  Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck,
+  Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -27,6 +27,7 @@ const cadastrosItems = [
 
 const relatoriosItems = [
   { href: '/relatorios', label: 'Produção', icon: FileText },
+  { href: '/relatorio-diario', label: 'Relatório Diário', icon: BookOpen },
 ]
 
 const configuracoesItems = [

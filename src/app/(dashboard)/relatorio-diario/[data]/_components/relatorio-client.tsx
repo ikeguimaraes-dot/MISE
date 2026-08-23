@@ -1,0 +1,366 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
+import { ArrowLeft, Check } from 'lucide-react'
+import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE } from '@/app/api/relatorio-diario/_schema'
+import type { SetorAvaliacao } from '@/app/api/relatorio-diario/_schema'
+import { BlocoHorarios, type HorariosState } from './bloco-horarios'
+import { BlocoVendas, type VendasState } from './bloco-vendas'
+import { BlocoClima, type ClimaState } from './bloco-clima'
+import { BlocoSetores, type AvaliacaoSetoresState } from './bloco-setores'
+import { BlocoResumo } from './bloco-resumo'
+import { BlocoOcorrencia, type OcorrenciaState } from './bloco-ocorrencia'
+import { BlocoEquipe, type EquipeState } from './bloco-equipe'
+import { CampoResponsavel } from './campo-responsavel'
+import { Bloco86 } from './bloco-86'
+import { BlocoFeedback } from './bloco-feedback'
+import { BlocoRh } from './bloco-rh'
+import { BlocoPortaria } from './bloco-portaria'
+
+type FormState = {
+  horarios: HorariosState
+  vendas: VendasState
+  clima: ClimaState
+  setores: AvaliacaoSetoresState
+  resumo: string
+  ocorrencia: OcorrenciaState
+  equipe: EquipeState
+  responsavel: string
+}
+
+type FormErros = {
+  vendas_ab?: boolean
+  pax_total?: boolean
+  resumo?: boolean
+  responsavel?: boolean
+  setores?: Partial<Record<SetorAvaliacao, boolean>>
+}
+
+function estadoInicial(row: Record<string, unknown> | undefined): FormState {
+  return {
+    horarios: {
+      abertura: String(row?.horario_abertura ?? ''),
+      ultimo_cliente: String(row?.horario_ultimo_cliente ?? ''),
+      fechamento: String(row?.horario_fechamento ?? ''),
+    },
+    vendas: {
+      vendas_ab: String(row?.vendas_ab ?? ''),
+      alimentos: String(row?.alimentos ?? ''),
+      bebidas: String(row?.bebidas ?? ''),
+      taxa_servico: String(row?.taxa_servico ?? ''),
+      delivery: String(row?.delivery ?? ''),
+      portaria_valor: String(row?.portaria_valor ?? ''),
+      pax_total: String(row?.pax_total ?? ''),
+      perda_produto: String(row?.perda_produto ?? ''),
+    },
+    clima: {
+      tempo: String(row?.tempo ?? ''),
+      temperatura: String(row?.temperatura_c ?? ''),
+    },
+    setores: Object.fromEntries(
+      SETORES_AVALIACAO.map(s => [s, { nota: null, obs: '' }])
+    ) as AvaliacaoSetoresState,
+    resumo: String(row?.resumo_operacional ?? ''),
+    ocorrencia: {
+      houve: Boolean(row?.houve_ocorrencia),
+      descricao: String(row?.observacao_ocorrencia ?? ''),
+    },
+    equipe: Object.fromEntries(
+      SETORES_EQUIPE.map(s => [s, { houveFalta: false, nomes: [''] }])
+    ) as EquipeState,
+    responsavel: String(row?.responsavel_preenchimento ?? ''),
+  }
+}
+
+function fmtDataPorExtenso(dataParam: string): string {
+  const d = new Date(`${dataParam}T12:00:00Z`)
+  const diaSemana = d.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' })
+  const dia = d.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: 'UTC' })
+  const mes = d.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' })
+  const ano = d.getFullYear()
+  return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${dia} de ${mes} de ${ano}`
+}
+
+export function RelatorioClient({
+  relatorio,
+  periodos,
+  periodosAtivos,
+  unitId,
+  unitName,
+  dataParam,
+  role,
+}: {
+  relatorio: Record<string, unknown>
+  periodos: Record<string, unknown>[]
+  periodosAtivos: string[]
+  unitId: string
+  unitName: string
+  dataParam: string
+  role: string
+}) {
+  const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  const isHoje = dataParam === hoje
+  const relatorioFechado = relatorio.status === 'enviado'
+
+  const [periodoAtivo, setPeriodoAtivo] = useState(periodosAtivos[0] ?? 'almoco')
+  const [form, setForm] = useState<FormState>(() =>
+    estadoInicial(periodos.find(p => p.tipo === periodoAtivo) as Record<string, unknown>)
+  )
+  const [erros, setErros] = useState<FormErros>({})
+  const [salvando, setSalvando] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const enviados = periodos.filter(
+    p => p.enviado_em && periodosAtivos.includes(p.tipo as string)
+  )
+  const progressoPct = periodosAtivos.length > 0
+    ? Math.round((enviados.length / periodosAtivos.length) * 100)
+    : 0
+
+  const periodoAtualEnviado = periodos.some(
+    p => p.tipo === periodoAtivo && p.enviado_em
+  )
+  const disabled = periodoAtualEnviado || relatorioFechado || role === 'cozinheiro'
+
+  // Ao trocar de aba, recarregar estado do período
+  useEffect(() => {
+    setForm(estadoInicial(
+      periodos.find(p => p.tipo === periodoAtivo) as Record<string, unknown>
+    ))
+    setErros({})
+  }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleFormChange(partial: Partial<FormState>) {
+    const next = { ...form, ...partial }
+    setForm(next)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => salvarRascunho(next), 1500)
+  }
+
+  async function salvarRascunho(estado: FormState) {
+    setSalvando(true)
+    await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        unit_id: unitId,
+        horario_abertura: estado.horarios.abertura || null,
+        horario_ultimo_cliente: estado.horarios.ultimo_cliente || null,
+        horario_fechamento: estado.horarios.fechamento || null,
+        vendas_ab: estado.vendas.vendas_ab ? parseFloat(estado.vendas.vendas_ab) : null,
+        alimentos: estado.vendas.alimentos ? parseFloat(estado.vendas.alimentos) : null,
+        bebidas: estado.vendas.bebidas ? parseFloat(estado.vendas.bebidas) : null,
+        taxa_servico: estado.vendas.taxa_servico ? parseFloat(estado.vendas.taxa_servico) : null,
+        delivery: estado.vendas.delivery ? parseFloat(estado.vendas.delivery) : null,
+        portaria_valor: estado.vendas.portaria_valor ? parseFloat(estado.vendas.portaria_valor) : null,
+        pax_total: estado.vendas.pax_total ? parseInt(estado.vendas.pax_total) : null,
+        perda_produto: estado.vendas.perda_produto ? parseFloat(estado.vendas.perda_produto) : null,
+        tempo: estado.clima.tempo || null,
+        temperatura_c: estado.clima.temperatura ? parseFloat(estado.clima.temperatura) : null,
+        resumo_operacional: estado.resumo || null,
+        houve_ocorrencia: estado.ocorrencia.houve,
+        observacao_ocorrencia: estado.ocorrencia.descricao || null,
+        responsavel_preenchimento: estado.responsavel || null,
+      }),
+    })
+    setSalvando(false)
+  }
+
+  function validar(estado: FormState): { valido: boolean; erros: FormErros; primeiroId: string | null } {
+    const e: FormErros = {}
+    let primeiroId: string | null = null
+
+    if (!estado.vendas.vendas_ab) { e.vendas_ab = true; primeiroId ??= 'vendas_ab' }
+    if (!estado.vendas.pax_total) { e.pax_total = true; primeiroId ??= 'pax_total' }
+    if (!estado.resumo.trim()) { e.resumo = true; primeiroId ??= 'resumo_operacional' }
+    if (!estado.responsavel.trim()) { e.responsavel = true; primeiroId ??= 'responsavel_preenchimento' }
+
+    const setoresErro: FormErros['setores'] = {}
+    for (const setor of SETORES_AVALIACAO) {
+      const av = estado.setores[setor]
+      if (av.nota !== null && av.nota <= 2 && !av.obs.trim()) {
+        setoresErro[setor] = true
+        primeiroId ??= `setor-obs-${setor}`
+      }
+    }
+    if (Object.keys(setoresErro).length) e.setores = setoresErro
+
+    return { valido: Object.keys(e).length === 0, erros: e, primeiroId }
+  }
+
+  async function handleEnviar() {
+    const { valido, erros: novosErros, primeiroId } = validar(form)
+    if (!valido) {
+      setErros(novosErros)
+      if (primeiroId) {
+        document.getElementById(primeiroId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      return
+    }
+    setErros({})
+    setEnviando(true)
+
+    // Save-then-submit: garantir que o período está persistido antes do envio
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    await salvarRascunho(form)
+
+    const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo}/enviar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unit_id: unitId }),
+    })
+
+    if (!res.ok) {
+      const { error } = await res.json()
+      alert(error)
+      setEnviando(false)
+      return
+    }
+
+    window.location.reload()
+  }
+
+  const periodoRow = periodos.find(p => p.tipo === periodoAtivo)
+
+  return (
+    <div className="p-6 space-y-6 max-w-2xl mx-auto pb-24">
+      {/* Cabeçalho */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          <Link href={`/relatorio-diario?unit_id=${unitId}`} className="text-ink-muted hover:text-ink transition-colors">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <h1 className="text-base font-semibold text-ink">{fmtDataPorExtenso(dataParam)}</h1>
+            {isHoje && (
+              <span className="rounded-full bg-ember/10 px-2 py-0.5 text-xs font-semibold text-ember">Hoje</span>
+            )}
+          </div>
+        </div>
+        <p className="pl-8 text-sm text-ink-muted">{unitName} · Relatório Diário</p>
+      </div>
+
+      {/* Progresso */}
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs text-ink-muted">
+          <span>{enviados.length} de {periodosAtivos.length} períodos enviados</span>
+          <span>{progressoPct}%</span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-surface-raised overflow-hidden">
+          <div className="h-full rounded-full bg-ember transition-all" style={{ width: `${progressoPct}%` }} />
+        </div>
+      </div>
+
+      {/* Abas */}
+      <div className="flex gap-2">
+        {periodosAtivos.map(p => {
+          const enviado = periodos.some(row => row.tipo === p && row.enviado_em)
+          return (
+            <button
+              key={p}
+              onClick={() => setPeriodoAtivo(p)}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                periodoAtivo === p ? 'bg-ember text-white' : 'bg-surface border border-edge text-ink-muted hover:text-ink'
+              }`}
+            >
+              {PERIODO_LABEL[p] ?? p}
+              {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Formulário */}
+      <div className="space-y-4">
+        <BlocoHorarios
+          value={form.horarios}
+          onChange={horarios => handleFormChange({ horarios })}
+          disabled={disabled}
+        />
+        <BlocoVendas
+          value={form.vendas}
+          onChange={vendas => handleFormChange({ vendas })}
+          disabled={disabled}
+          erros={{ vendas_ab: erros.vendas_ab, pax_total: erros.pax_total }}
+        />
+        <BlocoClima
+          value={form.clima}
+          onChange={clima => handleFormChange({ clima })}
+          disabled={disabled}
+        />
+        <BlocoSetores
+          value={form.setores}
+          onChange={setores => handleFormChange({ setores })}
+          disabled={disabled}
+          erros={erros.setores}
+        />
+        <BlocoResumo
+          value={form.resumo}
+          onChange={resumo => handleFormChange({ resumo })}
+          disabled={disabled}
+          erro={erros.resumo}
+        />
+        <BlocoOcorrencia
+          value={form.ocorrencia}
+          onChange={ocorrencia => handleFormChange({ ocorrencia })}
+          disabled={disabled}
+        />
+        <BlocoEquipe
+          value={form.equipe}
+          onChange={equipe => handleFormChange({ equipe })}
+          disabled={disabled}
+        />
+
+        {/* Registros colapsáveis */}
+        <Bloco86 relatorioData={dataParam} unitId={unitId} disabled={disabled} />
+        <BlocoFeedback tipo="elogio" relatorioData={dataParam} unitId={unitId} disabled={disabled} />
+        <BlocoFeedback tipo="reclamacao" relatorioData={dataParam} unitId={unitId} disabled={disabled} />
+        <BlocoRh relatorioData={dataParam} unitId={unitId} disabled={disabled} />
+        <BlocoPortaria
+          relatorioData={dataParam}
+          unitId={unitId}
+          disabled={disabled}
+          portariaInicial={
+            periodoRow && typeof periodoRow === 'object'
+              ? undefined  // portaria vem de op_portaria separado — buscar se necessário
+              : undefined
+          }
+        />
+
+        <CampoResponsavel
+          value={form.responsavel}
+          onChange={responsavel => handleFormChange({ responsavel })}
+          disabled={disabled}
+          erro={erros.responsavel}
+        />
+      </div>
+
+      {/* Rodapé: autosave indicator + botão de envio */}
+      <div className="space-y-3 pt-2">
+        {salvando && (
+          <p className="text-center text-xs text-ink-subtle">Salvando rascunho…</p>
+        )}
+        {!periodoAtualEnviado && !relatorioFechado ? (
+          <button
+            onClick={handleEnviar}
+            disabled={enviando || disabled}
+            className="w-full rounded-xl bg-ember py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {enviando ? 'Enviando…' : `Enviar ${PERIODO_LABEL[periodoAtivo] ?? periodoAtivo}`}
+          </button>
+        ) : periodoAtualEnviado ? (
+          <div className="w-full rounded-xl border border-fresh/30 bg-fresh/10 py-3 text-center text-sm font-semibold text-fresh-bright">
+            ✓ {PERIODO_LABEL[periodoAtivo]} enviado
+          </div>
+        ) : null}
+        {relatorioFechado && (
+          <p className="text-center text-xs text-ink-subtle">
+            Todos os períodos enviados — relatório fechado.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
