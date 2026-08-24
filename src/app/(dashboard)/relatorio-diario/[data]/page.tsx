@@ -33,7 +33,7 @@ export default async function RelatorioPage({
   if (!relatorio) {
     const { data: created } = await supabase
       .from('op_relatorio_diario')
-      .insert({ unit_id, data: dataParam, status: 'em_aberto' })
+      .insert({ unit_id, data: dataParam, status: 'rascunho' })
       .select('*')
       .single()
     relatorio = created
@@ -41,8 +41,8 @@ export default async function RelatorioPage({
   if (!relatorio) redirect('/relatorio-diario')
 
   const [periodosRes, unitConfigRes, unitRes] = await Promise.all([
-    supabase.from('op_periodo').select('*').eq('relatorio_id', relatorio.id),
-    supabase.from('op_unit_config').select('periodos_ativos, pax_por_genero').eq('unit_id', unit_id).single(),
+    supabase.from('op_relatorio_periodo').select('*').eq('relatorio_id', relatorio.id),
+    supabase.from('op_unit_config').select('periodos, pax_por_genero').eq('unit_id', unit_id).single(),
     supabase.from('units').select('name').eq('id', unit_id).single(),
   ])
 
@@ -50,7 +50,7 @@ export default async function RelatorioPage({
     <RelatorioClient
       relatorio={relatorio}
       periodos={periodosRes.data ?? []}
-      periodosAtivos={(unitConfigRes.data?.periodos_ativos as string[] | null) ?? ['almoco', 'jantar']}
+      periodosAtivos={(unitConfigRes.data?.periodos as string[] | null) ?? ['almoco', 'jantar']}
       unitId={unit_id}
       unitName={unitRes.data?.name ?? ''}
       dataParam={dataParam}

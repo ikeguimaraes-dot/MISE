@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { createServiceClient } from './supabase/server'
+import { createClient, createServiceClient } from './supabase/server'
 
 export type MiseSession = {
   sessionId: string
@@ -8,7 +8,49 @@ export type MiseSession = {
   role: 'admin' | 'gerente' | 'cozinheiro'
 }
 
+// Gestores autenticados via Supabase Auth (email/senha).
+// Tenta primeiro; se não há sessão Auth, retorna null para o fallback PIN.
+async function getGestorSession(): Promise<MiseSession | null> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const service = createServiceClient()
+  const { data: employee } = await service
+    .from('employees')
+    .select('id, nome, role_id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!employee) return null
+
+  let role: 'admin' | 'gerente' = 'gerente'
+  if (employee.role_id) {
+    const { data: roleData } = await service
+      .from('roles')
+      .select('name, permissions')
+      .eq('id', employee.role_id)
+      .single()
+    if (roleData) {
+      const perms = roleData.permissions as string[]
+      if (perms.includes('*') || roleData.name === 'founder') role = 'admin'
+    }
+  }
+
+  return {
+    sessionId: user.id,
+    employeeId: employee.id,
+    employeeName: employee.nome ?? 'Gestor',
+    role,
+  }
+}
+
 export async function getMiseSession(): Promise<MiseSession | null> {
+  // 1. Tenta sessão de gestor (Supabase Auth)
+  const gestorSession = await getGestorSession()
+  if (gestorSession) return gestorSession
+
+  // 2. Fallback: sessão de PIN (cozinheiros / funcionários de piso)
   const cookieStore = await cookies()
   const sessionId = cookieStore.get('mise-session')?.value
   if (!sessionId) return null
