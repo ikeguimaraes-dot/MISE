@@ -44,10 +44,10 @@ export async function POST(
 
   // 3. Buscar período — save-then-submit: deve existir (autosave garantiu isso)
   const { data: per } = await supabase
-    .from('op_periodo')
+    .from('op_relatorio_periodo')
     .select('id, enviado_em')
     .eq('relatorio_id', relatorio.id)
-    .eq('tipo', periodo)
+    .eq('periodo', periodo)
     .single()
 
   if (!per) {
@@ -60,31 +60,43 @@ export async function POST(
     return NextResponse.json({ error: 'Período já enviado.' }, { status: 409 })
   }
 
-  // 4. Marcar período como enviado
+  // 4. Resolver user_id do funcionário — enviado_por faz FK para auth.users, não employees
+  const { data: emp } = await supabase
+    .from('employees')
+    .select('user_id')
+    .eq('id', auth.employeeId)
+    .single()
+  const userId: string | null = emp?.user_id ?? null
+
   const agora = new Date().toISOString()
+  const updateFields: Record<string, unknown> = { enviado_em: agora, status: 'enviado' }
+  if (userId) updateFields.enviado_por = userId
+
   const { error: errPer } = await supabase
-    .from('op_periodo')
-    .update({ enviado_por: auth.employeeId, enviado_em: agora })
+    .from('op_relatorio_periodo')
+    .update(updateFields)
     .eq('id', per.id)
 
   if (errPer) return NextResponse.json({ error: errPer.message }, { status: 500 })
 
   // 5. Verificar se TODOS os períodos configurados estão agora enviados
   const { data: todosPeriodos } = await supabase
-    .from('op_periodo')
-    .select('tipo, enviado_em')
+    .from('op_relatorio_periodo')
+    .select('periodo, enviado_em')
     .eq('relatorio_id', relatorio.id)
-    .in('tipo', ativos)
+    .in('periodo', ativos)
 
   const todosEnviados = ativos.every(tipo =>
-    todosPeriodos?.some(p => p.tipo === tipo && p.enviado_em)
+    todosPeriodos?.some(p => p.periodo === tipo && p.enviado_em)
   )
 
   // 6. Fechar o dia se todos enviados
   if (todosEnviados) {
+    const relUpdate: Record<string, unknown> = { status: 'enviado', enviado_em: agora }
+    if (userId) relUpdate.enviado_por = userId
     await supabase
       .from('op_relatorio_diario')
-      .update({ status: 'enviado' })
+      .update(relUpdate)
       .eq('id', relatorio.id)
 
     await emitTurnoEvent({

@@ -8,21 +8,40 @@ async function getRelatorio(supabase: ReturnType<typeof createServiceClient>, un
   return data
 }
 
-// PUT — op_portaria não está exposta no cache REST do PostgREST (divergência vs. prompt)
+// PUT — campos de portaria ficam em op_relatorio_periodo (não há tabela op_portaria)
 export async function PUT(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id } = body
+  const { unit_id, periodo, reservas, no_show, passantes } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+  if (!periodo) return NextResponse.json({ error: 'periodo obrigatório.' }, { status: 400 })
 
   const auth = await canAccessUnit(unit_id)
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status })
 
-  return NextResponse.json(
-    { error: 'op_portaria não disponível no schema REST. Aguardando exposição da tabela no PostgREST.' },
-    { status: 501 }
-  )
+  const supabase = createServiceClient()
+  const relatorio = await getRelatorio(supabase, unit_id, dataParam)
+  if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
+  if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
+
+  const { data, error } = await supabase
+    .from('op_relatorio_periodo')
+    .upsert(
+      {
+        relatorio_id: relatorio.id,
+        periodo,
+        portaria_reservas_previstas: reservas !== undefined ? parseInt(reservas) : null,
+        portaria_noshow_qty: no_show !== undefined ? parseInt(no_show) : null,
+        portaria_passantes: passantes !== undefined ? parseInt(passantes) : null,
+      },
+      { onConflict: 'relatorio_id,periodo' }
+    )
+    .select('id, portaria_reservas_previstas, portaria_noshow_qty, portaria_passantes')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
 }
 
 // POST — adicionar uma desistência diretamente no relatorio (sem op_portaria intermediária)

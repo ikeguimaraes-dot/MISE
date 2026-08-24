@@ -12,9 +12,11 @@ async function getRelatorio(supabase: ReturnType<typeof createServiceClient>, un
 export async function POST(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id, descricao, categoria, valor } = body
+  // introspect: tabela real = op_assinada; colunas: nome, categoria, valor, observacao, periodo, numero_mesa, num_pessoas
+  const { unit_id, nome, categoria, valor, observacao, periodo, numero_mesa, num_pessoas } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+  if (!nome?.trim()) return NextResponse.json({ error: 'nome obrigatório.' }, { status: 400 })
   if (!categoria || !CONTA_ASSINADA_CATEGORIAS.includes(categoria)) {
     return NextResponse.json({ error: 'categoria inválida.' }, { status: 400 })
   }
@@ -28,12 +30,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
   if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
 
   const { data, error } = await supabase
-    .from('op_conta_assinada')
+    .from('op_assinada')
     .insert({
       relatorio_id: relatorio.id,
+      nome: nome.trim(),
       categoria,
-      descricao: descricao?.trim() ?? null,
       valor: valor !== undefined && valor !== '' ? parseFloat(valor) : null,
+      observacao: observacao?.trim() ?? null,
+      periodo: periodo ?? null,
+      numero_mesa: numero_mesa ? parseInt(numero_mesa) : null,
+      num_pessoas: num_pessoas ? parseInt(num_pessoas) : null,
     })
     .select().single()
 
@@ -56,7 +62,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ d
   if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
   if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
 
-  const { error } = await supabase.from('op_conta_assinada').delete().eq('id', id).eq('relatorio_id', relatorio.id)
+  const { error } = await supabase.from('op_assinada').delete().eq('id', id).eq('relatorio_id', relatorio.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

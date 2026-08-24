@@ -32,10 +32,10 @@ export async function PATCH(
   }
 
   const { data: updated, error } = await supabase
-    .from('op_periodo')
+    .from('op_relatorio_periodo')
     .upsert(
-      { relatorio_id: relatorio.id, tipo: periodo, ...campos },
-      { onConflict: 'relatorio_id,tipo' }
+      { relatorio_id: relatorio.id, periodo, ...campos },
+      { onConflict: 'relatorio_id,periodo' }
     )
     .select('id')
     .single()

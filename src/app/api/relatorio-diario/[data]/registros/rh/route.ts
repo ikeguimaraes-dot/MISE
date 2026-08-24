@@ -17,12 +17,15 @@ function validarCpf(cpf: string): boolean {
 export async function POST(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id, employee_name, cpf, tipo, descricao } = body
+  // introspect: tabela real = op_rh_ocorrencia; colunas: nome, cpf, setor, tipo, observacao
+  const { unit_id, nome, cpf, tipo, observacao, setor } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
-  if (!employee_name?.trim()) return NextResponse.json({ error: 'employee_name obrigatório.' }, { status: 400 })
+  if (!nome?.trim()) return NextResponse.json({ error: 'nome obrigatório.' }, { status: 400 })
   if (!OCORRENCIA_RH_TIPOS.includes(tipo)) return NextResponse.json({ error: 'tipo inválido.' }, { status: 400 })
-  if (cpf && !validarCpf(cpf)) return NextResponse.json({ error: 'CPF inválido — deve ter 11 dígitos.' }, { status: 400 })
+  // cpf é NOT NULL em op_rh_ocorrencia — confirmado via introspecção
+  if (!cpf) return NextResponse.json({ error: 'CPF obrigatório.' }, { status: 400 })
+  if (!validarCpf(cpf)) return NextResponse.json({ error: 'CPF inválido — deve ter 11 dígitos.' }, { status: 400 })
 
   const auth = await canAccessUnit(unit_id)
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status })
@@ -35,13 +38,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
   const cpfDigits = cpf ? cpf.replace(/\D/g, '') : null
 
   const { data, error } = await supabase
-    .from('op_ocorrencia_rh')
+    .from('op_rh_ocorrencia')
     .insert({
       relatorio_id: relatorio.id,
-      employee_name: employee_name.trim(),
+      nome: nome.trim(),
       cpf: cpfDigits,
+      setor: setor ?? null,
       tipo,
-      descricao: descricao?.trim() ?? null,
+      observacao: observacao?.trim() ?? null,
     })
     .select().single()
 
@@ -64,7 +68,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ d
   if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
   if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
 
-  const { error } = await supabase.from('op_ocorrencia_rh').delete().eq('id', id).eq('relatorio_id', relatorio.id)
+  const { error } = await supabase.from('op_rh_ocorrencia').delete().eq('id', id).eq('relatorio_id', relatorio.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

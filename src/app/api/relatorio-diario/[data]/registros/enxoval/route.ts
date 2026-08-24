@@ -11,7 +11,8 @@ async function getRelatorio(supabase: ReturnType<typeof createServiceClient>, un
 export async function POST(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id, item, falta, requerimento } = body
+  // introspect: tabela real = op_86_enxoval; colunas: item, requerimento_feito, periodo
+  const { unit_id, item, requerimento, periodo } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
   if (!item?.trim()) return NextResponse.json({ error: 'item obrigatório.' }, { status: 400 })
@@ -25,8 +26,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
   if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
 
   const { data, error } = await supabase
-    .from('op_enxoval')
-    .insert({ relatorio_id: relatorio.id, item: item.trim(), falta: Boolean(falta), requerimento: Boolean(requerimento) })
+    .from('op_86_enxoval')
+    .insert({ relatorio_id: relatorio.id, item: item.trim(), requerimento_feito: Boolean(requerimento), periodo: periodo ?? null })
     .select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -48,7 +49,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ d
   if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
   if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
 
-  const { error } = await supabase.from('op_enxoval').delete().eq('id', id).eq('relatorio_id', relatorio.id)
+  const { error } = await supabase.from('op_86_enxoval').delete().eq('id', id).eq('relatorio_id', relatorio.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

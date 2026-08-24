@@ -41,14 +41,17 @@ export const PERIODO_LABEL: Record<string, string> = {
   manha: 'Manhã',
 }
 
-// Tabelas confirmadas na introspecção (2026-08-24):
-// AUSENTES do cache REST: op_periodo, op_portaria, op_enxoval, op_ocorrencia_rh, op_conta_assinada
-// PRESENTES: op_relatorio_diario, op_86, op_feedback_cliente, op_portaria_desistencia, op_pendura, op_unit_config
+// Nomes reais confirmados via information_schema.columns (2026-08-24).
+// Portaria não tem tabela própria: campos ficam em op_relatorio_periodo.
 export const SCHEMA = {
   relatorio: 'op_relatorio_diario',
+  periodo: 'op_relatorio_periodo',
   op_86: 'op_86',
+  enxoval: 'op_86_enxoval',
   feedback: 'op_feedback_cliente',
+  rh: 'op_rh_ocorrencia',
   pendura: 'op_pendura',
+  conta_assinada: 'op_assinada',
   portaria_desistencia: 'op_portaria_desistencia',
   unit_config: 'op_unit_config',
 } as const
