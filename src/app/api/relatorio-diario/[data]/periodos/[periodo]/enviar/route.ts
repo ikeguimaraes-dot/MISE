@@ -18,14 +18,14 @@ export async function POST(
 
   const supabase = createServiceClient()
 
-  // 1. Buscar config da unidade — nunca aceitar periodos_ativos do payload
+  // 1. Buscar config da unidade — nunca aceitar periodos do payload
   const { data: unitConfig } = await supabase
     .from('op_unit_config')
-    .select('periodos_ativos')
+    .select('periodos')
     .eq('unit_id', unit_id)
     .single()
 
-  const ativos: string[] = (unitConfig?.periodos_ativos as string[] | null) ?? ['almoco', 'jantar']
+  const ativos: string[] = (unitConfig?.periodos as string[] | null) ?? ['almoco', 'jantar']
 
   // 2. Buscar relatorio
   const { data: relatorio } = await supabase

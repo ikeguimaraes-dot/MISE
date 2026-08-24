@@ -1,5 +1,4 @@
-// Derivado do plano + introspecção parcial — confirmar colunas críticas via Sprint 0
-// quando a conexão com o banco estiver disponível.
+// Confirmado via introspecção Sprint 0 (2026-08-24)
 
 export const OP_86_MOTIVOS = [
   'compra_gestao',
@@ -19,7 +18,8 @@ export type SetorAvaliacao = typeof SETORES_AVALIACAO[number]
 export const SETORES_EQUIPE = ['Salão', 'Cozinha', 'Bar', 'Limpeza', 'Caixa'] as const
 export type SetorEquipe = typeof SETORES_EQUIPE[number]
 
-export const FEEDBACK_CATEGORIAS = ['Produto', 'Serviço', 'Pagamento', 'Ambiente', 'Outro'] as const
+// Enum real: op_feedback_categoria — valores confirmados via introspecção
+export const FEEDBACK_CATEGORIAS = ['prato', 'servico', 'ambiente'] as const
 export type FeedbackCategoria = typeof FEEDBACK_CATEGORIAS[number]
 
 export const OCORRENCIA_RH_TIPOS = [
@@ -41,22 +41,14 @@ export const PERIODO_LABEL: Record<string, string> = {
   manha: 'Manhã',
 }
 
-// Nomes de tabelas e colunas a confirmar via introspecção:
-// - op_86: coluna produto_nome (NÃO produto)
-// - op_feedback_cliente: coluna produto (NÃO produto_nome)
-// - op_periodo: confirmar nome exato da tabela e colunas enviado_por / enviado_em
-// - op_portaria_desistencia: motivo deve ser nullable
-// - employees: confirmar existência de coluna unit_id
+// Tabelas confirmadas na introspecção (2026-08-24):
+// AUSENTES do cache REST: op_periodo, op_portaria, op_enxoval, op_ocorrencia_rh, op_conta_assinada
+// PRESENTES: op_relatorio_diario, op_86, op_feedback_cliente, op_portaria_desistencia, op_pendura, op_unit_config
 export const SCHEMA = {
   relatorio: 'op_relatorio_diario',
-  periodo: 'op_periodo',
   op_86: 'op_86',
-  enxoval: 'op_enxoval',
   feedback: 'op_feedback_cliente',
-  rh: 'op_ocorrencia_rh',
   pendura: 'op_pendura',
-  conta_assinada: 'op_conta_assinada',
-  portaria: 'op_portaria',
   portaria_desistencia: 'op_portaria_desistencia',
   unit_config: 'op_unit_config',
 } as const

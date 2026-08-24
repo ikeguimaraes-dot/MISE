@@ -11,9 +11,11 @@ async function getRelatorio(supabase: ReturnType<typeof createServiceClient>, un
 export async function POST(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id, descricao, valor } = body
+  // introspect confirmou: colunas reais são nome, comanda, cpf, valor, motivo
+  const { unit_id, nome, comanda, cpf, valor, motivo } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+  if (!nome?.trim()) return NextResponse.json({ error: 'nome obrigatório.' }, { status: 400 })
   if (valor === undefined || valor === null || valor === '') {
     return NextResponse.json({ error: 'valor obrigatório.' }, { status: 400 })
   }
@@ -28,7 +30,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
 
   const { data, error } = await supabase
     .from('op_pendura')
-    .insert({ relatorio_id: relatorio.id, descricao: descricao?.trim() ?? null, valor: parseFloat(valor) })
+    .insert({
+      relatorio_id: relatorio.id,
+      nome: nome.trim(),
+      comanda: comanda?.trim() ?? null,
+      cpf: cpf?.replace(/\D/g, '') || null,
+      valor: parseFloat(valor),
+      motivo: motivo?.trim() ?? null,
+    })
     .select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

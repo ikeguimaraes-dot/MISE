@@ -29,7 +29,7 @@ export async function GET(
 
   const { data: created, error } = await supabase
     .from('op_relatorio_diario')
-    .insert({ unit_id, data: dataParam, status: 'em_aberto' })
+    .insert({ unit_id, data: dataParam, status: 'rascunho' })
     .select()
     .single()
 

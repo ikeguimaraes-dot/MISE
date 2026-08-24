@@ -12,12 +12,15 @@ async function getRelatorio(supabase: ReturnType<typeof createServiceClient>, un
 export async function POST(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id, tipo, produto, categoria, descricao } = body
+  const { unit_id, tipo, produto, categoria, descricao, periodo } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
   if (!['elogio', 'reclamacao'].includes(tipo)) return NextResponse.json({ error: 'tipo inválido.' }, { status: 400 })
   if (categoria && !FEEDBACK_CATEGORIAS.includes(categoria)) {
-    return NextResponse.json({ error: 'categoria inválida.' }, { status: 400 })
+    return NextResponse.json(
+      { error: `categoria inválida. Valores aceitos: ${FEEDBACK_CATEGORIAS.join(', ')}.` },
+      { status: 400 }
+    )
   }
 
   const auth = await canAccessUnit(unit_id)
@@ -28,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
   if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
   if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
 
-  // coluna é "produto", não "produto_nome" — confirmar via introspecção
+  // introspect confirmou: texto (não descricao), periodo como text, produto (não produto_nome)
   const { data, error } = await supabase
     .from('op_feedback_cliente')
     .insert({
@@ -36,7 +39,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
       tipo,
       produto: produto?.trim() ?? null,
       categoria: categoria ?? null,
-      descricao: descricao?.trim() ?? null,
+      texto: descricao?.trim() ?? null,
+      periodo: periodo ?? null,
     })
     .select().single()
 

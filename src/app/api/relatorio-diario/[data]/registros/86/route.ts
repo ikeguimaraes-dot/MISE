@@ -19,7 +19,8 @@ export async function POST(
 ) {
   const { data: dataParam } = await params
   const body = await request.json()
-  const { unit_id, produto_nome, motivo, periodo_id } = body
+  // introspect confirmou: periodo é text enum (almoco/jantar/manha), não FK periodo_id
+  const { unit_id, produto_nome, motivo, periodo, setor, observacao } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
   if (!produto_nome?.trim()) return NextResponse.json({ error: 'produto_nome obrigatório.' }, { status: 400 })
@@ -37,7 +38,14 @@ export async function POST(
 
   const { data, error } = await supabase
     .from('op_86')
-    .insert({ relatorio_id: relatorio.id, produto_nome: produto_nome.trim(), motivo, periodo_id: periodo_id ?? null })
+    .insert({
+      relatorio_id: relatorio.id,
+      produto_nome: produto_nome.trim(),
+      motivo,
+      periodo: periodo ?? null,
+      setor: setor ?? null,
+      observacao: observacao?.trim() ?? null,
+    })
     .select()
     .single()
 
