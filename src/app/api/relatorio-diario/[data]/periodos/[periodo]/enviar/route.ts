@@ -67,6 +67,17 @@ export async function POST(
     .eq('id', auth.employeeId)
     .single()
   const userId: string | null = emp?.user_id ?? null
+  if (!userId) {
+    // Dívida técnica: 100% dos funcionários de MEE/MP têm user_id null (2026-08-24).
+    // Continua sem travar; rastrear via: WHERE enviado_por IS NULL AND enviado_em IS NOT NULL
+    // em op_relatorio_periodo. Reverter para bloqueio quando employees.user_id for vinculado.
+    console.warn('[TURNO] enviado_por null — employee sem user_id', {
+      employeeId: auth.employeeId,
+      unitId: unit_id,
+      data: dataParam,
+      periodo,
+    })
+  }
 
   const agora = new Date().toISOString()
   const updateFields: Record<string, unknown> = { enviado_em: agora, status: 'enviado' }
