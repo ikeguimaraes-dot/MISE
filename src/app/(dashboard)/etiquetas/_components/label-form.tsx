@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { QRCodeCanvas } from 'qrcode.react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth } from 'lucide-react'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
@@ -615,30 +614,27 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
         <div className="border-t border-edge p-5 space-y-4">
           <p className="text-sm font-medium text-fresh-bright">Etiqueta gerada com sucesso!</p>
           <div
-            style={{ width: '10cm', aspectRatio: '10/6', background: '#fff', color: '#000', fontFamily: 'monospace', padding: '4mm', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '8pt' }}
+            style={{ width: '60mm', height: '40mm', background: '#fff', color: '#000', fontFamily: 'monospace', padding: '3mm', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
             className="rounded border"
           >
             <div>
-              <div style={{ fontWeight: 'bold', fontSize: '9pt' }}>
-                {units.find(u => u.id === selectedUnit)?.name ?? ''}
-              </div>
-              {units.find(u => u.id === selectedUnit)?.cnpj && (
-                <div style={{ fontSize: '7pt', color: '#555' }}>CNPJ: {units.find(u => u.id === selectedUnit)!.cnpj}</div>
-              )}
+              <div style={{ fontWeight: 'bold', fontSize: '13pt', lineHeight: 1.1 }}>{savedLabel.nome}</div>
+              {metodo && <div style={{ fontSize: '8pt', lineHeight: 1.2, marginTop: '0.5mm', textTransform: 'uppercase' }}>{metodo}</div>}
             </div>
-            <div style={{ display: 'flex', gap: '4mm', alignItems: 'flex-start' }}>
-              <QRCodeCanvas id="label-qr-canvas" value={savedLabel.id} size={60} />
-              <div>
-                <div style={{ fontWeight: 'bold', fontSize: '10pt' }}>{savedLabel.nome}</div>
-                <div style={{ fontSize: '7pt', color: '#555' }}>Manip: {new Date(dataManipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</div>
-                <div style={{ fontSize: '7pt', color: '#555' }}>Val: {new Date(validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</div>
-                {metodo && <div style={{ fontSize: '7pt', color: '#555' }}>{metodo}</div>}
-                {pesoG && <div style={{ fontSize: '7pt', color: '#555' }}>Peso: {Number(pesoG).toLocaleString('pt-BR')} g</div>}
-                {lote && <div style={{ fontSize: '7pt', color: '#555' }}>Lote: {lote}</div>}
-                {selo !== 'Nenhum' && <span style={{ border: '1px solid #000', padding: '0 2px', fontSize: '7pt' }}>{selo}</span>}
+            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '1mm 0', margin: '1.5mm 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>
+                <span style={{ fontWeight: 'bold' }}>MANIPULAÇÃO:</span>
+                <span>{new Date(dataManipulacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>
+                <span style={{ fontWeight: 'bold' }}>VALIDADE:</span>
+                <span>{new Date(validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
               </div>
             </div>
-            <div style={{ fontSize: '7pt', color: '#999' }}>#{savedLabel.id.slice(0, 8).toUpperCase()}</div>
+            <div style={{ fontSize: '9pt' }}>
+              <b>RESP.:</b> {(employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]}
+            </div>
+            <div style={{ fontSize: '7pt' }}>#{savedLabel.id.slice(0, 6).toUpperCase()}</div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button onClick={handlePrint}

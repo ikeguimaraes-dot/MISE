@@ -1,4 +1,4 @@
-import { Sidebar } from '@/components/layout/sidebar'
+import { TopNav } from '@/components/layout/topnav'
 import { createClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 
@@ -18,9 +18,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex h-screen bg-base">
-      <Sidebar role={role} isPinUser={isPinUser} />
-      <main className="flex-1 overflow-y-auto">
+    <div className="min-h-screen bg-base">
+      <TopNav role={role} isPinUser={isPinUser} />
+      <main className="w-full">
         {children}
       </main>
     </div>
