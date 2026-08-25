@@ -45,18 +45,18 @@ function estadoInicial(row: Record<string, unknown> | undefined): FormState {
       fechamento: String(row?.horario_fechamento ?? ''),
     },
     vendas: {
-      vendas_ab: String(row?.vendas_ab ?? ''),
-      alimentos: String(row?.alimentos ?? ''),
-      bebidas: String(row?.bebidas ?? ''),
+      vendas_ab: String(row?.venda_total ?? ''),
+      alimentos: String(row?.venda_alimentos ?? ''),
+      bebidas: String(row?.venda_bebidas ?? ''),
       taxa_servico: String(row?.taxa_servico ?? ''),
       delivery: String(row?.delivery ?? ''),
-      portaria_valor: String(row?.portaria_valor ?? ''),
+      portaria_valor: String(row?.portaria ?? ''),
       pax_total: String(row?.pax_total ?? ''),
       perda_produto: String(row?.perda_produto ?? ''),
     },
     clima: {
-      tempo: String(row?.tempo ?? ''),
-      temperatura: String(row?.temperatura_c ?? ''),
+      tempo: String(row?.clima_tempo ?? ''),
+      temperatura: String(row?.clima_temperatura ?? ''),
     },
     setores: Object.fromEntries(
       SETORES_AVALIACAO.map(s => [s, { nota: null, obs: '' }])
@@ -64,7 +64,7 @@ function estadoInicial(row: Record<string, unknown> | undefined): FormState {
     resumo: String(row?.resumo_operacional ?? ''),
     ocorrencia: {
       houve: Boolean(row?.houve_ocorrencia),
-      descricao: String(row?.observacao_ocorrencia ?? ''),
+      descricao: String(row?.ocorrencia_texto ?? ''),
     },
     equipe: Object.fromEntries(
       SETORES_EQUIPE.map(s => [s, { houveFalta: false, nomes: [''] }])
@@ -105,7 +105,7 @@ export function RelatorioClient({
 
   const [periodoAtivo, setPeriodoAtivo] = useState(periodosAtivos[0] ?? 'almoco')
   const [form, setForm] = useState<FormState>(() =>
-    estadoInicial(periodos.find(p => p.tipo === periodoAtivo) as Record<string, unknown>)
+    estadoInicial(periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>)
   )
   const [erros, setErros] = useState<FormErros>({})
   const [salvando, setSalvando] = useState(false)
@@ -113,21 +113,21 @@ export function RelatorioClient({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const enviados = periodos.filter(
-    p => p.enviado_em && periodosAtivos.includes(p.tipo as string)
+    p => p.enviado_em && periodosAtivos.includes(p.periodo as string)
   )
   const progressoPct = periodosAtivos.length > 0
     ? Math.round((enviados.length / periodosAtivos.length) * 100)
     : 0
 
   const periodoAtualEnviado = periodos.some(
-    p => p.tipo === periodoAtivo && p.enviado_em
+    p => p.periodo === periodoAtivo && p.enviado_em
   )
   const disabled = periodoAtualEnviado || relatorioFechado || role === 'cozinheiro'
 
   // Ao trocar de aba, recarregar estado do período
   useEffect(() => {
     setForm(estadoInicial(
-      periodos.find(p => p.tipo === periodoAtivo) as Record<string, unknown>
+      periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>
     ))
     setErros({})
   }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -149,19 +149,19 @@ export function RelatorioClient({
         horario_abertura: estado.horarios.abertura || null,
         horario_ultimo_cliente: estado.horarios.ultimo_cliente || null,
         horario_fechamento: estado.horarios.fechamento || null,
-        vendas_ab: estado.vendas.vendas_ab ? parseFloat(estado.vendas.vendas_ab) : null,
-        alimentos: estado.vendas.alimentos ? parseFloat(estado.vendas.alimentos) : null,
-        bebidas: estado.vendas.bebidas ? parseFloat(estado.vendas.bebidas) : null,
+        venda_total: estado.vendas.vendas_ab ? parseFloat(estado.vendas.vendas_ab) : null,
+        venda_alimentos: estado.vendas.alimentos ? parseFloat(estado.vendas.alimentos) : null,
+        venda_bebidas: estado.vendas.bebidas ? parseFloat(estado.vendas.bebidas) : null,
         taxa_servico: estado.vendas.taxa_servico ? parseFloat(estado.vendas.taxa_servico) : null,
         delivery: estado.vendas.delivery ? parseFloat(estado.vendas.delivery) : null,
-        portaria_valor: estado.vendas.portaria_valor ? parseFloat(estado.vendas.portaria_valor) : null,
+        portaria: estado.vendas.portaria_valor ? parseFloat(estado.vendas.portaria_valor) : null,
         pax_total: estado.vendas.pax_total ? parseInt(estado.vendas.pax_total) : null,
         perda_produto: estado.vendas.perda_produto ? parseFloat(estado.vendas.perda_produto) : null,
-        tempo: estado.clima.tempo || null,
-        temperatura_c: estado.clima.temperatura ? parseFloat(estado.clima.temperatura) : null,
+        clima_tempo: estado.clima.tempo || null,
+        clima_temperatura: estado.clima.temperatura ? parseFloat(estado.clima.temperatura) : null,
         resumo_operacional: estado.resumo || null,
         houve_ocorrencia: estado.ocorrencia.houve,
-        observacao_ocorrencia: estado.ocorrencia.descricao || null,
+        ocorrencia_texto: estado.ocorrencia.descricao || null,
         responsavel_preenchimento: estado.responsavel || null,
       }),
     })
@@ -222,7 +222,7 @@ export function RelatorioClient({
     window.location.reload()
   }
 
-  const periodoRow = periodos.find(p => p.tipo === periodoAtivo)
+  const periodoRow = periodos.find(p => p.periodo === periodoAtivo)
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto pb-24">
@@ -256,7 +256,7 @@ export function RelatorioClient({
       {/* Abas */}
       <div className="flex gap-2">
         {periodosAtivos.map(p => {
-          const enviado = periodos.some(row => row.tipo === p && row.enviado_em)
+          const enviado = periodos.some(row => row.periodo === p && row.enviado_em)
           return (
             <button
               key={p}
