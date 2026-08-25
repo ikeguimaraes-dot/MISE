@@ -293,7 +293,7 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
   }
 
   // Monta a string de comandos TSPL da etiqueta 60x40mm (480x320 dots @ 203dpi),
-  // replicando o layout do preview visual. Compartilhada por ambas as variantes RawBT.
+  // replicando o layout do preview visual.
   function buildTSPL(): string {
     if (!savedLabel) return ''
     const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -349,13 +349,13 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
     return btoa(bin)
   }
 
-  // Formato intent:base64 simples — exige a opção "Imprimir .TXT também como .PRN"
-  // ativada nas configurações do RawBT, que faz o app tratar o payload como raw
-  // passthrough em vez de rasterizar como texto via engine ESC/POS.
-  function handlePrintRawBT() {
+  // Envia os comandos TSPL crus para o app dedicado MISE Print via deep link,
+  // que escreve os bytes diretamente no socket Bluetooth SPP da impressora.
+  function handlePrintBluetooth() {
     if (!savedLabel) return
-    const b64 = tsplToBase64(buildTSPL())
-    const url = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`
+    const tspl = buildTSPL()
+    const b64 = tsplToBase64(tspl)
+    const url = `miseprint://print?data=${encodeURIComponent(b64)}`
     window.location.href = url
   }
 
@@ -625,7 +625,7 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
               <Printer className="h-4 w-4" />
               Imprimir Etiqueta
             </button>
-            <button onClick={handlePrintRawBT}
+            <button onClick={handlePrintBluetooth}
               className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
               <Bluetooth className="h-4 w-4" />
               Imprimir (Bluetooth)
