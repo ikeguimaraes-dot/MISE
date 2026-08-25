@@ -258,46 +258,32 @@ export function LabelForm({
 
   function handlePrint() {
     if (!savedLabel) return
-    const canvas = document.getElementById('label-qr-canvas') as HTMLCanvasElement | null
-    const qrDataUrl = canvas?.toDataURL('image/png') ?? ''
-    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
-    const unit = savedLabel.unit
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
 <style>@page{size:60mm 40mm;margin:0}
 html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:monospace}
-.label{width:60mm;height:40mm;padding:2mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;font-size:7pt;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
-.nome{font-size:11pt;font-weight:bold;line-height:1.0}
-.cnpj{font-size:5pt;line-height:1.1;margin-top:0.3mm}
-.metodo{font-size:6pt;line-height:1.1;margin-top:0.3mm}
-.dates{font-size:7pt;line-height:1.2}.dates b{font-weight:bold}
-.validade{font-size:11pt;font-weight:bold;line-height:1.1}
-.bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:2mm}
-.binfo{min-width:0}
-.resp{font-size:6pt;font-weight:bold}
-.endereco{font-size:4.5pt;line-height:1.0;margin-top:0.3mm}
-.id{font-size:6pt;margin-top:0.3mm}
-.qr{flex-shrink:0}
+.label{width:60mm;height:40mm;padding:3mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
+.nome{font-size:13pt;font-weight:bold;line-height:1.1}
+.metodo{font-size:8pt;line-height:1.2;margin-top:0.5mm;text-transform:uppercase}
+.dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:1mm 0;margin:1.5mm 0}
+.row{display:flex;justify-content:space-between;font-size:9.5pt;line-height:1.4}
+.row .lbl{font-weight:bold}
+.resp{font-size:9pt}
+.resp b{font-weight:bold}
+.id{font-size:7pt}
 </style></head><body>
 <div class="label">
   <div>
     <div class="nome">${savedLabel.nome}</div>
-    ${unit?.cnpj ? `<div class="cnpj">CNPJ: ${unit.cnpj}</div>` : ''}
     ${metodo ? `<div class="metodo">${metodo}</div>` : ''}
   </div>
   <div class="dates">
-    <div><b>MANIPULAÇÃO:</b> ${fmtDate(dataManipulacao)}</div>
-    <div class="validade">VALIDADE: ${fmtDate(validade)}</div>
-    ${pesoG ? `<div><b>PESO:</b> ${pesoG}g</div>` : ''}
+    <div class="row"><span class="lbl">MANIPULAÇÃO:</span><span>${fmtDate(dataManipulacao)}</span></div>
+    <div class="row"><span class="lbl">VALIDADE:</span><span>${fmtDate(validade)}</span></div>
   </div>
-  <div class="bottom">
-    <div class="binfo">
-      <div class="resp">RESP.: ${respNome}</div>
-      ${unit?.address ? `<div class="endereco">${unit.address}</div>` : ''}
-      <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
-    </div>
-    <div class="qr"><img src="${qrDataUrl}" width="40" height="40"/></div>
-  </div>
+  <div class="resp"><b>RESP.:</b> ${respNome}</div>
+  <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
 </div>
 </body></html>`
     const w = window.open('', '_blank')
@@ -311,9 +297,8 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
   // replicando o layout do preview visual. Compartilhada por ambas as variantes RawBT.
   function buildTSPL(): string {
     if (!savedLabel) return ''
-    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
-    const unit = savedLabel.unit
     const id = savedLabel.id
 
     // Remove acentos/aspas para os fonts internos (bitmap) da impressora TSPL.
@@ -332,42 +317,26 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
     // Nome do produto — fonte grande (font "4" = 24x32)
     cmds.push(`TEXT ${left},${y},"4",0,1,1,"${ascii(savedLabel.nome)}"`)
     y += 34
-    if (unit?.cnpj) {
-      cmds.push(`TEXT ${left},${y},"1",0,1,1,"CNPJ: ${ascii(unit.cnpj)}"`)
-      y += 16
-    }
     if (metodo) {
-      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(metodo)}"`)
+      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(metodo.toUpperCase())}"`)
       y += 16
     }
     // Separador
-    y += 2
+    y += 4
     cmds.push(`BAR ${left},${y},448,2`)
-    y += 10
-    // Manipulação — fonte média (font "2" = 12x20)
-    cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIP.: ${fmtDate(dataManipulacao)}"`)
+    y += 12
+    // Manipulação / Validade — fonte média (font "2" = 12x20)
+    cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
     y += 24
-    // Validade — fonte grande e negrito (mesmo tamanho do nome, font "4")
-    cmds.push(`TEXT ${left},${y},"4",0,1,1,"VAL.: ${fmtDate(validade)}"`)
-    y += 36
-    if (pesoG) {
-      cmds.push(`TEXT ${left},${y},"2",0,1,1,"PESO: ${pesoG}g"`)
-      y += 24
-    }
+    cmds.push(`TEXT ${left},${y},"2",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
+    y += 28
     // Separador
-    y += 2
     cmds.push(`BAR ${left},${y},448,2`)
-    y += 8
-    // Linha inferior: RESP./endereco/#ID (esquerda) + QR code (direita)
-    const rowY = y
-    cmds.push(`TEXT ${left},${rowY + 4},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
-    cmds.push(`QRCODE 366,${rowY},M,3,A,0,"${id}"`)
-    let yLeft = rowY + 28
-    if (unit?.address) {
-      cmds.push(`TEXT ${left},${yLeft},"1",0,1,1,"${ascii(unit.address)}"`)
-      yLeft += 18
-    }
-    cmds.push(`TEXT ${left},${yLeft},"2",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
+    y += 14
+    // Responsável e #ID
+    cmds.push(`TEXT ${left},${y},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
+    y += 26
+    cmds.push(`TEXT ${left},${y},"1",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
     cmds.push('PRINT 1')
 
     return cmds.join('\r\n') + '\r\n'
