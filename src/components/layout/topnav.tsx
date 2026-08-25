@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
   Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen, ChevronDown,
@@ -76,25 +77,46 @@ function NavDropdown({ label, icon: Icon, items, pathname }: {
   pathname: string
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [panelStyle, setPanelStyle] = useState<React.CSSProperties>({})
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const isActive = items.some(i => isEntryActive(pathname, i.href))
 
   useEffect(() => {
     if (!open) return
-    function onOutside(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+
+    function updatePosition() {
+      if (!buttonRef.current) return
+      const rect = buttonRef.current.getBoundingClientRect()
+      setPanelStyle({ position: 'fixed', top: rect.bottom + 4, left: rect.left })
     }
+
+    function onOutside(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node
+      if (
+        !buttonRef.current?.contains(target) &&
+        !panelRef.current?.contains(target)
+      ) setOpen(false)
+    }
+
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
     document.addEventListener('mousedown', onOutside)
     document.addEventListener('touchstart', onOutside)
+
     return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
       document.removeEventListener('mousedown', onOutside)
       document.removeEventListener('touchstart', onOutside)
     }
   }, [open])
 
   return (
-    <div className="relative shrink-0" ref={ref}>
+    <div className="shrink-0">
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen(o => !o)}
         className={cn(
@@ -108,8 +130,12 @@ function NavDropdown({ label, icon: Icon, items, pathname }: {
         {label}
         <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-48 rounded-lg border border-edge bg-surface p-1 shadow-lg">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          style={{ ...panelStyle, zIndex: 9999 }}
+          className="min-w-48 rounded-lg border border-edge bg-surface p-1 shadow-lg"
+        >
           {items.map(({ href, label: itemLabel, icon: ItemIcon }) => (
             <Link
               key={href}
@@ -126,7 +152,8 @@ function NavDropdown({ label, icon: Icon, items, pathname }: {
               {itemLabel}
             </Link>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
