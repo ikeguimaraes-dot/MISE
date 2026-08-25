@@ -349,30 +349,13 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
     return btoa(bin)
   }
 
-  // VARIANTE PRINCIPAL — content-type text/prn força o RawBT a repassar os bytes crus
-  // (passthrough) em vez de rasterizar como texto via engine ESC/POS.
+  // Formato intent:base64 simples — exige a opção "Imprimir .TXT também como .PRN"
+  // ativada nas configurações do RawBT, que faz o app tratar o payload como raw
+  // passthrough em vez de rasterizar como texto via engine ESC/POS.
   function handlePrintRawBT() {
     if (!savedLabel) return
     const b64 = tsplToBase64(buildTSPL())
-    const url = `intent:data:text/prn;base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`
-    window.location.href = url
-  }
-
-  // VARIANTE FALLBACK — Job JSON do RawBT com printer "raw_transfer" + comando sendBytes.
-  function handlePrintRawBTJson() {
-    if (!savedLabel) return
-    const b64 = tsplToBase64(buildTSPL())
-    const job = {
-      template: 'none',
-      printer: 'raw_transfer',
-      commands: [{ command: 'sendBytes', base64: b64 }],
-    }
-    const url =
-      'intent:#Intent;' +
-      'action=rawbt.action.PRINT;' +
-      'package=ru.a402d.rawbtprinter;' +
-      'S.rawbt.action.extra.JOB_JSON=' + encodeURIComponent(JSON.stringify(job)) + ';' +
-      'end;'
+    const url = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`
     window.location.href = url
   }
 
@@ -646,11 +629,6 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
               className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
               <Bluetooth className="h-4 w-4" />
               Imprimir (Bluetooth)
-            </button>
-            <button onClick={handlePrintRawBTJson}
-              className="flex items-center gap-2 rounded-lg border border-ember-soft px-3 py-2 text-xs font-medium text-ember hover:bg-ember-soft transition-colors">
-              <Bluetooth className="h-3.5 w-3.5" />
-              Bluetooth (modo 2)
             </button>
           </div>
         </div>
