@@ -260,9 +260,9 @@ export function LabelForm({
     const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
     const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
-<style>@page{size:60mm 40mm;margin:0}
-html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:monospace}
-.label{width:60mm;height:40mm;padding:3mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
+<style>@page{size:60mm 60mm;margin:0}
+html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:monospace}
+.label{width:60mm;height:60mm;padding:4mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
 .nome{font-size:13pt;font-weight:bold;line-height:1.1}
 .metodo{font-size:8pt;line-height:1.2;margin-top:0.5mm;text-transform:uppercase}
 .dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:1mm 0;margin:3mm 0}
@@ -292,7 +292,7 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
     setTimeout(() => w.print(), 250)
   }
 
-  // Monta a string de comandos TSPL da etiqueta 60x40mm (480x320 dots @ 203dpi),
+  // Monta a string de comandos TSPL da etiqueta 60x60mm (480x480 dots @ 203dpi),
   // replicando o layout do preview visual.
   function buildTSPL(): string {
     if (!savedLabel) return ''
@@ -307,34 +307,34 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
 
     const left = 16
     const cmds: string[] = []
-    cmds.push('SIZE 60 mm, 40 mm')
+    cmds.push('SIZE 60 mm, 60 mm')
     cmds.push('GAP 2 mm, 0 mm')
     cmds.push('DIRECTION 1')
     cmds.push('CLS')
 
-    let y = 12
+    let y = 24
     // Nome do produto — fonte grande (font "4" = 24x32)
     cmds.push(`TEXT ${left},${y},"4",0,1,1,"${ascii(savedLabel.nome)}"`)
-    y += 34
+    y += 32
     if (metodo) {
+      y += 10
       cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(metodo.toUpperCase())}"`)
-      y += 16
+      y += 12
     }
-    // Separador
-    y += 16
-    cmds.push(`BAR ${left},${y},448,2`)
-    y += 12
+    // Respiro antes do bloco de datas
+    y += 130
+    cmds.push(`BAR ${left},${y},448,3`)
+    y += 13
     // Manipulação / Validade — fonte média (font "2" = 12x20)
     cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
-    y += 24
+    y += 28
     cmds.push(`TEXT ${left},${y},"2",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
     y += 28
-    // Separador
-    cmds.push(`BAR ${left},${y},448,2`)
-    y += 26
-    // Responsável e #ID
+    cmds.push(`BAR ${left},${y},448,3`)
+    // Respiro antes de responsável / #ID
+    y += 130
     cmds.push(`TEXT ${left},${y},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
-    y += 26
+    y += 32
     cmds.push(`TEXT ${left},${y},"1",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
     cmds.push('PRINT 1')
 
@@ -597,7 +597,7 @@ html,body{margin:0;padding:0;width:60mm;height:40mm;overflow:hidden;font-family:
         <div className="border-t border-edge p-5 space-y-4">
           <p className="text-sm font-medium text-fresh-bright">Etiqueta gerada com sucesso!</p>
           <div
-            style={{ width: '60mm', height: '40mm', background: '#fff', color: '#000', fontFamily: 'monospace', padding: '3mm', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+            style={{ width: '60mm', height: '60mm', background: '#fff', color: '#000', fontFamily: 'monospace', padding: '4mm', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
             className="rounded border"
           >
             <div>
