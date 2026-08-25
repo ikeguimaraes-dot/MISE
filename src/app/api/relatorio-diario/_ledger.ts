@@ -14,6 +14,8 @@ interface TurnoEventPayload {
 // Controlado por OPX_LEDGER_ENABLED=true — seam para Fase 0 do ledger.
 // writeOpxEvent nunca lança; falhas retornam { ok: false } e são logadas.
 export async function emitTurnoEvent(event: TurnoEventPayload): Promise<void> {
+  // [OPX DIAG] — remover após confirmar env var em produção
+  console.log('[OPX DIAG] OPX_LEDGER_ENABLED =', JSON.stringify(process.env.OPX_LEDGER_ENABLED))
   if (process.env.OPX_LEDGER_ENABLED !== 'true') return
 
   const result = await writeOpxEvent({
