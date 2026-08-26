@@ -225,7 +225,7 @@ function MobileDrawer({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
       {/* Drawer panel */}
-      <div className="relative flex w-[85vw] max-w-xs flex-col bg-base shadow-xl">
+      <div className="relative flex w-[85vw] max-w-xs max-h-[100dvh] flex-col bg-base shadow-xl">
         {/* Cabeçalho do drawer */}
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-edge px-4">
           <span className="text-lg font-bold tracking-tight text-ink">MISE</span>

@@ -40,7 +40,7 @@ export default async function ChecklistsPage() {
   const unitsMap = Object.fromEntries((units ?? []).map(u => [u.id, u.name]))
 
   return (
-    <div className="p-6 max-w-6xl">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink flex items-center gap-2">
