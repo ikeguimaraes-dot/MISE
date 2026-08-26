@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Printer, AlertTriangle, CheckCircle, Bluetooth } from 'lucide-react'
+import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus } from 'lucide-react'
+import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -88,6 +89,7 @@ export function LabelForm({
   const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
   const [printPointId, setPrintPointId] = useState('')
   const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; unit?: Unit } | null>(null)
+  const [quantidade, setQuantidade] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [conflictLabel, setConflictLabel] = useState<{ id: string; nome: string; data_manipulacao: string; validade: string; employee_name: string } | null>(null)
@@ -292,68 +294,20 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     setTimeout(() => w.print(), 250)
   }
 
-  // Monta a string de comandos TSPL da etiqueta 60x60mm (480x480 dots @ 203dpi),
-  // replicando o layout do preview visual.
-  function buildTSPL(): string {
-    if (!savedLabel) return ''
-    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
-    const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
-    const id = savedLabel.id
-
-    // Remove acentos/aspas para os fonts internos (bitmap) da impressora TSPL.
-    const diacritics = new RegExp('[\\u0300-\\u036f]', 'g')
-    const ascii = (s: string) =>
-      (s ?? '').normalize('NFD').replace(diacritics, '').replace(/"/g, "'")
-
-    const left = 16
-    const cmds: string[] = []
-    cmds.push('SIZE 60 mm, 60 mm')
-    cmds.push('GAP 2 mm, 0 mm')
-    cmds.push('DIRECTION 1')
-    cmds.push('CLS')
-
-    let y = 24
-    // Nome do produto — fonte grande (font "4" = 24x32)
-    cmds.push(`TEXT ${left},${y},"4",0,1,1,"${ascii(savedLabel.nome)}"`)
-    y += 32
-    if (metodo) {
-      y += 10
-      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(metodo.toUpperCase())}"`)
-      y += 12
-    }
-    // Respiro antes do bloco de datas
-    y += 130
-    cmds.push(`BAR ${left},${y},448,3`)
-    y += 13
-    // Manipulação / Validade — fonte média (font "2" = 12x20)
-    cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
-    y += 28
-    cmds.push(`TEXT ${left},${y},"2",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
-    y += 28
-    cmds.push(`BAR ${left},${y},448,3`)
-    // Respiro antes de responsável / #ID
-    y += 130
-    cmds.push(`TEXT ${left},${y},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
-    y += 32
-    cmds.push(`TEXT ${left},${y},"1",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
-    cmds.push('PRINT 1')
-
-    return cmds.join('\r\n') + '\r\n'
-  }
-
-  // Bytes UTF-8 → base64 (método seguro, evita corromper bytes >127 que btoa direto quebraria).
-  function tsplToBase64(tspl: string): string {
-    const bytes = new TextEncoder().encode(tspl)
-    let bin = ''
-    bytes.forEach(b => (bin += String.fromCharCode(b)))
-    return btoa(bin)
-  }
-
   // Envia os comandos TSPL crus para o app dedicado MISE Print via deep link,
   // que escreve os bytes diretamente no socket Bluetooth SPP da impressora.
   function handlePrintBluetooth() {
     if (!savedLabel) return
-    const tspl = buildTSPL()
+    const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
+    const tspl = buildTSPL({
+      nome: savedLabel.nome,
+      metodo,
+      dataManipulacao,
+      validade,
+      respNome,
+      id: savedLabel.id,
+      quantidade,
+    })
     const b64 = tsplToBase64(tspl)
     const url = `miseprint://print?data=${encodeURIComponent(b64)}`
     window.location.href = url
@@ -619,12 +573,25 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
             </div>
             <div style={{ fontSize: '7pt' }}>#{savedLabel.id.slice(0, 6).toUpperCase()}</div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button onClick={handlePrint}
               className="flex items-center gap-2 rounded-lg border border-edge-strong px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors">
               <Printer className="h-4 w-4" />
               Imprimir Etiqueta
             </button>
+            <div className="flex items-center gap-1 rounded-lg border border-edge-strong px-1 py-1">
+              <button type="button" onClick={() => setQuantidade(q => Math.max(1, q - 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink-muted hover:bg-surface-raised hover:text-ink transition-colors">
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <input type="number" min={1} value={quantidade}
+                onChange={e => setQuantidade(Math.max(1, Number(e.target.value) || 1))}
+                className="w-10 bg-transparent text-center text-sm text-ink focus:outline-none" />
+              <button type="button" onClick={() => setQuantidade(q => q + 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-ink-muted hover:bg-surface-raised hover:text-ink transition-colors">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <button onClick={handlePrintBluetooth}
               className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
               <Bluetooth className="h-4 w-4" />

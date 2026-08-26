@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { LabelForm } from './_components/label-form'
+import { BotaoReimprimir } from './_components/botao-reimprimir'
 
 type SearchParams = Promise<{ unit?: string; status?: string; page?: string }>
 
@@ -11,12 +12,18 @@ const STATUS_BADGE: Record<string, string> = {
   vencida: 'text-warn-bright bg-warn/10',
 }
 
+const REIMPRIMIR_JANELA_MS = 3 * 60 * 60 * 1000
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
     day: '2-digit', month: '2-digit', year: '2-digit',
     hour: '2-digit', minute: '2-digit',
   })
+}
+
+function podeReimprimir(createdAt: string) {
+  return Date.now() - new Date(createdAt).getTime() < REIMPRIMIR_JANELA_MS
 }
 
 export default async function EtiquetasPage({ searchParams }: { searchParams: SearchParams }) {
@@ -41,7 +48,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
   ])
 
   let query = supabase.schema('mise').from('labels')
-    .select('id, unit_id, employee_id, nome, tipo, peso_kg, data_manipulacao, validade, status', { count: 'exact' })
+    .select('id, unit_id, employee_id, nome, tipo, peso_kg, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
     .order('data_manipulacao', { ascending: false })
     .range(from, to)
 
@@ -111,7 +118,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-edge">
-                {['Produto', 'Tipo', 'Unidade', 'Responsável', 'Manipulação', 'Validade', 'Status', 'Peso'].map(h => (
+                {['Produto', 'Tipo', 'Unidade', 'Responsável', 'Manipulação', 'Validade', 'Status', 'Peso', 'Ações'].map(h => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-medium text-ink-muted">{h}</th>
                 ))}
               </tr>
@@ -133,10 +140,22 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
                   <td className="px-5 py-3 text-ink-muted">
                     {l.peso_kg != null ? `${(l.peso_kg * 1000).toLocaleString('pt-BR')} g` : '—'}
                   </td>
+                  <td className="px-5 py-3">
+                    {podeReimprimir(l.created_at) && (
+                      <BotaoReimprimir
+                        id={l.id}
+                        nome={l.nome}
+                        metodo={l.metodo_conservacao}
+                        dataManipulacao={l.data_manipulacao}
+                        validade={l.validade}
+                        respNome={(empsMap[l.employee_id ?? ''] ?? '').split(' ')[0]}
+                      />
+                    )}
+                  </td>
                 </tr>
               ))}
               {(labels ?? []).length === 0 && (
-                <tr><td colSpan={8} className="px-5 py-8 text-center text-ink-subtle">Nenhuma etiqueta encontrada.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-ink-subtle">Nenhuma etiqueta encontrada.</td></tr>
               )}
             </tbody>
           </table>
