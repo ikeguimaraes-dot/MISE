@@ -1,142 +1,202 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { DashboardClient } from './_components/dashboard-client'
 
-function getTodayStart(): string {
+type SearchParams = Promise<{ unit?: string }>
+
+export type KpiItem = {
+  id: string
+  nome: string
+  unit_name: string
+  employee_name: string
+  data_manipulacao?: string
+  validade?: string
+  status?: string
+  created_at?: string
+  quantity?: number
+  unit?: string
+  scheduled_for?: string
+  prod_status?: string
+}
+
+export type LabelGroup = {
+  key: string
+  nome: string
+  unit_name: string
+  status: string
+  count: number
+  items: KpiItem[]
+}
+
+function getTodayRange() {
   const spDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-  return `${spDate}T00:00:00-03:00`
+  const [y, m, d] = spDate.split('-').map(Number)
+  const start = `${spDate}T00:00:00-03:00`
+  const next = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
+  return { start, end: `${next}T00:00:00-03:00` }
 }
 
-function getTodayEnd(): string {
-  const sp = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }))
-  sp.setDate(sp.getDate() + 1)
-  const y = sp.getFullYear()
-  const m = String(sp.getMonth() + 1).padStart(2, '0')
-  const d = String(sp.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}T00:00:00-03:00`
+function getSPDay(iso: string) {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    day: '2-digit', month: '2-digit', year: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
-const STATUS_BADGE: Record<string, string> = {
-  ativa: 'text-fresh-bright bg-fresh/10',
-  consumida: 'text-info bg-info/10',
-  descartada: 'text-alert-bright bg-alert/10',
-  vencida: 'text-warn-bright bg-warn/10',
-}
-
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: SearchParams }) {
+  const { unit } = await searchParams
   const supabase = createServiceClient()
-  const todayStart = getTodayStart()
-  const todayEnd = getTodayEnd()
+  const { start: todayStart, end: todayEnd } = getTodayRange()
+
+  let qEtiquetasHoje = supabase.schema('mise').from('labels')
+    .select('id, nome, unit_id, employee_id, data_manipulacao, validade, status')
+    .gte('data_manipulacao', todayStart).lt('data_manipulacao', todayEnd)
+    .order('data_manipulacao', { ascending: false })
+
+  let qLabelsAtivas = supabase.schema('mise').from('labels')
+    .select('id, nome, unit_id, employee_id, validade, status')
+    .eq('status', 'ativa').order('validade', { ascending: true })
+
+  let qProducoesDia = supabase.schema('mise').from('production_orders')
+    .select('id, unit_id, menu_item_id, quantity, unit, scheduled_for, assigned_to, status, created_at')
+    .gte('created_at', todayStart).lt('created_at', todayEnd)
+    .order('created_at', { ascending: false })
+
+  let qDescartesDia = supabase.schema('mise').from('labels')
+    .select('id, nome, unit_id, employee_id, data_manipulacao, validade, status, created_at')
+    .eq('status', 'descartada')
+    .gte('created_at', todayStart).lt('created_at', todayEnd)
+    .order('created_at', { ascending: false })
+
+  let qUltimasLabels = supabase.schema('mise').from('labels')
+    .select('id, nome, unit_id, employee_id, data_manipulacao, validade, status')
+    .order('data_manipulacao', { ascending: false }).limit(40)
+
+  if (unit) {
+    qEtiquetasHoje = qEtiquetasHoje.eq('unit_id', unit)
+    qLabelsAtivas = qLabelsAtivas.eq('unit_id', unit)
+    qProducoesDia = qProducoesDia.eq('unit_id', unit)
+    qDescartesDia = qDescartesDia.eq('unit_id', unit)
+    qUltimasLabels = qUltimasLabels.eq('unit_id', unit)
+  }
 
   const [
-    { count: labelsHoje },
+    { data: etiquetasHoje },
     { data: labelsAtivas },
-    { count: producoesDia },
-    { count: descartesDia },
+    { data: producoesDia },
+    { data: descartesDia },
     { data: ultimasLabels },
     { data: units },
     { data: employees },
+    { data: menuItems },
   ] = await Promise.all([
-    supabase.schema('mise').from('labels').select('id', { count: 'exact', head: true })
-      .gte('data_manipulacao', todayStart).lt('data_manipulacao', todayEnd),
-    supabase.schema('mise').from('labels').select('id, nome, unit_id, employee_id, validade, status')
-      .eq('status', 'ativa').order('validade', { ascending: true }),
-    supabase.schema('mise').from('production_orders').select('id', { count: 'exact', head: true })
-      .gte('created_at', todayStart).lt('created_at', todayEnd),
-    supabase.schema('mise').from('labels').select('id', { count: 'exact', head: true })
-      .eq('status', 'descartada').gte('created_at', todayStart).lt('created_at', todayEnd),
-    supabase.schema('mise').from('labels').select('id, nome, unit_id, employee_id, data_manipulacao, validade, status')
-      .order('data_manipulacao', { ascending: false }).limit(10),
-    supabase.from('units').select('id, name').eq('active', true),
+    qEtiquetasHoje,
+    qLabelsAtivas,
+    qProducoesDia,
+    qDescartesDia,
+    qUltimasLabels,
+    supabase.from('units').select('id, name').eq('active', true).order('name'),
     supabase.from('employees').select('id, nome').eq('ativo', true),
+    supabase.from('menu_items').select('id, nome'),
   ])
 
   const unitsMap = Object.fromEntries((units ?? []).map(u => [u.id, u.name]))
   const employeesMap = Object.fromEntries((employees ?? []).map(e => [e.id, e.nome]))
+  const menuItemsMap = Object.fromEntries((menuItems ?? []).map(m => [m.id, m.nome]))
 
   const now = new Date()
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  const criticas = (labelsAtivas ?? []).filter(l => new Date(l.validade) <= in24h)
+
+  const kpiCriticas: KpiItem[] = (labelsAtivas ?? [])
+    .filter(l => new Date(l.validade) <= in24h)
+    .map(l => ({
+      id: l.id,
+      nome: l.nome,
+      unit_name: unitsMap[l.unit_id] ?? '—',
+      employee_name: employeesMap[l.employee_id ?? ''] ?? '—',
+      validade: l.validade,
+      status: l.status,
+    }))
+
+  const kpiEtiquetasHoje: KpiItem[] = (etiquetasHoje ?? []).map(l => ({
+    id: l.id,
+    nome: l.nome,
+    unit_name: unitsMap[l.unit_id] ?? '—',
+    employee_name: employeesMap[l.employee_id ?? ''] ?? '—',
+    data_manipulacao: l.data_manipulacao,
+    validade: l.validade,
+    status: l.status,
+  }))
+
+  const kpiProducoes: KpiItem[] = (producoesDia ?? []).map(p => ({
+    id: p.id,
+    nome: p.menu_item_id ? (menuItemsMap[p.menu_item_id] ?? 'Item sem cadastro') : 'Sem produto',
+    unit_name: unitsMap[p.unit_id] ?? '—',
+    employee_name: p.assigned_to ? (employeesMap[p.assigned_to] ?? '—') : '—',
+    created_at: p.created_at,
+    scheduled_for: p.scheduled_for ?? undefined,
+    quantity: p.quantity,
+    unit: p.unit,
+    prod_status: p.status,
+  }))
+
+  const kpiDescartes: KpiItem[] = (descartesDia ?? []).map(l => ({
+    id: l.id,
+    nome: l.nome,
+    unit_name: unitsMap[l.unit_id] ?? '—',
+    employee_name: employeesMap[l.employee_id ?? ''] ?? '—',
+    data_manipulacao: l.data_manipulacao,
+    created_at: l.created_at,
+    status: l.status,
+  }))
+
+  // Agrega etiquetas recentes por produto+unidade+dia(SP)+status
+  const groupMap = new Map<string, {
+    nome: string; unit_name: string; status: string; items: KpiItem[]; latestMs: number
+  }>()
+
+  for (const l of ultimasLabels ?? []) {
+    const day = getSPDay(l.data_manipulacao)
+    const key = `${l.nome}|${l.unit_id}|${day}|${l.status}`
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        nome: l.nome,
+        unit_name: unitsMap[l.unit_id] ?? '—',
+        status: l.status,
+        items: [],
+        latestMs: new Date(l.data_manipulacao).getTime(),
+      })
+    }
+    const g = groupMap.get(key)!
+    g.items.push({
+      id: l.id,
+      nome: l.nome,
+      unit_name: unitsMap[l.unit_id] ?? '—',
+      employee_name: employeesMap[l.employee_id ?? ''] ?? '—',
+      data_manipulacao: l.data_manipulacao,
+      validade: l.validade,
+      status: l.status,
+    })
+    g.latestMs = Math.max(g.latestMs, new Date(l.data_manipulacao).getTime())
+  }
+
+  const labelGroups: LabelGroup[] = Array.from(groupMap.entries())
+    .sort((a, b) => b[1].latestMs - a[1].latestMs)
+    .slice(0, 10)
+    .map(([key, g]) => ({
+      key,
+      nome: g.nome,
+      unit_name: g.unit_name,
+      status: g.status,
+      count: g.items.length,
+      items: g.items,
+    }))
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-ink">Dashboard</h1>
-        <p className="text-sm text-ink-muted">Visão geral do dia</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { label: 'Etiquetas Hoje', value: labelsHoje ?? 0, color: 'text-fresh' },
-          { label: 'Validades Críticas', value: criticas.length, color: 'text-warn' },
-          { label: 'Produções do Dia', value: producoesDia ?? 0, color: 'text-info' },
-          { label: 'Descartes do Dia', value: descartesDia ?? 0, color: 'text-alert' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl border border-edge bg-surface p-4">
-            <p className="text-xs font-medium text-ink-subtle">{label}</p>
-            <p className={`mt-1 text-3xl font-bold ${color}`}>{value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-edge bg-surface">
-          <div className="border-b border-edge px-5 py-4">
-            <p className="text-sm font-semibold text-ink">Últimas 10 Etiquetas</p>
-          </div>
-          <div className="divide-y divide-edge">
-            {(ultimasLabels ?? []).length === 0 && (
-              <p className="px-5 py-4 text-sm text-ink-subtle">Nenhuma etiqueta.</p>
-            )}
-            {(ultimasLabels ?? []).map(l => (
-              <div key={l.id} className="flex items-center justify-between px-5 py-3 hover:bg-surface-raised/50 transition-colors">
-                <div>
-                  <p className="text-sm font-medium text-ink">{l.nome}</p>
-                  <p className="text-xs text-ink-subtle">{unitsMap[l.unit_id] ?? '—'} · {employeesMap[l.employee_id ?? ''] ?? '—'}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[l.status] ?? ''}`}>
-                    {l.status}
-                  </span>
-                  <p className="mt-1 text-xs text-ink-subtle">{formatDate(l.validade)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-edge bg-surface">
-          <div className="border-b border-edge px-5 py-4">
-            <p className="text-sm font-semibold text-ink">Validades Críticas (24h)</p>
-          </div>
-          <div className="divide-y divide-edge">
-            {criticas.length === 0 && (
-              <p className="px-5 py-4 text-sm text-ink-subtle">Sem validades críticas.</p>
-            )}
-            {criticas.map(l => {
-              const diff = new Date(l.validade).getTime() - now.getTime()
-              const isExpired = diff < 0
-              return (
-                <div key={l.id} className="flex items-center justify-between px-5 py-3 hover:bg-surface-raised/50 transition-colors">
-                  <div>
-                    <p className="text-sm font-medium text-ink">{l.nome}</p>
-                    <p className="text-xs text-ink-subtle">{unitsMap[l.unit_id] ?? '—'}</p>
-                  </div>
-                  <p className={`text-xs font-medium ${isExpired ? 'text-alert-bright' : 'text-warn-bright'}`}>
-                    {isExpired ? 'VENCIDA' : `${Math.floor(diff / 3600000)}h restantes`}
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
+    <DashboardClient
+      units={units ?? []}
+      currentUnit={unit ?? ''}
+      kpiEtiquetasHoje={kpiEtiquetasHoje}
+      kpiCriticas={kpiCriticas}
+      kpiProducoes={kpiProducoes}
+      kpiDescartes={kpiDescartes}
+      labelGroups={labelGroups}
+    />
   )
 }
