@@ -75,7 +75,7 @@ export function DatePicker({ value, onChange, withTime, placeholder }: Props) {
   function updatePosition() {
     if (!buttonRef.current) return
     const rect = buttonRef.current.getBoundingClientRect()
-    setPanelStyle({ position: 'fixed', top: rect.bottom + 4, left: rect.left })
+    setPanelStyle({ position: 'fixed', top: rect.bottom + 4, left: Math.max(8, Math.min(rect.left, window.innerWidth - 288)) })
   }
 
   useEffect(() => {

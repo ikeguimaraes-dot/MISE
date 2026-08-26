@@ -89,7 +89,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: {
     function updatePosition() {
       if (!buttonRef.current) return
       const rect = buttonRef.current.getBoundingClientRect()
-      setPanelStyle({ position: 'fixed', top: rect.bottom + 4, left: rect.left })
+      setPanelStyle({ position: 'fixed', top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 200) })
     }
 
     function onOutside(e: MouseEvent | TouchEvent) {
@@ -135,7 +135,7 @@ function NavDropdown({ label, icon: Icon, items, pathname }: {
         <div
           ref={panelRef}
           style={{ ...panelStyle, zIndex: 9999 }}
-          className="min-w-48 rounded-lg border border-edge bg-surface p-1 shadow-lg"
+          className="min-w-48 max-w-[85vw] rounded-lg border border-edge bg-surface p-1 shadow-lg"
         >
           {items.map(({ href, label: itemLabel, icon: ItemIcon }) => (
             <Link
