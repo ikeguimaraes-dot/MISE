@@ -561,7 +561,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 
       {/* Conflito Modal */}
       {showConflictModal && conflictLabel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-xl border border-edge bg-surface p-6 space-y-4">
             <h2 className="font-semibold text-ink">Etiqueta ativa encontrada</h2>
             <div className="rounded-lg border border-edge bg-base p-3 text-sm space-y-1">

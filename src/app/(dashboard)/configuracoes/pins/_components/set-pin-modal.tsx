@@ -45,7 +45,7 @@ export function SetPinModal({ employee, onClose, onSuccess }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-sm rounded-xl border border-edge bg-surface p-6 space-y-4">
         <h2 className="font-semibold text-ink">PIN — {employee.nome}</h2>
 
