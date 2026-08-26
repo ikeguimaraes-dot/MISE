@@ -101,7 +101,17 @@ export async function POST(
     todosPeriodos?.some(p => p.periodo === tipo && p.enviado_em)
   )
 
-  // 6. Fechar o dia se todos enviados
+  // 6. Sempre emite turno.period.closed para o período recém-enviado
+  await emitTurnoEvent({
+    type: 'turno.period.closed',
+    unitId: unit_id,
+    entityId: per.id,
+    actorId: auth.employeeId,
+    occurredAt: agora,
+    payload: { periodo, data: dataParam },
+  })
+
+  // 7. Fechar o dia e emitir turno.closed se todos os períodos estão enviados
   if (todosEnviados) {
     const relUpdate: Record<string, unknown> = { status: 'enviado', enviado_em: agora }
     if (userId) relUpdate.enviado_por = userId
@@ -117,15 +127,6 @@ export async function POST(
       actorId: auth.employeeId,
       occurredAt: agora,
       payload: { data: dataParam },
-    })
-  } else {
-    await emitTurnoEvent({
-      type: 'turno.period.closed',
-      unitId: unit_id,
-      entityId: per.id,
-      actorId: auth.employeeId,
-      occurredAt: agora,
-      payload: { periodo, data: dataParam },
     })
   }
 
