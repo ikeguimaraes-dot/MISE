@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
+import { DatePicker } from '@/components/ui/date-picker'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -84,6 +85,7 @@ export function LabelForm({
   units: Unit[]
 }) {
   const [search, setSearch] = useState('')
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null } | null>(null)
   const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
   const [categoria, setCategoria] = useState('')
@@ -346,15 +348,24 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
             <label className="block text-xs font-medium text-ink-muted mb-1">Produto *</label>
             <input
               value={search}
-              onChange={e => { setSearch(e.target.value); if (!e.target.value) setSelectedProduct(null) }}
+              onChange={e => { setSearch(e.target.value); setActiveIndex(-1); if (!e.target.value) setSelectedProduct(null) }}
+              onKeyDown={e => {
+                if (!searchResults.length || selectedProduct) return
+                if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => (i + 1) % searchResults.length) }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(i => (i - 1 + searchResults.length) % searchResults.length) }
+                else if (e.key === 'Enter' && activeIndex >= 0) { e.preventDefault(); handleSelectProduct(searchResults[activeIndex]) }
+                else if (e.key === 'Escape') { setSearch(''); setActiveIndex(-1); setSelectedProduct(null) }
+              }}
               placeholder="Buscar produto (mín. 2 letras)"
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:border-ink-subtle focus:outline-none"
             />
             {searchResults.length > 0 && !selectedProduct && (
               <div className="absolute z-10 mt-1 w-full rounded-lg border border-edge-strong bg-surface shadow-lg">
-                {searchResults.map(r => (
-                  <button key={r.id} type="button" onClick={() => handleSelectProduct(r)}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm text-ink hover:bg-surface-raised transition-colors">
+                {searchResults.map((r, i) => (
+                  <button key={r.id} type="button"
+                    onClick={() => handleSelectProduct(r)}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    className={`flex w-full items-center justify-between px-3 py-2 text-sm text-ink transition-colors ${i === activeIndex ? 'bg-surface-raised' : 'hover:bg-surface-raised'}`}>
                     <span>{r.nome}</span>
                     <span className="text-xs text-ink-subtle capitalize">{r.tipo}</span>
                   </button>
@@ -444,15 +455,13 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Validade fornecedor */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Validade original (fornecedor)</label>
-            <input type="date" value={validadeFornecedor} onChange={e => setValidadeFornecedor(e.target.value)}
-              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
+            <DatePicker value={validadeFornecedor} onChange={setValidadeFornecedor} placeholder="dd/mm/aaaa" />
           </div>
 
           {/* Data manipulação */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Data de manipulação *</label>
-            <input type="datetime-local" value={dataManipulacao} onChange={e => setDataManipulacao(e.target.value)} required
-              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
+            <DatePicker value={dataManipulacao} onChange={setDataManipulacao} withTime placeholder="Selecionar data e hora" />
           </div>
 
           {/* Validade */}
@@ -469,8 +478,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
                 </span>
               </div>
             ) : (
-              <input type="datetime-local" value={validade} onChange={e => setValidade(e.target.value)} required
-                className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
+              <DatePicker value={validade} onChange={setValidade} withTime placeholder="Selecionar data e hora" />
             )}
           </div>
         </div>
