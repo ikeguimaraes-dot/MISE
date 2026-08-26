@@ -53,11 +53,11 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   // Respiro equilibrado antes do bloco de datas (centraliza o bloco na etiqueta)
   y += 90
   cmds.push(`BAR ${left},${y},448,3`)
-  y += 24
+  y += 40
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
   y += 32
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
-  y += 32
+  y += 48
   cmds.push(`BAR ${left},${y},448,3`)
   // Respiro simétrico antes de responsável/#ID
   y += 90

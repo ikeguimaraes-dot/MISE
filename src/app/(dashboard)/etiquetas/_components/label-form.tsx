@@ -267,7 +267,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 .label{width:60mm;height:60mm;padding:4mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
 .nome{font-size:13pt;font-weight:bold;line-height:1.1}
 .metodo{font-size:8pt;line-height:1.2;margin-top:0.5mm;text-transform:uppercase}
-.dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:1mm 0;margin:3mm 0}
+.dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:3mm 0;margin:3mm 0}
 .row{display:flex;justify-content:space-between;font-size:9.5pt;line-height:1.4}
 .row .lbl{font-weight:bold}
 .resp{font-size:9pt}
@@ -558,7 +558,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               <div style={{ fontWeight: 'bold', fontSize: '13pt', lineHeight: 1.1 }}>{savedLabel.nome}</div>
               {metodo && <div style={{ fontSize: '8pt', lineHeight: 1.2, marginTop: '0.5mm', textTransform: 'uppercase' }}>{metodo}</div>}
             </div>
-            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '1mm 0', margin: '3mm 0' }}>
+            <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '3mm 0', margin: '3mm 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>
                 <span style={{ fontWeight: 'bold' }}>MANIPULAÇÃO:</span>
                 <span>{new Date(dataManipulacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
