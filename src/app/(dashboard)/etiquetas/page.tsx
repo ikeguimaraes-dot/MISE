@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { LabelForm } from './_components/label-form'
 import { BotaoReimprimir } from './_components/botao-reimprimir'
 
-type SearchParams = Promise<{ unit?: string; status?: string; page?: string }>
+type SearchParams = Promise<{ unit?: string; status?: string; produto?: string; tipo?: string; responsavel?: string; page?: string }>
 
 const STATUS_BADGE: Record<string, string> = {
   ativa: 'text-fresh-bright bg-fresh/10',
@@ -27,7 +27,7 @@ function podeReimprimir(createdAt: string) {
 }
 
 export default async function EtiquetasPage({ searchParams }: { searchParams: SearchParams }) {
-  const { unit, status, page: pageParam } = await searchParams
+  const { unit, status, produto, tipo, responsavel, page: pageParam } = await searchParams
   const page = Math.max(1, Number(pageParam) || 1)
   const pageSize = 20
   const from = (page - 1) * pageSize
@@ -54,6 +54,9 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
 
   if (unit) query = query.eq('unit_id', unit)
   if (status) query = query.eq('status', status)
+  if (produto) query = query.ilike('nome', `%${produto}%`)
+  if (tipo) query = query.eq('tipo', tipo)
+  if (responsavel) query = query.eq('employee_id', responsavel)
 
   const { data: labels, count } = await query
 
@@ -103,11 +106,25 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
             <option value="descartada">Descartada</option>
             <option value="vencida">Vencida</option>
           </select>
+          <input name="produto" defaultValue={produto ?? ''} placeholder="Produto"
+            className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
+          <select name="tipo" defaultValue={tipo ?? ''}
+            className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
+            <option value="">Todos os tipos</option>
+            <option value="ingrediente">Ingrediente</option>
+            <option value="preparacao">Preparação</option>
+            <option value="porcao">Porção</option>
+          </select>
+          <select name="responsavel" defaultValue={responsavel ?? ''}
+            className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
+            <option value="">Todos os responsáveis</option>
+            {(employees ?? []).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+          </select>
           <button type="submit"
             className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ember-ink hover:bg-ember-hover transition-colors">
             Filtrar
           </button>
-          {(unit || status) && (
+          {(unit || status || produto || tipo || responsavel) && (
             <Link href="/etiquetas" className="rounded-lg border border-edge-strong px-3 py-1.5 text-sm text-ink-muted hover:text-ink transition-colors">
               Limpar
             </Link>
@@ -168,13 +185,13 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
             </p>
             <div className="flex gap-2">
               {page > 1 && (
-                <Link href={`?${new URLSearchParams({ ...(unit ? { unit } : {}), ...(status ? { status } : {}), page: String(page - 1) })}`}
+                <Link href={`?${new URLSearchParams({ ...(unit ? { unit } : {}), ...(status ? { status } : {}), ...(produto ? { produto } : {}), ...(tipo ? { tipo } : {}), ...(responsavel ? { responsavel } : {}), page: String(page - 1) })}`}
                   className="rounded border border-edge-strong px-3 py-1 text-xs text-ink-muted hover:text-ink transition-colors">
                   Anterior
                 </Link>
               )}
               {page < totalPages && (
-                <Link href={`?${new URLSearchParams({ ...(unit ? { unit } : {}), ...(status ? { status } : {}), page: String(page + 1) })}`}
+                <Link href={`?${new URLSearchParams({ ...(unit ? { unit } : {}), ...(status ? { status } : {}), ...(produto ? { produto } : {}), ...(tipo ? { tipo } : {}), ...(responsavel ? { responsavel } : {}), page: String(page + 1) })}`}
                   className="rounded border border-edge-strong px-3 py-1 text-xs text-ink-muted hover:text-ink transition-colors">
                   Próxima
                 </Link>
