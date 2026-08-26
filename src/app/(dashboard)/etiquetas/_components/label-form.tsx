@@ -72,7 +72,7 @@ export function LabelForm({
   const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
   const [categoria, setCategoria] = useState('')
   const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(false)
-  const [pesoG, setPesoG] = useState('')
+  const [pesoKg, setPesoKg] = useState('')
   const [selectedEmployee, setSelectedEmployee] = useState<string>('')
   const [empSearch, setEmpSearch] = useState('')
   const [selectedUnit, setSelectedUnit] = useState<string>('')
@@ -230,7 +230,7 @@ export function LabelForm({
       menu_item_id: selectedProduct.tipo === 'preparacao' ? selectedProduct.id : null,
       tipo,
       nome: selectedProduct.nome,
-      peso_kg: pesoG ? Number(pesoG) / 1000 : null,
+      peso_kg: pesoKg ? Number(pesoKg) : null,
       setor: setor || null,
       lote: lote || null,
       selo: selo !== 'Nenhum' ? selo : null,
@@ -399,9 +399,9 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 
           {/* Peso */}
           <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1">Peso (gramas)</label>
-            <input type="number" value={pesoG} onChange={e => setPesoG(e.target.value)} min="0" step="1"
-              placeholder="ex: 1500"
+            <label className="block text-xs font-medium text-ink-muted mb-1">Peso (kg)</label>
+            <input type="number" value={pesoKg} onChange={e => setPesoKg(e.target.value)} min="0.010" step="0.001"
+              placeholder="ex: 0.300"
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
           </div>
 
