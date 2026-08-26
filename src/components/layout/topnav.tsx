@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
   Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen,
-  ChevronDown, Menu, X,
+  ChevronDown, Menu, X, Upload,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,7 @@ const relatoriosItems: NavEntry[] = [
 const cadastrosItems: NavEntry[] = [
   { href: '/cadastros/funcionarios', label: 'Funcionários', icon: Users },
   { href: '/cadastros/produtos', label: 'Produtos', icon: Package },
+  { href: '/cadastros/produtos/importar', label: 'Importar produtos', icon: Upload },
   { href: '/cadastros/grupos', label: 'Grupos', icon: FolderTree },
 ]
 
