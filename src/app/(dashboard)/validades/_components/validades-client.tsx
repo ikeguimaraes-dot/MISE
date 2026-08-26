@@ -98,7 +98,7 @@ export function ValidadesClient({ initialLabels, units }: { initialLabels: Label
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {CARDS.map(({ key, label, count, color, border }) => (
           <button key={key} onClick={() => setBucketFilter(bucketFilter === key ? null : key)}
             className={`rounded-xl border bg-surface p-4 text-left transition-all ${

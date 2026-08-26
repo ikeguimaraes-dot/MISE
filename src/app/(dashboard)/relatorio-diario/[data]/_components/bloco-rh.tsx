@@ -76,7 +76,7 @@ export function BlocoRh({
         <div className="space-y-2 pt-1">
           <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do colaborador"
             className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none" />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select value={tipo} onChange={e => setTipo(e.target.value as OcorrenciaRhTipo | '')}
               className="rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none">
               <option value="">Tipo…</option>

@@ -80,7 +80,7 @@ export function BlocoVendas({
     <div className="rounded-xl border border-edge bg-surface p-5 space-y-4">
       <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">Vendas</p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {field('vendas_ab', 'Vendas A&B', { prefix: 'R$', required: true, erro: erros?.vendas_ab })}
         {field('pax_total', 'PAX Total', { integer: true, required: true, erro: erros?.pax_total })}
         {field('alimentos', 'Alimentos', { prefix: 'R$' })}

@@ -15,7 +15,7 @@ export function BlocoClima({
   return (
     <div className="rounded-xl border border-edge bg-surface p-5 space-y-3">
       <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">Clima</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium text-ink-muted">Tempo</label>
           <select
