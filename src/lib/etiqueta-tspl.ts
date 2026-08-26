@@ -38,6 +38,7 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   const cmds: string[] = []
   cmds.push('SIZE 60 mm, 60 mm')
   cmds.push('GAP 2 mm, 0 mm')
+  cmds.push('SET BUZZER OFF')
   cmds.push('DIRECTION 1')
   cmds.push('CLS')
 
