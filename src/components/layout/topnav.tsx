@@ -332,7 +332,7 @@ export function TopNav({
           </Link>
 
           {/* Nav horizontal — desktop (≥ md) */}
-          <nav className="scrollbar-hide hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
+          <nav className="scrollbar-hide hidden flex-1 items-center gap-1 overflow-x-auto xl:flex">
             {operacionalItems.map(({ href, label, icon }) => (
               <NavLink key={href} href={href} label={label} icon={icon} pathname={pathname} />
             ))}
@@ -356,14 +356,14 @@ export function TopNav({
           </nav>
 
           {/* Espaçador mobile — empurra hambúrguer pra direita */}
-          <div className="flex-1 md:hidden" />
+          <div className="flex-1 xl:hidden" />
 
           {/* Botão hambúrguer — mobile (< md) */}
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Abrir menu"
-            className="flex min-h-11 items-center justify-center rounded-md px-3 text-ink-subtle transition-colors hover:text-ink md:hidden"
+            className="flex min-h-11 items-center justify-center rounded-md px-3 text-ink-subtle transition-colors hover:text-ink xl:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -373,7 +373,7 @@ export function TopNav({
             type="button"
             onClick={handleSignOut}
             aria-label="Sair"
-            className="hidden min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-ink-subtle transition-colors hover:text-ink md:flex"
+            className="hidden min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-ink-subtle transition-colors hover:text-ink xl:flex"
           >
             <LogOut className="h-4 w-4 shrink-0" />
             Sair
