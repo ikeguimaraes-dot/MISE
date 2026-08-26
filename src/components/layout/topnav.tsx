@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
-  Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen, ChevronDown,
+  Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen,
+  ChevronDown, Menu, X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -159,6 +160,140 @@ function NavDropdown({ label, icon: Icon, items, pathname }: {
   )
 }
 
+function DrawerLink({ href, label, icon: Icon, pathname, onClose }: NavEntry & { pathname: string; onClose: () => void }) {
+  return (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={cn(
+        'flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+        isEntryActive(pathname, href)
+          ? 'bg-ember-soft text-ember'
+          : 'text-ink-subtle hover:bg-surface-raised hover:text-ink'
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" />
+      {label}
+    </Link>
+  )
+}
+
+function DrawerSection({ label }: { label: string }) {
+  return (
+    <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
+      {label}
+    </p>
+  )
+}
+
+function MobileDrawer({
+  open,
+  onClose,
+  pathname,
+  showAdminSections,
+  showChecklists,
+  onSignOut,
+}: {
+  open: boolean
+  onClose: () => void
+  pathname: string
+  showAdminSections: boolean
+  showChecklists: boolean
+  onSignOut: () => void
+}) {
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  // Fecha ao trocar de rota
+  useEffect(() => { onClose() }, [pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Trava scroll do body enquanto aberto
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
+  if (!open) return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+
+      {/* Drawer panel */}
+      <div className="relative flex w-[85vw] max-w-xs flex-col bg-base shadow-xl">
+        {/* Cabeçalho do drawer */}
+        <div className="flex h-14 shrink-0 items-center justify-between border-b border-edge px-4">
+          <span className="text-lg font-bold tracking-tight text-ink">MISE</span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar menu"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-ink-subtle transition-colors hover:text-ink"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Itens de navegação */}
+        <nav className="flex-1 overflow-y-auto p-3">
+          {operacionalItems.map(item => (
+            <DrawerLink key={item.href} {...item} pathname={pathname} onClose={onClose} />
+          ))}
+
+          {showChecklists && (
+            <>
+              <DrawerSection label="Checklists" />
+              {showAdminSections
+                ? checklistsItems.map(item => (
+                    <DrawerLink key={item.href} {...item} pathname={pathname} onClose={onClose} />
+                  ))
+                : <DrawerLink href="/checklists" label="Executar" icon={ClipboardCheck} pathname={pathname} onClose={onClose} />
+              }
+            </>
+          )}
+
+          <DrawerSection label="Relatórios" />
+          {relatoriosItems.map(item => (
+            <DrawerLink key={item.href} {...item} pathname={pathname} onClose={onClose} />
+          ))}
+
+          {showAdminSections && (
+            <>
+              <DrawerSection label="Cadastros" />
+              {cadastrosItems.map(item => (
+                <DrawerLink key={item.href} {...item} pathname={pathname} onClose={onClose} />
+              ))}
+
+              <DrawerSection label="Configurações" />
+              {configuracoesItems.map(item => (
+                <DrawerLink key={item.href} {...item} pathname={pathname} onClose={onClose} />
+              ))}
+            </>
+          )}
+        </nav>
+
+        {/* Sair fixo no rodapé */}
+        <div className="shrink-0 border-t border-edge p-3">
+          <button
+            type="button"
+            onClick={() => { onClose(); onSignOut() }}
+            className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-ink-subtle transition-colors hover:bg-surface-raised hover:text-ink"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sair
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export function TopNav({
   role = 'admin',
   isPinUser = false,
@@ -170,6 +305,7 @@ export function TopNav({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   async function handleSignOut() {
     if (isPinUser) {
@@ -187,45 +323,71 @@ export function TopNav({
   const showChecklists = role !== 'cozinheiro' || hasChecklists
 
   return (
-    <header className="sticky top-0 z-40 border-b border-edge bg-base">
-      <div className="flex h-14 items-center gap-1 px-3">
-        <Link href="/" className="mr-1 shrink-0">
-          <h1 className="text-lg font-bold tracking-tight text-ink">MISE</h1>
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 border-b border-edge bg-base">
+        <div className="flex h-14 items-center gap-1 px-3">
+          <Link href="/" className="mr-1 shrink-0">
+            <h1 className="text-lg font-bold tracking-tight text-ink">MISE</h1>
+          </Link>
 
-        <nav className="scrollbar-hide flex flex-1 items-center gap-1 overflow-x-auto">
-          {operacionalItems.map(({ href, label, icon }) => (
-            <NavLink key={href} href={href} label={label} icon={icon} pathname={pathname} />
-          ))}
+          {/* Nav horizontal — desktop (≥ md) */}
+          <nav className="scrollbar-hide hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
+            {operacionalItems.map(({ href, label, icon }) => (
+              <NavLink key={href} href={href} label={label} icon={icon} pathname={pathname} />
+            ))}
 
-          {showChecklists && (
-            showAdminSections ? (
-              <NavDropdown label="Checklists" icon={ClipboardCheck} items={checklistsItems} pathname={pathname} />
-            ) : (
-              <NavLink href="/checklists" label="Checklists" icon={ClipboardCheck} pathname={pathname} />
-            )
-          )}
+            {showChecklists && (
+              showAdminSections ? (
+                <NavDropdown label="Checklists" icon={ClipboardCheck} items={checklistsItems} pathname={pathname} />
+              ) : (
+                <NavLink href="/checklists" label="Checklists" icon={ClipboardCheck} pathname={pathname} />
+              )
+            )}
 
-          <NavDropdown label="Relatórios" icon={FileText} items={relatoriosItems} pathname={pathname} />
+            <NavDropdown label="Relatórios" icon={FileText} items={relatoriosItems} pathname={pathname} />
 
-          {showAdminSections && (
-            <>
-              <NavDropdown label="Cadastros" icon={Package} items={cadastrosItems} pathname={pathname} />
-              <NavDropdown label="Configurações" icon={Printer} items={configuracoesItems} pathname={pathname} />
-            </>
-          )}
-        </nav>
+            {showAdminSections && (
+              <>
+                <NavDropdown label="Cadastros" icon={Package} items={cadastrosItems} pathname={pathname} />
+                <NavDropdown label="Configurações" icon={Printer} items={configuracoesItems} pathname={pathname} />
+              </>
+            )}
+          </nav>
 
-        <button
-          type="button"
-          onClick={handleSignOut}
-          aria-label="Sair"
-          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-ink-subtle transition-colors hover:text-ink"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline">Sair</span>
-        </button>
-      </div>
-    </header>
+          {/* Espaçador mobile — empurra hambúrguer pra direita */}
+          <div className="flex-1 md:hidden" />
+
+          {/* Botão hambúrguer — mobile (< md) */}
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Abrir menu"
+            className="flex min-h-11 items-center justify-center rounded-md px-3 text-ink-subtle transition-colors hover:text-ink md:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {/* Botão Sair — desktop (≥ md) */}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            aria-label="Sair"
+            className="hidden min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-ink-subtle transition-colors hover:text-ink md:flex"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <MobileDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        pathname={pathname}
+        showAdminSections={showAdminSections}
+        showChecklists={showChecklists}
+        onSignOut={handleSignOut}
+      />
+    </>
   )
 }
