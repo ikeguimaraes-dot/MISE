@@ -33,6 +33,22 @@ const METODOS = [
 
 const SELOS = ['Nenhum', 'SIF', 'SISP', 'SIM'] as const
 
+const SETORES = [
+  'Cozinha Produção',
+  'Cozinha Garde',
+  'Cozinha Fogão',
+  'Confeitaria',
+  'Parrilha',
+  'Bar 1',
+  'Bar 2',
+  'Bar 3',
+  'Salão 1',
+  'Salão 2',
+  'Salão 3',
+  'Câmara Refrigerada',
+  'Câmara Congelada',
+] as const
+
 const AVATAR_COLORS = [
   'bg-fresh', 'bg-info', 'bg-purple-600', 'bg-orange-600',
   'bg-alert', 'bg-cyan-600', 'bg-pink-600', 'bg-yellow-600',
@@ -357,36 +373,39 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
             </select>
           </div>
 
-          {/* Categoria ANVISA — oculta quando há validade customizada do Suflex */}
-          {selectedProduct && shelfLifeSource !== 'custom' && (
-            <div>
-              <label className="block text-xs font-medium text-ink-muted mb-1">Categoria ANVISA</label>
-              {categoriaFromCadastro ? (
-                <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
-                  <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
-                  <span className="text-sm text-fresh-bright">
-                    {CATEGORIA_ANVISA_OPTIONS.find(o => o.value === categoria)?.label ?? categoria}
-                  </span>
-                  <span className="ml-auto text-xs text-fresh">Do cadastro do produto</span>
-                </div>
-              ) : (
-                <>
-                  <select value={categoria} onChange={e => setCategoria(e.target.value)}
-                    className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
-                    <option value="">Selecionar categoria</option>
-                    {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  {selectedProduct.tipo === 'ingrediente' && !categoria && (
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-warn">
-                      <AlertTriangle className="h-3 w-3" />
-                      <span>Sem categoria — <a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+        </div>
 
+        {/* Categoria ANVISA — fora da grid para não deslocar os campos abaixo ao aparecer/sumir */}
+        {selectedProduct && shelfLifeSource !== 'custom' && (
+          <div>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Categoria ANVISA</label>
+            {categoriaFromCadastro ? (
+              <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
+                <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
+                <span className="text-sm text-fresh-bright">
+                  {CATEGORIA_ANVISA_OPTIONS.find(o => o.value === categoria)?.label ?? categoria}
+                </span>
+                <span className="ml-auto text-xs text-fresh">Do cadastro do produto</span>
+              </div>
+            ) : (
+              <>
+                <select value={categoria} onChange={e => setCategoria(e.target.value)}
+                  className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
+                  <option value="">Selecionar categoria</option>
+                  {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {selectedProduct.tipo === 'ingrediente' && !categoria && (
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-warn">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Sem categoria — <a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
           {/* Método de conservação */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Método de conservação</label>
@@ -408,8 +427,11 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Setor */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Setor</label>
-            <input value={setor} onChange={e => setSetor(e.target.value)} placeholder="ex: Cozinha Quente"
-              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
+            <select value={setor} onChange={e => setSetor(e.target.value)}
+              className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
+              <option value="">Selecionar setor</option>
+              {SETORES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
 
           {/* Lote */}
