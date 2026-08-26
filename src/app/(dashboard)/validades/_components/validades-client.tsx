@@ -137,12 +137,14 @@ export function ValidadesClient({ initialLabels, units }: { initialLabels: Label
               </span>
               <div className="flex gap-1 shrink-0">
                 <button onClick={() => handleAction(l.id, 'consumida')}
+                  title="Este item foi utilizado na produção — não conta como desperdício"
                   className="rounded border border-info px-2 py-1 text-xs text-info hover:bg-info-soft transition-colors">
-                  Consumida
+                  Usado no preparo
                 </button>
                 <button onClick={() => handleAction(l.id, 'descartada')}
+                  title="Este item foi jogado fora sem uso — conta como perda no relatório de desperdício"
                   className="rounded border border-alert px-2 py-1 text-xs text-alert hover:bg-alert-soft transition-colors">
-                  Descartar
+                  Descartar (perda)
                 </button>
               </div>
             </div>
