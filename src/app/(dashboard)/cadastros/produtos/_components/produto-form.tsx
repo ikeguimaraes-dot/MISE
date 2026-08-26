@@ -155,7 +155,7 @@ export function ProdutoForm({
 
         <div>
           <label className="block text-xs font-medium text-ink-muted mb-1">Custo padrão (R$)</label>
-          <input type="number" value={custo} onChange={e => setCusto(e.target.value)} step="0.01" min="0"
+          <input type="number" value={custo} onChange={e => setCusto(e.target.value)} step="0.0001" min="0"
             className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
         </div>
 
