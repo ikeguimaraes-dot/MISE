@@ -189,7 +189,7 @@ th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{fo
       </div>
 
       {totalLabels > 0 && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
             { label: 'Etiquetas no período', value: totalLabels, color: 'text-fresh' },
             { label: 'Produtos diferentes', value: groups.length, color: 'text-info' },

@@ -511,7 +511,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
                 <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar funcionário"
                   className="mb-2 w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
               )}
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                 {filteredEmployees.map(e => (
                   <button key={e.id} type="button" onClick={() => setSelectedEmployee(e.id)}
                     className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors min-h-[80px] ${

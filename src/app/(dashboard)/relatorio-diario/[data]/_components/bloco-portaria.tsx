@@ -75,7 +75,7 @@ export function BlocoPortaria({
   return (
     <RegistroColapsavel titulo="Portaria" count={desistencias.length}>
       {/* Entradas / calculado */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {(['reservas', 'no_show', 'passantes'] as const).map(key => (
           <div key={key} className="space-y-1">
             <label className="text-xs font-medium text-ink-muted capitalize">{key.replace('_', '-')}</label>

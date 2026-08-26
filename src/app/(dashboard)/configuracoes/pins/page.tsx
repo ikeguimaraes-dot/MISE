@@ -44,7 +44,7 @@ export default function PinsPage() {
         <p className="text-sm text-ink-muted">Gerencie os PINs dos funcionários</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[
           { label: 'Total', value: employees.length, color: 'text-ink' },
           { label: 'Com PIN', value: comPin.length, color: 'text-fresh' },
