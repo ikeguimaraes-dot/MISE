@@ -158,17 +158,21 @@ export async function POST(request: Request) {
     }
 
     if (toUpdate.length > 0) {
-      const updatePayload = toUpdate.map(r => ({
-        id: idByCodigo.get(r.codigo)!,
-        nome: r.nome,
-        unidade_padrao: r.unidade_padrao,
-        group_id: r.group_id,
-      }))
-      const { error: updateError } = await supabase
-        .from('ingredients')
-        .upsert(updatePayload, { onConflict: 'id' })
-      if (updateError) {
-        return NextResponse.json({ error: `Erro ao atualizar produtos: ${updateError.message}` }, { status: 400 })
+      // Update por linha (não upsert): o upsert reescreveria a linha inteira e
+      // violaria o NOT NULL de categoria/custo_padrao/ativo, que não vêm da
+      // planilha. Assim só nome/unidade_padrao/group_id são tocados, preservando
+      // o resto do cadastro existente.
+      const updateResults = await Promise.all(
+        toUpdate.map(r =>
+          supabase
+            .from('ingredients')
+            .update({ nome: r.nome, unidade_padrao: r.unidade_padrao, group_id: r.group_id })
+            .eq('id', idByCodigo.get(r.codigo)!)
+        )
+      )
+      const failed = updateResults.find(r => r.error)
+      if (failed?.error) {
+        return NextResponse.json({ error: `Erro ao atualizar produtos: ${failed.error.message}` }, { status: 400 })
       }
     }
 
