@@ -6,7 +6,7 @@ import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
-type Employee = { id: string; nome: string }
+type Employee = { id: string; nome: string; unit_id: string | null }
 type Unit = { id: string; name: string; cnpj?: string | null; address?: string | null }
 type PrintPoint = { id: string; name: string; icone: string | null }
 
@@ -103,9 +103,13 @@ export function LabelForm({
       ].slice(0, 8)
     : []
 
+  const unitEmployees = selectedUnit
+    ? employees.filter(e => e.unit_id === selectedUnit)
+    : []
+
   const filteredEmployees = empSearch
-    ? employees.filter(e => e.nome.toLowerCase().includes(empSearch.toLowerCase()))
-    : employees
+    ? unitEmployees.filter(e => e.nome.toLowerCase().includes(empSearch.toLowerCase()))
+    : unitEmployees
 
   useEffect(() => {
     if (!selectedProduct || !selectedUnit) return
@@ -346,7 +350,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Unidade */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Unidade *</label>
-            <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value)} required
+            <select value={selectedUnit} onChange={e => { setSelectedUnit(e.target.value); setSelectedEmployee('') }} required
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar unidade</option>
               {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -467,23 +471,31 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
         {/* Responsável */}
         <div>
           <label className="block text-xs font-medium text-ink-muted mb-2">Responsável</label>
-          {employees.length > 6 && (
-            <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar funcionário"
-              className="mb-2 w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
+          {!selectedUnit ? (
+            <p className="text-sm text-ink-subtle">Selecione uma unidade para ver os responsáveis.</p>
+          ) : unitEmployees.length === 0 ? (
+            <p className="text-sm text-ink-subtle">Nenhum funcionário ativo no MISE para esta unidade.</p>
+          ) : (
+            <>
+              {unitEmployees.length > 6 && (
+                <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar funcionário"
+                  className="mb-2 w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
+              )}
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {filteredEmployees.map(e => (
+                  <button key={e.id} type="button" onClick={() => setSelectedEmployee(e.id)}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors min-h-[80px] ${
+                      selectedEmployee === e.id ? 'border-ember bg-ember-soft' : 'border-edge bg-surface-raised/50 hover:border-edge-strong'
+                    }`}>
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-ink ${getColor(e.id)}`}>
+                      {getInitials(e.nome)}
+                    </div>
+                    <span className="text-xs text-ink-muted leading-tight">{e.nome.split(' ')[0]}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {filteredEmployees.map(e => (
-              <button key={e.id} type="button" onClick={() => setSelectedEmployee(e.id)}
-                className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors min-h-[80px] ${
-                  selectedEmployee === e.id ? 'border-ember bg-ember-soft' : 'border-edge bg-surface-raised/50 hover:border-edge-strong'
-                }`}>
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-ink ${getColor(e.id)}`}>
-                  {getInitials(e.nome)}
-                </div>
-                <span className="text-xs text-ink-muted leading-tight">{e.nome.split(' ')[0]}</span>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Ponto de impressão */}

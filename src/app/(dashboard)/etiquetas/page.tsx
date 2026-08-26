@@ -44,7 +44,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
     supabase.from('units').select('id, name, cnpj, address').eq('active', true),
     supabase.from('ingredients').select('id, nome, categoria_anvisa').eq('ativo', true).order('nome'),
     supabase.from('menu_items').select('id, nome').order('nome'),
-    supabase.from('employees').select('id, nome').eq('ativo', true).eq('mise_ativo', true).order('nome'),
+    supabase.from('employees').select('id, nome, unit_id').eq('ativo', true).eq('mise_ativo', true).order('nome'),
   ])
 
   let query = supabase.schema('mise').from('labels')
