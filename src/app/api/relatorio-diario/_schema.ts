@@ -22,6 +22,12 @@ export type SetorEquipe = typeof SETORES_EQUIPE[number]
 export const FEEDBACK_CATEGORIAS = ['prato', 'servico', 'ambiente'] as const
 export type FeedbackCategoria = typeof FEEDBACK_CATEGORIAS[number]
 
+export const FEEDBACK_CATEGORIA_LABEL: Record<string, string> = {
+  prato: 'Produto',
+  servico: 'Serviço',
+  ambiente: 'Ambiente',
+}
+
 export const OCORRENCIA_RH_TIPOS = [
   'falta', 'atestado', 'saida_antecipada', 'contratacao', 'desligamento', 'outro',
 ] as const

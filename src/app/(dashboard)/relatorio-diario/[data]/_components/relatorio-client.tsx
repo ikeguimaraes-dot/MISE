@@ -90,6 +90,7 @@ export function RelatorioClient({
   unitName,
   dataParam,
   role,
+  feedbacks,
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
@@ -98,6 +99,7 @@ export function RelatorioClient({
   unitName: string
   dataParam: string
   role: string
+  feedbacks: { id: string; tipo: string; produto: string | null; categoria: string | null; texto: string | null }[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
@@ -315,8 +317,10 @@ export function RelatorioClient({
 
         {/* Registros colapsáveis */}
         <Bloco86 relatorioData={dataParam} unitId={unitId} disabled={disabled} />
-        <BlocoFeedback tipo="elogio" relatorioData={dataParam} unitId={unitId} disabled={disabled} />
-        <BlocoFeedback tipo="reclamacao" relatorioData={dataParam} unitId={unitId} disabled={disabled} />
+        <BlocoFeedback tipo="elogio" relatorioData={dataParam} unitId={unitId} disabled={disabled}
+          itensIniciais={feedbacks.filter(f => f.tipo === 'elogio').map(f => ({ id: f.id, tipo: f.tipo, produto: f.produto, categoria: f.categoria, descricao: f.texto }))} />
+        <BlocoFeedback tipo="reclamacao" relatorioData={dataParam} unitId={unitId} disabled={disabled}
+          itensIniciais={feedbacks.filter(f => f.tipo === 'reclamacao').map(f => ({ id: f.id, tipo: f.tipo, produto: f.produto, categoria: f.categoria, descricao: f.texto }))} />
         <BlocoRh relatorioData={dataParam} unitId={unitId} disabled={disabled} />
         <BlocoPortaria
           relatorioData={dataParam}

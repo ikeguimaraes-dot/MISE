@@ -48,6 +48,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ dat
   return NextResponse.json(data, { status: 201 })
 }
 
+export async function PATCH(request: Request, { params }: { params: Promise<{ data: string }> }) {
+  const { data: dataParam } = await params
+  const body = await request.json()
+  const { unit_id, id, produto, categoria, descricao } = body
+
+  if (!unit_id || !id) return NextResponse.json({ error: 'unit_id e id obrigatórios.' }, { status: 400 })
+  if (categoria && !FEEDBACK_CATEGORIAS.includes(categoria)) {
+    return NextResponse.json(
+      { error: `categoria inválida. Valores aceitos: ${FEEDBACK_CATEGORIAS.join(', ')}.` },
+      { status: 400 }
+    )
+  }
+
+  const auth = await canAccessUnit(unit_id)
+  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status })
+
+  const supabase = createServiceClient()
+  const relatorio = await getRelatorio(supabase, unit_id, dataParam)
+  if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
+  if (relatorio.status === 'enviado') return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
+
+  const { data, error } = await supabase
+    .from('op_feedback_cliente')
+    .update({
+      produto: produto?.trim() ?? null,
+      categoria: categoria ?? null,
+      texto: descricao?.trim() ?? null,
+    })
+    .eq('id', id)
+    .eq('relatorio_id', relatorio.id)
+    .select().single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function DELETE(request: Request, { params }: { params: Promise<{ data: string }> }) {
   const { data: dataParam } = await params
   const { searchParams } = new URL(request.url)
