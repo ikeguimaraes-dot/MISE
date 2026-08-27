@@ -1,6 +1,7 @@
 'use client'
 import { Plus, X } from 'lucide-react'
 import { SETORES_EQUIPE, type SetorEquipe } from '@/app/api/relatorio-diario/_schema'
+import { SeletorColaborador, type Colaborador } from './seletor-colaborador'
 
 export type EquipeSetorState = { houveFalta: boolean; nomes: string[] }
 export type EquipeState = Record<SetorEquipe, EquipeSetorState>
@@ -9,10 +10,12 @@ export function BlocoEquipe({
   value,
   onChange,
   disabled,
+  colaboradores,
 }: {
   value: EquipeState
   onChange: (v: EquipeState) => void
   disabled?: boolean
+  colaboradores: Colaborador[]
 }) {
   return (
     <div className="rounded-xl border border-edge bg-surface p-5 space-y-4">
@@ -60,18 +63,20 @@ export function BlocoEquipe({
               <div className="space-y-2 pl-1">
                 {estado.nomes.map((nome, i) => (
                   <div key={i} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={nome}
-                      onChange={e => {
-                        const nomes = [...estado.nomes]
-                        nomes[i] = e.target.value
-                        onChange({ ...value, [setor]: { ...estado, nomes } })
-                      }}
-                      disabled={disabled}
-                      placeholder={`Nome do ausente ${i + 1}`}
-                      className="flex-1 rounded-lg border border-alert/30 bg-base px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-alert focus:outline-none disabled:opacity-50"
-                    />
+                    <div className="flex-1">
+                      <SeletorColaborador
+                        colaboradores={colaboradores}
+                        value={nome}
+                        onChange={v => {
+                          const nomes = [...estado.nomes]
+                          nomes[i] = v
+                          onChange({ ...value, [setor]: { ...estado, nomes } })
+                        }}
+                        disabled={disabled}
+                        placeholder={`Ausente ${i + 1}`}
+                        className="w-full rounded-lg border border-alert/30 bg-base px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-alert focus:outline-none disabled:opacity-50"
+                      />
+                    </div>
                     {estado.nomes.length > 1 && (
                       <button
                         type="button"
@@ -101,16 +106,15 @@ export function BlocoEquipe({
               </div>
             ) : (
               /* Não → campo único para líder (opcional) */
-              <input
-                type="text"
+              <SeletorColaborador
+                colaboradores={colaboradores}
                 value={estado.nomes[0] ?? ''}
-                onChange={e => onChange({
+                onChange={v => onChange({
                   ...value,
-                  [setor]: { ...estado, nomes: [e.target.value] },
+                  [setor]: { ...estado, nomes: [v] },
                 })}
                 disabled={disabled}
                 placeholder={`Líder de ${setor} (opcional)`}
-                className="w-full rounded-lg border border-edge bg-base px-3 py-1.5 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none disabled:opacity-50"
               />
             )}
           </div>

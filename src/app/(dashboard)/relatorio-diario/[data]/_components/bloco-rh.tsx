@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { OCORRENCIA_RH_TIPOS, type OcorrenciaRhTipo } from '@/app/api/relatorio-diario/_schema'
 import { RegistroColapsavel } from './registro-colapsavel'
+import { SeletorColaborador, type Colaborador } from './seletor-colaborador'
 
 type RhItem = { id: string; employee_name: string; tipo: OcorrenciaRhTipo; cpf: string | null; descricao: string | null }
 
@@ -20,9 +21,9 @@ function mascaraCpf(v: string): string {
 }
 
 export function BlocoRh({
-  relatorioData, unitId, disabled, itensIniciais,
+  relatorioData, unitId, disabled, itensIniciais, colaboradores,
 }: {
-  relatorioData: string; unitId: string; disabled?: boolean; itensIniciais?: RhItem[]
+  relatorioData: string; unitId: string; disabled?: boolean; itensIniciais?: RhItem[]; colaboradores: Colaborador[]
 }) {
   const [itens, setItens] = useState<RhItem[]>(itensIniciais ?? [])
   const [nome, setNome] = useState('')
@@ -74,8 +75,16 @@ export function BlocoRh({
       ))}
       {!disabled && (
         <div className="space-y-2 pt-1">
-          <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do colaborador"
-            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none" />
+          <SeletorColaborador
+            colaboradores={colaboradores}
+            value={nome}
+            onChange={setNome}
+            onSelecionarColaborador={c => {
+              if (c.cpf) setCpf(mascaraCpf(c.cpf))
+            }}
+            disabled={disabled}
+            placeholder="Nome do colaborador"
+          />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select value={tipo} onChange={e => setTipo(e.target.value as OcorrenciaRhTipo | '')}
               className="rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none">
