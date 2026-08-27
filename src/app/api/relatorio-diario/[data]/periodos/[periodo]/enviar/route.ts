@@ -19,11 +19,13 @@ export async function POST(
   const supabase = createServiceClient()
 
   // 1. Buscar config da unidade — nunca aceitar periodos do payload
-  const { data: unitConfig } = await supabase
+  const { data: unitConfig, error: unitConfigErr } = await supabase
     .from('op_unit_config')
     .select('periodos')
     .eq('unit_id', unit_id)
     .single()
+
+  console.log('[TURNO DIAG] unitConfig:', JSON.stringify(unitConfig), 'err:', unitConfigErr?.code)
 
   const ativos: string[] = (unitConfig?.periodos as string[] | null) ?? ['almoco', 'jantar']
 
@@ -97,9 +99,14 @@ export async function POST(
     .eq('relatorio_id', relatorio.id)
     .in('periodo', ativos)
 
+  console.log('[TURNO DIAG] ativos:', JSON.stringify(ativos))
+  console.log('[TURNO DIAG] todosPeriodos:', JSON.stringify(todosPeriodos))
+
   const todosEnviados = ativos.every(tipo =>
     todosPeriodos?.some(p => p.periodo === tipo && p.enviado_em)
   )
+
+  console.log('[TURNO DIAG] todosEnviados:', todosEnviados)
 
   // 6. Sempre emite turno.period.closed para o período recém-enviado
   await emitTurnoEvent({
