@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Printer, ChevronDown, ChevronUp } from 'lucide-react'
-import type { KpiItem, LabelGroup } from '../page'
+import type { KpiItem, LabelGroup } from '../painel/page'
 
 const STATUS_BADGE: Record<string, string> = {
   ativa: 'text-fresh-bright bg-fresh/10',

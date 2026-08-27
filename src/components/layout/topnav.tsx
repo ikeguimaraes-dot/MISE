@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 type NavEntry = { href: string; label: string; icon: React.ElementType }
 
 const operacionalItems: NavEntry[] = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/painel', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/etiquetas', label: 'Etiquetas', icon: Tag },
   { href: '/validades', label: 'Validades', icon: Clock },
   { href: '/recebimento', label: 'Recebimento', icon: PackageCheck },
