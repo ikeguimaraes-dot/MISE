@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, Check, X } from 'lucide-react'
 import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA, AREA_TO_SETOR_EQUIPE } from '@/app/api/relatorio-diario/_schema'
 import type { SetorAvaliacao, SetorEquipe } from '@/app/api/relatorio-diario/_schema'
 import { BlocoHorarios, type HorariosState } from './bloco-horarios'
@@ -157,14 +158,36 @@ export function RelatorioClient({
   const [enviando, setEnviando] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const router = useRouter()
   const enviados = periodos.filter(
     p => p.enviado_em && periodosAtivos.includes(p.periodo as string)
   )
   // Períodos marcados como "não se aplica" saem da conta: não contam
-  // como pendentes. O denominador é só o que de fato se aplica ao dia.
-  const naoSeAplica = periodos.filter(
-    p => p.status === 'nao_se_aplica' && periodosAtivos.includes(p.periodo as string)
-  ).map(p => p.periodo as string)
+  // como pendentes. Estado local semeado do server, atualizável pelo X.
+  const [naoSeAplica, setNaoSeAplica] = useState<string[]>(
+    periodos
+      .filter(p => p.status === 'nao_se_aplica' && periodosAtivos.includes(p.periodo as string))
+      .map(p => p.periodo as string)
+  )
+  const [naOcupado, setNaOcupado] = useState<string | null>(null)
+
+  async function toggleNaoSeAplica(periodo: string, aplicar: boolean) {
+    setNaOcupado(periodo)
+    try {
+      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodo}/na`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit_id: unitId, aplicar }),
+      })
+      if (res.ok) {
+        setNaoSeAplica(prev => aplicar ? [...prev, periodo] : prev.filter(p => p !== periodo))
+        router.refresh()
+      }
+    } finally {
+      setNaOcupado(null)
+    }
+  }
+
   const aplicaveis = periodosAtivos.filter(p => !naoSeAplica.includes(p))
   const progressoPct = aplicaveis.length > 0
     ? Math.round((enviados.length / aplicaveis.length) * 100)
@@ -343,22 +366,44 @@ export function RelatorioClient({
         {periodosAtivos.map(p => {
           const enviado = periodos.some(row => row.periodo === p && row.enviado_em)
           const na = naoSeAplica.includes(p)
+          const ativo = periodoAtivo === p
+          const ocupado = naOcupado === p
           return (
-            <button
+            <div
               key={p}
-              onClick={() => setPeriodoAtivo(p)}
-              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                periodoAtivo === p
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                ativo
                   ? 'bg-ember text-white'
                   : na
-                  ? 'bg-surface border border-edge text-ink-faint line-through'
-                  : 'bg-surface border border-edge text-ink-muted hover:text-ink'
-              }`}
+                  ? 'bg-surface border border-edge text-ink-faint'
+                  : 'bg-surface border border-edge text-ink-muted'
+              } ${ocupado ? 'opacity-50' : ''}`}
             >
-              {PERIODO_LABEL[p] ?? p}
-              {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
-              {na && <span className="text-[10px] no-underline">N/A</span>}
-            </button>
+              <button
+                type="button"
+                onClick={() => setPeriodoAtivo(p)}
+                className={`flex items-center gap-1.5 ${na && !ativo ? 'line-through' : ''} ${!ativo ? 'hover:text-ink' : ''}`}
+              >
+                {PERIODO_LABEL[p] ?? p}
+                {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
+                {na && <span className="text-[10px] no-underline">N/A</span>}
+              </button>
+              {/* X para dispensar o turno (só quando não enviado). Se já
+                  está N/A, o X reverte. */}
+              {!enviado && !disabled && (
+                <button
+                  type="button"
+                  onClick={() => toggleNaoSeAplica(p, !na)}
+                  disabled={ocupado}
+                  title={na ? 'Reverter — voltar a aplicar' : 'Não há este turno neste dia'}
+                  className={`ml-0.5 rounded p-0.5 transition-colors ${
+                    ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
+                  } ${na ? 'rotate-45' : ''}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           )
         })}
       </div>

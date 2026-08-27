@@ -2,7 +2,8 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LinhaRelatorio } from './_components/linha-relatorio'
+import { ChevronRight } from 'lucide-react'
+import { PERIODO_LABEL } from '@/app/api/relatorio-diario/_schema'
 
 function getStatusDot(status: string, dataStr: string): { cor: string; label: string } {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
@@ -120,18 +121,41 @@ export default async function RelatorioDiarioPage({
         )}
         {relatorios?.map(r => {
           const { cor, label } = getStatusDot(r.status, r.data)
+          const statusPorPeriodo = periodosPorRel.get(r.id) ?? {}
           return (
-            <LinhaRelatorio
+            <Link
               key={r.id}
-              data={r.data}
               href={`/relatorio-diario/${r.data}?unit_id=${activeUnitId}`}
-              labelDia={fmtDia(r.data)}
-              cor={cor}
-              label={label}
-              unitId={activeUnitId}
-              periodosAtivos={periodosAtivos}
-              statusPorPeriodo={periodosPorRel.get(r.id) ?? {}}
-            />
+              className="flex items-center gap-4 px-5 py-4 hover:bg-surface-raised/50 transition-colors"
+            >
+              <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cor}`} />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-ink">{fmtDia(r.data)}</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {periodosAtivos.map(p => {
+                    const st = statusPorPeriodo[p]
+                    const enviado = st === 'enviado'
+                    const na = st === 'nao_se_aplica'
+                    return (
+                      <span
+                        key={p}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                          enviado
+                            ? 'bg-fresh/15 text-fresh-bright'
+                            : na
+                            ? 'bg-edge/20 text-ink-faint/60'
+                            : 'bg-edge/40 text-ink-muted'
+                        }`}
+                      >
+                        {PERIODO_LABEL[p] ?? p}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+              <span className="text-xs text-ink-muted shrink-0">{label}</span>
+              <ChevronRight className="h-4 w-4 text-ink-faint shrink-0" />
+            </Link>
           )
         })}
       </div>
