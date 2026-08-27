@@ -3,66 +3,60 @@ import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { RegistroColapsavel } from './registro-colapsavel'
 
-type Desistencia = { id: string; motivo: string | null }
-type PortariaData = { id?: string; reservas: string; no_show: string; passantes: string }
+export type PortariaState = { reservas: string; no_show: string; passantes: string }
+type Desistencia = { id: string; motivo: string | null; pax_perdido: number | null }
 
 function num(v: string) { return parseInt(v) || 0 }
-function brl(v: number) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }
 
 export function BlocoPortaria({
-  relatorioData, unitId, disabled,
-  portariaInicial, desistenciasIniciais,
+  value,
+  onChange,
+  relatorioData,
+  unitId,
+  periodo,
+  disabled,
+  desistenciasIniciais,
 }: {
-  relatorioData: string; unitId: string; disabled?: boolean
-  portariaInicial?: PortariaData
+  value: PortariaState
+  onChange: (v: PortariaState) => void
+  relatorioData: string
+  unitId: string
+  periodo: string
+  disabled?: boolean
   desistenciasIniciais?: Desistencia[]
 }) {
-  const [portaria, setPortaria] = useState<PortariaData>(
-    portariaInicial ?? { reservas: '', no_show: '', passantes: '' }
-  )
   const [desistencias, setDesistencias] = useState<Desistencia[]>(desistenciasIniciais ?? [])
   const [novoMotivo, setNovoMotivo] = useState('')
-  const [salvandoPortaria, setSalvandoPortaria] = useState(false)
+  const [novoPax, setNovoPax] = useState('')
   const [salvandoDesist, setSalvandoDesist] = useState(false)
-  const [erroPo, setErroPo] = useState('')
+  const [erro, setErro] = useState('')
 
-  const reservas = num(portaria.reservas)
-  const no_show = num(portaria.no_show)
-  const passantes = num(portaria.passantes)
+  const reservas = num(value.reservas)
+  const no_show = num(value.no_show)
+  const passantes = num(value.passantes)
   const resultado = reservas - no_show + passantes
-  const taxa = reservas > 0 ? ((reservas - no_show) / reservas) * 100 : NaN
-
-  const portariaExiste = Boolean(portariaInicial?.id || portaria.id)
-
-  async function salvarPortaria() {
-    setSalvandoPortaria(true); setErroPo('')
-    const res = await fetch(`/api/relatorio-diario/${relatorioData}/registros/portaria`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ unit_id: unitId, reservas: portaria.reservas || null, no_show: portaria.no_show || null, passantes: portaria.passantes || null }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setPortaria(prev => ({ ...prev, id: data.id }))
-    } else {
-      const { error } = await res.json()
-      setErroPo(error ?? 'Erro ao salvar portaria.')
-    }
-    setSalvandoPortaria(false)
-  }
+  // Taxa de No-Show = no_show / total de reservas
+  const taxaNoShow = reservas > 0 ? (no_show / reservas) * 100 : NaN
 
   async function adicionarDesistencia() {
-    if (!portariaExiste) { setErroPo('Salve os dados de portaria primeiro.'); return }
-    setSalvandoDesist(true)
+    setSalvandoDesist(true); setErro('')
     const res = await fetch(`/api/relatorio-diario/${relatorioData}/registros/portaria`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ unit_id: unitId, motivo: novoMotivo || null }),
+      body: JSON.stringify({
+        unit_id: unitId,
+        periodo,
+        motivo: novoMotivo || null,
+        pax_perdido: novoPax || null,
+      }),
     })
     if (res.ok) {
       const item = await res.json()
       setDesistencias(prev => [...prev, item])
-      setNovoMotivo('')
+      setNovoMotivo(''); setNovoPax('')
+    } else {
+      const { error } = await res.json()
+      setErro(error ?? 'Erro ao adicionar desistência.')
     }
     setSalvandoDesist(false)
   }
@@ -72,15 +66,21 @@ export function BlocoPortaria({
     if (res.ok) setDesistencias(prev => prev.filter(d => d.id !== id))
   }
 
+  const campos: [keyof PortariaState, string][] = [
+    ['reservas', 'Reservas'],
+    ['no_show', 'No-Show'],
+    ['passantes', 'Passantes'],
+  ]
+
   return (
     <RegistroColapsavel titulo="Portaria" count={desistencias.length}>
-      {/* Entradas / calculado */}
+      {/* Entradas — salvam via autosave do período (sem botão dedicado) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {(['reservas', 'no_show', 'passantes'] as const).map(key => (
+        {campos.map(([key, label]) => (
           <div key={key} className="space-y-1">
-            <label className="text-xs font-medium text-ink-muted capitalize">{key.replace('_', '-')}</label>
-            <input type="number" inputMode="numeric" min="0" value={portaria[key]}
-              onChange={e => setPortaria(prev => ({ ...prev, [key]: e.target.value }))}
+            <label className="text-xs font-medium text-ink-muted">{label}</label>
+            <input type="number" inputMode="numeric" min="0" value={value[key]}
+              onChange={e => onChange({ ...value, [key]: e.target.value })}
               disabled={disabled}
               className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none disabled:opacity-50" />
           </div>
@@ -90,26 +90,19 @@ export function BlocoPortaria({
       <div className="rounded-lg border border-edge/50 bg-base p-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <span className="text-ink-muted">Resultado</span>
         <span className="text-ink font-medium text-right">{resultado} pax</span>
-        <span className="text-ink-muted">Taxa de comparecimento</span>
-        <span className="text-ink font-medium text-right">{isNaN(taxa) ? '—' : `${taxa.toFixed(1)}%`}</span>
+        <span className="text-ink-muted">Taxa de No-Show</span>
+        <span className="text-ink font-medium text-right">{isNaN(taxaNoShow) ? '—' : `${taxaNoShow.toFixed(1)}%`}</span>
       </div>
-
-      {!disabled && (
-        <>
-          {erroPo && <p className="text-xs text-alert-bright">{erroPo}</p>}
-          <button onClick={salvarPortaria} disabled={salvandoPortaria}
-            className="w-full rounded-lg border border-edge bg-surface-raised px-3 py-2 text-sm font-medium text-ink hover:bg-surface transition-colors disabled:opacity-50">
-            {salvandoPortaria ? 'Salvando…' : 'Salvar portaria'}
-          </button>
-        </>
-      )}
 
       {/* Desistências */}
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">Desistências ({desistencias.length})</p>
         {desistencias.map(d => (
           <div key={d.id} className="flex items-center justify-between rounded-lg border border-edge bg-base px-3 py-2">
-            <span className="text-sm text-ink">{d.motivo ?? '(sem motivo)'}</span>
+            <span className="text-sm text-ink">
+              {d.motivo ?? '(sem motivo)'}
+              {d.pax_perdido != null && <span className="text-ink-muted"> · {d.pax_perdido} pax</span>}
+            </span>
             {!disabled && (
               <button onClick={() => removerDesistencia(d.id)} className="text-ink-faint hover:text-alert transition-colors">
                 <Trash2 className="h-4 w-4" />
@@ -117,11 +110,15 @@ export function BlocoPortaria({
             )}
           </div>
         ))}
+        {erro && <p className="text-xs text-alert-bright">{erro}</p>}
         {!disabled && (
           <div className="flex gap-2">
             <input type="text" value={novoMotivo} onChange={e => setNovoMotivo(e.target.value)}
-              placeholder="Motivo da desistência (opcional)"
+              placeholder="Motivo da desistência"
               className="flex-1 rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none" />
+            <input type="number" inputMode="numeric" min="0" value={novoPax} onChange={e => setNovoPax(e.target.value)}
+              placeholder="Pax"
+              className="w-20 rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none" />
             <button onClick={adicionarDesistencia} disabled={salvandoDesist}
               className="rounded-lg border border-edge bg-surface-raised px-3 py-2 text-sm font-medium text-ink hover:bg-surface transition-colors disabled:opacity-50">
               {salvandoDesist ? '…' : '+'}

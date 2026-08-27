@@ -24,7 +24,7 @@ export function BlocoVendas({
   value: VendasState
   onChange: (v: VendasState) => void
   disabled?: boolean
-  erros?: { vendas_ab?: boolean; pax_total?: boolean }
+  erros?: { vendas_ab?: boolean; pax_total?: boolean; alimentos?: boolean; bebidas?: boolean; taxa_servico?: boolean; delivery?: boolean; portaria_valor?: boolean; perda_produto?: boolean }
 }) {
   const vendas_ab = num(value.vendas_ab)
   const alimentos = num(value.alimentos)
@@ -41,6 +41,12 @@ export function BlocoVendas({
   const part_alimentos = total_ab > 0 ? alimentos / total_ab : NaN
   const part_bebidas = total_ab > 0 ? bebidas / total_ab : NaN
   const perda_pct = faturamento_bruto > 0 ? perda_produto / faturamento_bruto : NaN
+
+  // Alerta de reconciliação: alimentos + bebidas deve bater com Vendas A&B.
+  // Só alerta quando os 3 têm valor preenchido (evita alarme falso durante digitação).
+  const preenchidos = value.vendas_ab !== '' && value.alimentos !== '' && value.bebidas !== ''
+  const somaAbBate = Math.abs(total_ab - vendas_ab) < 0.01
+  const alertaSoma = preenchidos && !somaAbBate
 
   function field(
     key: keyof VendasState,
@@ -83,13 +89,20 @@ export function BlocoVendas({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {field('vendas_ab', 'Vendas A&B', { prefix: 'R$', required: true, erro: erros?.vendas_ab })}
         {field('pax_total', 'PAX Total', { integer: true, required: true, erro: erros?.pax_total })}
-        {field('alimentos', 'Alimentos', { prefix: 'R$' })}
-        {field('bebidas', 'Bebidas', { prefix: 'R$' })}
-        {field('taxa_servico', 'Taxa de Serviço', { prefix: 'R$' })}
-        {field('delivery', 'Delivery', { prefix: 'R$' })}
-        {field('portaria_valor', 'Portaria (valor)', { prefix: 'R$' })}
-        {field('perda_produto', 'Perda de Produto', { prefix: 'R$' })}
+        {field('alimentos', 'Alimentos', { prefix: 'R$', required: true, erro: erros?.alimentos || alertaSoma })}
+        {field('bebidas', 'Bebidas', { prefix: 'R$', required: true, erro: erros?.bebidas || alertaSoma })}
+        {field('taxa_servico', 'Taxa de Serviço', { prefix: 'R$', required: true, erro: erros?.taxa_servico })}
+        {field('delivery', 'Delivery', { prefix: 'R$', required: true, erro: erros?.delivery })}
+        {field('portaria_valor', 'Portaria (valor)', { prefix: 'R$', required: true, erro: erros?.portaria_valor })}
+        {field('perda_produto', 'Perda de Produto', { prefix: 'R$', required: true, erro: erros?.perda_produto })}
       </div>
+
+      {alertaSoma && (
+        <div className="rounded-lg border border-alert bg-alert/10 px-3 py-2 text-xs text-alert-bright">
+          Alimentos + Bebidas ({brl(total_ab)}) não bate com Vendas A&B ({brl(vendas_ab)}).
+          Diferença de {brl(Math.abs(total_ab - vendas_ab))}.
+        </div>
+      )}
 
       {/* Fechamento calculado — read-only */}
       <div className="rounded-lg border border-edge/50 bg-base p-4 space-y-2">

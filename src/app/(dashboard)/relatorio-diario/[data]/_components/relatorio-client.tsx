@@ -16,7 +16,7 @@ import { CampoResponsavel } from './campo-responsavel'
 import { Bloco86 } from './bloco-86'
 import { BlocoFeedback } from './bloco-feedback'
 import { BlocoRh } from './bloco-rh'
-import { BlocoPortaria } from './bloco-portaria'
+import { BlocoPortaria, type PortariaState } from './bloco-portaria'
 
 type FormState = {
   horarios: HorariosState
@@ -27,11 +27,18 @@ type FormState = {
   ocorrencia: OcorrenciaState
   equipe: EquipeState
   responsavel: string
+  portaria: PortariaState
 }
 
 type FormErros = {
   vendas_ab?: boolean
   pax_total?: boolean
+  alimentos?: boolean
+  bebidas?: boolean
+  taxa_servico?: boolean
+  delivery?: boolean
+  portaria_valor?: boolean
+  perda_produto?: boolean
   resumo?: boolean
   responsavel?: boolean
   setores?: Partial<Record<SetorAvaliacao, boolean>>
@@ -79,6 +86,11 @@ function estadoInicial(
       SETORES_EQUIPE.map(s => [s, { houveFalta: false, nomes: [''] }])
     ) as EquipeState,
     responsavel: String(row?.responsavel_preenchimento ?? ''),
+    portaria: {
+      reservas: row?.portaria_reservas_previstas != null ? String(row.portaria_reservas_previstas) : '',
+      no_show: row?.portaria_noshow_qty != null ? String(row.portaria_noshow_qty) : '',
+      passantes: row?.portaria_passantes != null ? String(row.portaria_passantes) : '',
+    },
   }
 }
 
@@ -101,6 +113,7 @@ export function RelatorioClient({
   role,
   feedbacks,
   avaliacoesSetor,
+  desistencias,
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
@@ -111,6 +124,7 @@ export function RelatorioClient({
   role: string
   feedbacks: { id: string; tipo: string; produto: string | null; categoria: string | null; texto: string | null }[]
   avaliacoesSetor: { periodo: string; setor: string; nota: number | null; observacao: string | null }[]
+  desistencias: { id: string; periodo: string | null; motivo: string | null; pax_perdido: number | null }[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
@@ -181,6 +195,9 @@ export function RelatorioClient({
         ocorrencia_texto: estado.ocorrencia.descricao || null,
         responsavel_preenchimento: estado.responsavel || null,
         setores: estado.setores,
+        portaria_reservas_previstas: estado.portaria.reservas !== '' ? parseInt(estado.portaria.reservas) : null,
+        portaria_noshow_qty: estado.portaria.no_show !== '' ? parseInt(estado.portaria.no_show) : null,
+        portaria_passantes: estado.portaria.passantes !== '' ? parseInt(estado.portaria.passantes) : null,
       }),
     })
     setSalvando(false)
@@ -190,8 +207,21 @@ export function RelatorioClient({
     const e: FormErros = {}
     let primeiroId: string | null = null
 
-    if (!estado.vendas.vendas_ab) { e.vendas_ab = true; primeiroId ??= 'vendas_ab' }
-    if (!estado.vendas.pax_total) { e.pax_total = true; primeiroId ??= 'pax_total' }
+    // Todos os campos de venda são obrigatórios — mas '0' é válido,
+    // só string vazia reprova (regra: preencher tudo, mesmo que zero).
+    const camposVenda: [keyof typeof estado.vendas, keyof FormErros, string][] = [
+      ['vendas_ab', 'vendas_ab', 'vendas_ab'],
+      ['pax_total', 'pax_total', 'pax_total'],
+      ['alimentos', 'alimentos', 'alimentos'],
+      ['bebidas', 'bebidas', 'bebidas'],
+      ['taxa_servico', 'taxa_servico', 'taxa_servico'],
+      ['delivery', 'delivery', 'delivery'],
+      ['portaria_valor', 'portaria_valor', 'portaria_valor'],
+      ['perda_produto', 'perda_produto', 'perda_produto'],
+    ]
+    for (const [campo, chaveErro, id] of camposVenda) {
+      if (estado.vendas[campo] === '') { (e[chaveErro] as boolean) = true; primeiroId ??= id }
+    }
     if (!estado.resumo.trim()) { e.resumo = true; primeiroId ??= 'resumo_operacional' }
     if (!estado.responsavel.trim()) { e.responsavel = true; primeiroId ??= 'responsavel_preenchimento' }
 
@@ -239,8 +269,6 @@ export function RelatorioClient({
 
     window.location.reload()
   }
-
-  const periodoRow = periodos.find(p => p.periodo === periodoAtivo)
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto pb-24">
@@ -301,7 +329,7 @@ export function RelatorioClient({
           value={form.vendas}
           onChange={vendas => handleFormChange({ vendas })}
           disabled={disabled}
-          erros={{ vendas_ab: erros.vendas_ab, pax_total: erros.pax_total }}
+          erros={{ vendas_ab: erros.vendas_ab, pax_total: erros.pax_total, alimentos: erros.alimentos, bebidas: erros.bebidas, taxa_servico: erros.taxa_servico, delivery: erros.delivery, portaria_valor: erros.portaria_valor, perda_produto: erros.perda_produto }}
         />
         <BlocoClima
           value={form.clima}
@@ -339,14 +367,13 @@ export function RelatorioClient({
           itensIniciais={feedbacks.filter(f => f.tipo === 'reclamacao').map(f => ({ id: f.id, tipo: f.tipo, produto: f.produto, categoria: f.categoria, descricao: f.texto }))} />
         <BlocoRh relatorioData={dataParam} unitId={unitId} disabled={disabled} />
         <BlocoPortaria
+          value={form.portaria}
+          onChange={portaria => handleFormChange({ portaria })}
           relatorioData={dataParam}
           unitId={unitId}
+          periodo={periodoAtivo}
           disabled={disabled}
-          portariaInicial={
-            periodoRow && typeof periodoRow === 'object'
-              ? undefined  // portaria vem de op_portaria separado — buscar se necessário
-              : undefined
-          }
+          desistenciasIniciais={desistencias.filter(d => d.periodo === periodoAtivo).map(d => ({ id: d.id, motivo: d.motivo, pax_perdido: d.pax_perdido }))}
         />
 
         <CampoResponsavel

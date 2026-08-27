@@ -138,8 +138,8 @@ export function BlocoFeedback({
             // ----- modo leitura (texto completo, sem clamp) -----
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                {item.produto && <p className="text-sm font-medium text-ink break-words">{item.produto}</p>}
-                {item.categoria && <p className="text-xs text-ink-muted">{catLabel(item.categoria)}</p>}
+                {item.categoria && <p className="text-sm font-medium text-ink">{catLabel(item.categoria)}</p>}
+                {item.produto && <p className="text-xs text-ink-muted break-words">{item.produto}</p>}
                 {item.descricao && <p className="text-xs text-ink-subtle mt-0.5 whitespace-pre-wrap break-words">{item.descricao}</p>}
               </div>
               {!disabled && (
