@@ -1,4 +1,53 @@
 'use client'
+import { useState, useEffect } from 'react'
+import { moedaParaExibicao, moedaAoDigitar } from '@/lib/utils'
+
+// Campo de moeda com máscara ao vivo. Guarda o texto de exibição
+// localmente (pra não atrapalhar a digitação de centavos) e sincroniza
+// quando o valor externo muda por outro motivo (ex: troca de período).
+function CampoMoeda({
+  id, valor, onChange, disabled, prefix, erro,
+}: {
+  id: string
+  valor: string
+  onChange: (estado: string) => void
+  disabled?: boolean
+  prefix?: string
+  erro?: boolean
+}) {
+  const [texto, setTexto] = useState(() => moedaParaExibicao(valor))
+
+  useEffect(() => {
+    if (moedaAoDigitar(texto).estado !== valor) setTexto(moedaParaExibicao(valor))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valor])
+
+  return (
+    <div className="relative">
+      {prefix && (
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">{prefix}</span>
+      )}
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        value={texto}
+        onChange={e => {
+          const { estado, exibicao } = moedaAoDigitar(e.target.value)
+          setTexto(exibicao)
+          onChange(estado)
+        }}
+        disabled={disabled}
+        placeholder="0,00"
+        className={`w-full rounded-lg border bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 ${
+          prefix ? 'pl-7' : ''
+        } ${
+          erro ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
+        }`}
+      />
+    </div>
+  )
+}
 
 export type VendasState = {
   vendas_ab: string
@@ -53,31 +102,43 @@ export function BlocoVendas({
     label: string,
     opts: { prefix?: string; integer?: boolean; required?: boolean; erro?: boolean } = {}
   ) {
+    const isMoeda = !opts.integer
     return (
       <div className="space-y-1">
         <label className="text-xs font-medium text-ink-muted">
           {label}{opts.required && <span className="text-ember ml-0.5">*</span>}
         </label>
-        <div className="relative">
-          {opts.prefix && (
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">{opts.prefix}</span>
-          )}
-          <input
+        {isMoeda ? (
+          <CampoMoeda
             id={key}
-            type="number"
-            inputMode={opts.integer ? 'numeric' : 'decimal'}
-            step={opts.integer ? '1' : '0.01'}
-            min="0"
-            value={value[key]}
-            onChange={e => onChange({ ...value, [key]: e.target.value })}
+            valor={value[key]}
+            onChange={estado => onChange({ ...value, [key]: estado })}
             disabled={disabled}
-            className={`w-full rounded-lg border bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 ${
-              opts.prefix ? 'pl-7' : ''
-            } ${
-              opts.erro ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
-            }`}
+            prefix={opts.prefix}
+            erro={opts.erro}
           />
-        </div>
+        ) : (
+          <div className="relative">
+            {opts.prefix && (
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">{opts.prefix}</span>
+            )}
+            <input
+              id={key}
+              type="number"
+              inputMode="numeric"
+              step="1"
+              min="0"
+              value={value[key]}
+              onChange={e => onChange({ ...value, [key]: e.target.value })}
+              disabled={disabled}
+              className={`w-full rounded-lg border bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 ${
+                opts.prefix ? 'pl-7' : ''
+              } ${
+                opts.erro ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
+              }`}
+            />
+          </div>
+        )}
       </div>
     )
   }
