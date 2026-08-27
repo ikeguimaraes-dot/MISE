@@ -28,10 +28,10 @@ export function BlocoOcorrencia({
                 onClick={() => onChange({ ...value, houve })}
                 disabled={disabled}
                 className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
-                  ativo && houve
-                    ? 'bg-alert text-white'
-                    : ativo
-                    ? 'bg-surface-raised text-ink border border-edge'
+                  ativo && !houve
+                    ? 'bg-fresh/20 text-fresh-bright border border-fresh/40'
+                    : ativo && houve
+                    ? 'bg-alert/10 text-alert-bright border border-alert/40'
                     : 'text-ink-muted hover:text-ink border border-edge'
                 }`}
               >

@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Check } from 'lucide-react'
-import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE } from '@/app/api/relatorio-diario/_schema'
-import type { SetorAvaliacao } from '@/app/api/relatorio-diario/_schema'
+import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA, AREA_TO_SETOR_EQUIPE } from '@/app/api/relatorio-diario/_schema'
+import type { SetorAvaliacao, SetorEquipe } from '@/app/api/relatorio-diario/_schema'
 import { BlocoHorarios, type HorariosState } from './bloco-horarios'
 import { BlocoVendas, type VendasState } from './bloco-vendas'
 import { BlocoClima, type ClimaState } from './bloco-clima'
@@ -42,11 +42,13 @@ type FormErros = {
   resumo?: boolean
   responsavel?: boolean
   setores?: Partial<Record<SetorAvaliacao, boolean>>
+  equipe?: Partial<Record<SetorEquipe, boolean>>
 }
 
 function estadoInicial(
   row: Record<string, unknown> | undefined,
-  avaliacoesPeriodo?: { setor: string; nota: number | null; observacao: string | null }[]
+  avaliacoesPeriodo?: { setor: string; nota: number | null; observacao: string | null }[],
+  faltasPeriodo?: { area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
 ): FormState {
   const setoresBase = Object.fromEntries(
     SETORES_AVALIACAO.map(s => [s, { nota: null as number | null, obs: '' }])
@@ -83,7 +85,15 @@ function estadoInicial(
       descricao: String(row?.ocorrencia_texto ?? ''),
     },
     equipe: Object.fromEntries(
-      SETORES_EQUIPE.map(s => [s, { houveFalta: false, nomes: [''] }])
+      SETORES_EQUIPE.map(s => {
+        const areaEnum = SETOR_EQUIPE_TO_AREA[s]
+        const f = (faltasPeriodo ?? []).find(x => x.area === areaEnum)
+        return [s, {
+          lider: f?.lider_turno ?? '',
+          houveFalta: f?.houve_falta ?? false,
+          ausentes: f?.nomes ? f.nomes.split('\n').filter(Boolean) : [''],
+        }]
+      })
     ) as EquipeState,
     responsavel: String(row?.responsavel_preenchimento ?? ''),
     portaria: {
@@ -115,6 +125,7 @@ export function RelatorioClient({
   avaliacoesSetor,
   desistencias,
   colaboradores,
+  faltas,
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
@@ -127,6 +138,7 @@ export function RelatorioClient({
   avaliacoesSetor: { periodo: string; setor: string; nota: number | null; observacao: string | null }[]
   desistencias: { id: string; periodo: string | null; motivo: string | null; pax_perdido: number | null }[]
   colaboradores: { id: string; nome: string; sobrenome: string | null; funcao: string | null; cpf: string | null }[]
+  faltas: { periodo: string; area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
@@ -136,7 +148,8 @@ export function RelatorioClient({
   const [form, setForm] = useState<FormState>(() =>
     estadoInicial(
       periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>,
-      avaliacoesSetor.filter(a => a.periodo === periodoAtivo)
+      avaliacoesSetor.filter(a => a.periodo === periodoAtivo),
+      faltas.filter(f => f.periodo === periodoAtivo)
     )
   )
   const [erros, setErros] = useState<FormErros>({})
@@ -160,7 +173,8 @@ export function RelatorioClient({
   useEffect(() => {
     setForm(estadoInicial(
       periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>,
-      avaliacoesSetor.filter(a => a.periodo === periodoAtivo)
+      avaliacoesSetor.filter(a => a.periodo === periodoAtivo),
+      faltas.filter(f => f.periodo === periodoAtivo)
     ))
     setErros({})
   }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -200,6 +214,14 @@ export function RelatorioClient({
         portaria_reservas_previstas: estado.portaria.reservas !== '' ? parseInt(estado.portaria.reservas) : null,
         portaria_noshow_qty: estado.portaria.no_show !== '' ? parseInt(estado.portaria.no_show) : null,
         portaria_passantes: estado.portaria.passantes !== '' ? parseInt(estado.portaria.passantes) : null,
+        equipe: SETORES_EQUIPE.map(s => ({
+          area: SETOR_EQUIPE_TO_AREA[s],
+          lider_turno: estado.equipe[s].lider || null,
+          houve_falta: estado.equipe[s].houveFalta,
+          nomes: estado.equipe[s].houveFalta
+            ? estado.equipe[s].ausentes.filter(Boolean).join('\n') || null
+            : null,
+        })),
       }),
     })
     setSalvando(false)
@@ -236,6 +258,15 @@ export function RelatorioClient({
       }
     }
     if (Object.keys(setoresErro).length) e.setores = setoresErro
+
+    const equipeErro: FormErros['equipe'] = {}
+    for (const setor of SETORES_EQUIPE) {
+      if (!estado.equipe[setor].lider.trim()) {
+        equipeErro[setor] = true
+        primeiroId ??= `equipe-lider-${setor}`
+      }
+    }
+    if (Object.keys(equipeErro).length) e.equipe = equipeErro
 
     return { valido: Object.keys(e).length === 0, erros: e, primeiroId }
   }
@@ -360,6 +391,7 @@ export function RelatorioClient({
           onChange={equipe => handleFormChange({ equipe })}
           disabled={disabled}
           colaboradores={colaboradores}
+          erros={erros.equipe}
         />
 
         {/* Registros colapsáveis */}

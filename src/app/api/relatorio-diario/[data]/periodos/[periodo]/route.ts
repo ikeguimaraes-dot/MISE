@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   const { data: dataParam, periodo } = await params
   const body = await request.json()
-  const { unit_id, setores, ...campos } = body
+  const { unit_id, setores, equipe, ...campos } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
 
@@ -60,6 +60,28 @@ export async function PATCH(
         .from('op_avaliacao_setor')
         .upsert(linhas, { onConflict: 'relatorio_id,periodo,setor' })
       if (errSetor) return NextResponse.json({ error: errSetor.message }, { status: 500 })
+    }
+  }
+
+  // Equipe por setor — tabela op_falta_equipe (por período, chave area).
+  // equipe chega como [{ area, lider_turno, houve_falta, nomes }].
+  // Upserta as linhas com líder OU falta preenchidos.
+  if (Array.isArray(equipe)) {
+    const linhas = (equipe as { area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[])
+      .filter(e => e.area && (e.lider_turno || e.houve_falta || e.nomes))
+      .map(e => ({
+        relatorio_id: relatorio.id,
+        periodo,
+        area: e.area,
+        lider_turno: e.lider_turno ?? null,
+        houve_falta: e.houve_falta ?? false,
+        nomes: e.nomes ?? null,
+      }))
+    if (linhas.length > 0) {
+      const { error: errFalta } = await supabase
+        .from('op_falta_equipe')
+        .upsert(linhas, { onConflict: 'relatorio_id,periodo,area' })
+      if (errFalta) return NextResponse.json({ error: errFalta.message }, { status: 500 })
     }
   }
 

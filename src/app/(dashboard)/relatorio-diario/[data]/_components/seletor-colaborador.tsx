@@ -29,6 +29,7 @@ export function SeletorColaborador({
   placeholder,
   disabled,
   className,
+  id,
 }: {
   colaboradores: Colaborador[]
   value: string
@@ -37,6 +38,7 @@ export function SeletorColaborador({
   placeholder?: string
   disabled?: boolean
   className?: string
+  id?: string
 }) {
   const listId = useId()
 
@@ -50,6 +52,7 @@ export function SeletorColaborador({
   return (
     <>
       <input
+        id={id}
         type="text"
         list={listId}
         value={value}

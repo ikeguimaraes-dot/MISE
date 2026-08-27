@@ -18,6 +18,23 @@ export type SetorAvaliacao = typeof SETORES_AVALIACAO[number]
 export const SETORES_EQUIPE = ['Salão', 'Cozinha', 'Bar', 'Limpeza', 'Caixa'] as const
 export type SetorEquipe = typeof SETORES_EQUIPE[number]
 
+// A coluna op_falta_equipe.area é um enum (op_falta_area) com valores
+// distintos dos rótulos da UI. Mapas de ida e volta:
+export const SETOR_EQUIPE_TO_AREA: Record<SetorEquipe, string> = {
+  'Salão': 'salao',
+  'Cozinha': 'cozinha_parrilla',
+  'Bar': 'bar',
+  'Limpeza': 'limpeza',
+  'Caixa': 'caixa',
+}
+export const AREA_TO_SETOR_EQUIPE: Record<string, SetorEquipe> = {
+  salao: 'Salão',
+  cozinha_parrilla: 'Cozinha',
+  bar: 'Bar',
+  limpeza: 'Limpeza',
+  caixa: 'Caixa',
+}
+
 // Enum real: op_feedback_categoria — valores confirmados via introspecção
 export const FEEDBACK_CATEGORIAS = ['prato', 'servico', 'ambiente'] as const
 export type FeedbackCategoria = typeof FEEDBACK_CATEGORIAS[number]
