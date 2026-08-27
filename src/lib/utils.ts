@@ -5,11 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// ---- Máscara de moeda (parte inteira + centavos opcionais) ----
+// ---- Máscara de moeda (estilo caixa eletrônico) ----
 // Guardamos no estado o valor numérico como string com ponto decimal
-// (ex: "1234.00"); exibimos com milhar e vírgula (ex: "1.234,00").
-// Modelo: o usuário digita a parte inteira normalmente; a vírgula
-// (opcional) separa os centavos. Ex: "1234" -> 1.234,00; "1234,5" -> 1.234,50.
+// (ex: "1234.56"); exibimos com milhar e vírgula travada (ex: "1.234,56").
+// Modelo: os dígitos entram pela DIREITA, sempre com 2 casas.
+// Ex: "1" -> 0,01; "1234" -> 12,34; "123456" -> 1.234,56.
 
 /** Converte a string do estado (número puro) para exibição BR: "1234.5" -> "1.234,50" */
 export function moedaParaExibicao(valorEstado: string): string {
@@ -19,30 +19,15 @@ export function moedaParaExibicao(valorEstado: string): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-/** Formata o texto que o usuário está digitando, preservando o que ele digita:
- *  parte inteira com separador de milhar, e centavos só se ele digitar a vírgula.
- *  Retorna { estado, exibicao }: estado = número puro pro form/banco ("1234.5"),
- *  exibicao = texto formatado pro input ("1.234,5"). */
+/** Recebe o que o usuário digitou, extrai só os dígitos e interpreta como centavos
+ *  (entra pela direita, vírgula travada). Retorna { estado, exibicao }:
+ *  estado = "1234.56" (pro form/banco), exibicao = "1.234,56". */
 export function moedaAoDigitar(input: string): { estado: string; exibicao: string } {
-  // mantém só dígitos e a primeira vírgula/ponto como separador decimal
-  let s = input.replace(/[^\d,.]/g, '').replace(/\./g, ',')
-  const primeiraVirgula = s.indexOf(',')
-  if (primeiraVirgula !== -1) {
-    // remove vírgulas extras depois da primeira
-    s = s.slice(0, primeiraVirgula + 1) + s.slice(primeiraVirgula + 1).replace(/,/g, '')
+  const digitos = input.replace(/\D/g, '')
+  if (digitos === '') return { estado: '', exibicao: '' }
+  const valor = parseInt(digitos, 10) / 100
+  return {
+    estado: valor.toFixed(2),
+    exibicao: valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
   }
-  if (s === '' || s === ',') return { estado: '', exibicao: '' }
-
-  const [inteiraRaw, centavosRaw] = s.split(',')
-  const inteira = inteiraRaw.replace(/^0+(?=\d)/, '') || '0'
-  const inteiraFmt = parseInt(inteira, 10).toLocaleString('pt-BR')
-
-  if (centavosRaw === undefined) {
-    // ainda sem vírgula — exibe só a parte inteira formatada
-    return { estado: inteira, exibicao: inteiraFmt }
-  }
-  // com vírgula — limita centavos a 2 dígitos
-  const centavos = centavosRaw.slice(0, 2)
-  const estado = `${inteira}.${centavos === '' ? '0' : centavos}`
-  return { estado, exibicao: `${inteiraFmt},${centavos}` }
 }

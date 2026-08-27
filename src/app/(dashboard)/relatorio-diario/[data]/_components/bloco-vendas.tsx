@@ -1,51 +1,31 @@
 'use client'
-import { useState, useEffect } from 'react'
 import { moedaParaExibicao, moedaAoDigitar } from '@/lib/utils'
 
-// Campo de moeda com máscara ao vivo. Guarda o texto de exibição
-// localmente (pra não atrapalhar a digitação de centavos) e sincroniza
-// quando o valor externo muda por outro motivo (ex: troca de período).
+// Campo de moeda com máscara "caixa eletrônico": os dígitos entram
+// pela direita e a vírgula fica sempre travada em 2 casas. O valor
+// exibido é derivado direto do estado, então não precisa de texto local.
 function CampoMoeda({
-  id, valor, onChange, disabled, prefix, erro,
+  id, valor, onChange, disabled, erro,
 }: {
   id: string
   valor: string
   onChange: (estado: string) => void
   disabled?: boolean
-  prefix?: string
   erro?: boolean
 }) {
-  const [texto, setTexto] = useState(() => moedaParaExibicao(valor))
-
-  useEffect(() => {
-    if (moedaAoDigitar(texto).estado !== valor) setTexto(moedaParaExibicao(valor))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valor])
-
   return (
-    <div className="relative">
-      {prefix && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">{prefix}</span>
-      )}
-      <input
-        id={id}
-        type="text"
-        inputMode="numeric"
-        value={texto}
-        onChange={e => {
-          const { estado, exibicao } = moedaAoDigitar(e.target.value)
-          setTexto(exibicao)
-          onChange(estado)
-        }}
-        disabled={disabled}
-        placeholder="0,00"
-        className={`w-full rounded-lg border bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 ${
-          prefix ? 'pl-7' : ''
-        } ${
-          erro ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
-        }`}
-      />
-    </div>
+    <input
+      id={id}
+      type="text"
+      inputMode="numeric"
+      value={moedaParaExibicao(valor)}
+      onChange={e => onChange(moedaAoDigitar(e.target.value).estado)}
+      disabled={disabled}
+      placeholder="0,00"
+      className={`w-full rounded-lg border bg-base px-3 py-2 text-sm text-ink text-right placeholder:text-ink-faint focus:outline-none disabled:opacity-50 ${
+        erro ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
+      }`}
+    />
   )
 }
 
@@ -114,7 +94,6 @@ export function BlocoVendas({
             valor={value[key]}
             onChange={estado => onChange({ ...value, [key]: estado })}
             disabled={disabled}
-            prefix={opts.prefix}
             erro={opts.erro}
           />
         ) : (
@@ -148,14 +127,14 @@ export function BlocoVendas({
       <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">Vendas</p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {field('vendas_ab', 'Vendas A&B', { prefix: 'R$', required: true, erro: erros?.vendas_ab })}
+        {field('vendas_ab', 'Vendas A&B', { required: true, erro: erros?.vendas_ab })}
         {field('pax_total', 'PAX Total', { integer: true, required: true, erro: erros?.pax_total })}
-        {field('alimentos', 'Alimentos', { prefix: 'R$', required: true, erro: erros?.alimentos || alertaSoma })}
-        {field('bebidas', 'Bebidas', { prefix: 'R$', required: true, erro: erros?.bebidas || alertaSoma })}
-        {field('taxa_servico', 'Taxa de Serviço', { prefix: 'R$', required: true, erro: erros?.taxa_servico })}
-        {field('delivery', 'Delivery', { prefix: 'R$', required: true, erro: erros?.delivery })}
-        {field('portaria_valor', 'Portaria (valor)', { prefix: 'R$', required: true, erro: erros?.portaria_valor })}
-        {field('perda_produto', 'Perda de Produto', { prefix: 'R$', required: true, erro: erros?.perda_produto })}
+        {field('alimentos', 'Alimentos', { required: true, erro: erros?.alimentos || alertaSoma })}
+        {field('bebidas', 'Bebidas', { required: true, erro: erros?.bebidas || alertaSoma })}
+        {field('taxa_servico', 'Taxa de Serviço', { required: true, erro: erros?.taxa_servico })}
+        {field('delivery', 'Delivery', { required: true, erro: erros?.delivery })}
+        {field('portaria_valor', 'Portaria (valor)', { required: true, erro: erros?.portaria_valor })}
+        {field('perda_produto', 'Perda de Produto', { required: true, erro: erros?.perda_produto })}
       </div>
 
       {alertaSoma && (
