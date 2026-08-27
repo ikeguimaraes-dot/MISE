@@ -5,11 +5,11 @@ import { OCORRENCIA_RH_TIPOS, type OcorrenciaRhTipo } from '@/app/api/relatorio-
 import { RegistroColapsavel } from './registro-colapsavel'
 import { SeletorColaborador, type Colaborador } from './seletor-colaborador'
 
-type RhItem = { id: string; employee_name: string; tipo: OcorrenciaRhTipo; cpf: string | null; descricao: string | null }
+type RhItem = { id: string; nome: string; tipo: OcorrenciaRhTipo; cpf: string | null; observacao: string | null }
 
 const TIPO_LABEL: Record<OcorrenciaRhTipo, string> = {
   falta: 'Falta', atestado: 'Atestado', saida_antecipada: 'Saída antecipada',
-  contratacao: 'Contratação', desligamento: 'Desligamento', outro: 'Outro',
+  advertencia: 'Advertência', contratacao: 'Contratação', desligamento: 'Desligamento', outro: 'Outro',
 }
 
 function mascaraCpf(v: string): string {
@@ -39,7 +39,7 @@ export function BlocoRh({
     const res = await fetch(`/api/relatorio-diario/${relatorioData}/registros/rh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ unit_id: unitId, employee_name: nome.trim(), tipo, cpf: cpf || null, descricao: descricao || null }),
+      body: JSON.stringify({ unit_id: unitId, nome: nome.trim(), tipo, cpf: cpf || null, observacao: descricao || null }),
     })
     if (res.ok) {
       const item = await res.json()
@@ -62,9 +62,9 @@ export function BlocoRh({
       {itens.map(item => (
         <div key={item.id} className="flex items-start justify-between rounded-lg border border-edge bg-base px-3 py-2 gap-2">
           <div>
-            <p className="text-sm font-medium text-ink">{item.employee_name}</p>
+            <p className="text-sm font-medium text-ink">{item.nome}</p>
             <p className="text-xs text-ink-muted">{TIPO_LABEL[item.tipo]}{item.cpf && ` · ${item.cpf}`}</p>
-            {item.descricao && <p className="text-xs text-ink-subtle mt-0.5">{item.descricao}</p>}
+            {item.observacao && <p className="text-xs text-ink-subtle mt-0.5">{item.observacao}</p>}
           </div>
           {!disabled && (
             <button onClick={() => remover(item.id)} className="shrink-0 text-ink-faint hover:text-alert transition-colors">

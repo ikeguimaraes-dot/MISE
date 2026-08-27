@@ -46,7 +46,7 @@ export const FEEDBACK_CATEGORIA_LABEL: Record<string, string> = {
 }
 
 export const OCORRENCIA_RH_TIPOS = [
-  'falta', 'atestado', 'saida_antecipada', 'contratacao', 'desligamento', 'outro',
+  'falta', 'atestado', 'saida_antecipada', 'advertencia', 'contratacao', 'desligamento', 'outro',
 ] as const
 export type OcorrenciaRhTipo = typeof OCORRENCIA_RH_TIPOS[number]
 
