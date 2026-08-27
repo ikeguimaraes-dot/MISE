@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { LinhaRelatorio } from './_components/linha-relatorio'
 
 function getStatusDot(status: string, dataStr: string): { cor: string; label: string } {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
@@ -53,6 +53,28 @@ export default async function RelatorioDiarioPage({
         .order('data', { ascending: false })
     : { data: [] }
 
+  // Config de períodos da unidade (quais períodos existem)
+  const { data: unitConfig } = activeUnitId
+    ? await supabase.from('op_unit_config').select('periodos').eq('unit_id', activeUnitId).single()
+    : { data: null }
+  const periodosAtivos: string[] = (unitConfig?.periodos as string[] | null) ?? ['almoco', 'jantar']
+
+  // Períodos de todos os relatórios listados, pra montar os chips por dia
+  const relIds = (relatorios ?? []).map(r => r.id)
+  const { data: periodosDb } = relIds.length
+    ? await supabase
+        .from('op_relatorio_periodo')
+        .select('relatorio_id, periodo, status, enviado_em')
+        .in('relatorio_id', relIds)
+    : { data: [] }
+
+  const periodosPorRel = new Map<string, Record<string, string>>()
+  for (const p of periodosDb ?? []) {
+    const m = periodosPorRel.get(p.relatorio_id) ?? {}
+    m[p.periodo] = p.enviado_em ? 'enviado' : (p.status ?? 'rascunho')
+    periodosPorRel.set(p.relatorio_id, m)
+  }
+
   const unitName = units?.find(u => u.id === activeUnitId)?.name ?? ''
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const temHoje = relatorios?.some(r => r.data === hoje)
@@ -99,16 +121,17 @@ export default async function RelatorioDiarioPage({
         {relatorios?.map(r => {
           const { cor, label } = getStatusDot(r.status, r.data)
           return (
-            <Link
+            <LinhaRelatorio
               key={r.id}
+              data={r.data}
               href={`/relatorio-diario/${r.data}?unit_id=${activeUnitId}`}
-              className="flex items-center gap-4 px-5 py-4 hover:bg-surface-raised/50 transition-colors"
-            >
-              <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cor}`} />
-              <span className="flex-1 text-sm font-medium text-ink">{fmtDia(r.data)}</span>
-              <span className="text-xs text-ink-muted">{label}</span>
-              <ChevronRight className="h-4 w-4 text-ink-faint" />
-            </Link>
+              labelDia={fmtDia(r.data)}
+              cor={cor}
+              label={label}
+              unitId={activeUnitId}
+              periodosAtivos={periodosAtivos}
+              statusPorPeriodo={periodosPorRel.get(r.id) ?? {}}
+            />
           )
         })}
       </div>

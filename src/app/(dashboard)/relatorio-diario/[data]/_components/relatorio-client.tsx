@@ -160,8 +160,14 @@ export function RelatorioClient({
   const enviados = periodos.filter(
     p => p.enviado_em && periodosAtivos.includes(p.periodo as string)
   )
-  const progressoPct = periodosAtivos.length > 0
-    ? Math.round((enviados.length / periodosAtivos.length) * 100)
+  // Períodos marcados como "não se aplica" saem da conta: não contam
+  // como pendentes. O denominador é só o que de fato se aplica ao dia.
+  const naoSeAplica = periodos.filter(
+    p => p.status === 'nao_se_aplica' && periodosAtivos.includes(p.periodo as string)
+  ).map(p => p.periodo as string)
+  const aplicaveis = periodosAtivos.filter(p => !naoSeAplica.includes(p))
+  const progressoPct = aplicaveis.length > 0
+    ? Math.round((enviados.length / aplicaveis.length) * 100)
     : 0
 
   const periodoAtualEnviado = periodos.some(
@@ -324,7 +330,7 @@ export function RelatorioClient({
       {/* Progresso */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-ink-muted">
-          <span>{enviados.length} de {periodosAtivos.length} períodos enviados</span>
+          <span>{enviados.length} de {aplicaveis.length} períodos enviados</span>
           <span>{progressoPct}%</span>
         </div>
         <div className="h-1.5 w-full rounded-full bg-surface-raised overflow-hidden">
@@ -336,16 +342,22 @@ export function RelatorioClient({
       <div className="flex gap-2">
         {periodosAtivos.map(p => {
           const enviado = periodos.some(row => row.periodo === p && row.enviado_em)
+          const na = naoSeAplica.includes(p)
           return (
             <button
               key={p}
               onClick={() => setPeriodoAtivo(p)}
               className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                periodoAtivo === p ? 'bg-ember text-white' : 'bg-surface border border-edge text-ink-muted hover:text-ink'
+                periodoAtivo === p
+                  ? 'bg-ember text-white'
+                  : na
+                  ? 'bg-surface border border-edge text-ink-faint line-through'
+                  : 'bg-surface border border-edge text-ink-muted hover:text-ink'
               }`}
             >
               {PERIODO_LABEL[p] ?? p}
               {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
+              {na && <span className="text-[10px] no-underline">N/A</span>}
             </button>
           )
         })}

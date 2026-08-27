@@ -90,15 +90,20 @@ export async function POST(
 
   if (errPer) return NextResponse.json({ error: errPer.message }, { status: 500 })
 
-  // 5. Verificar se TODOS os períodos configurados estão agora enviados
+  // 5. Verificar se TODOS os períodos configurados estão satisfeitos.
+  // Um período conta como satisfeito se foi enviado OU marcado como
+  // "não se aplica" (nao_se_aplica) — assim um dia sem almoço, p.ex.,
+  // fecha 100% com os períodos que de fato se aplicam.
   const { data: todosPeriodos } = await supabase
     .from('op_relatorio_periodo')
-    .select('periodo, enviado_em')
+    .select('periodo, enviado_em, status')
     .eq('relatorio_id', relatorio.id)
     .in('periodo', ativos)
 
   const todosEnviados = ativos.every(tipo =>
-    todosPeriodos?.some(p => p.periodo === tipo && p.enviado_em)
+    todosPeriodos?.some(p =>
+      p.periodo === tipo && (p.enviado_em || p.status === 'nao_se_aplica')
+    )
   )
 
   // 6. Sempre emite turno.period.closed para o período recém-enviado
