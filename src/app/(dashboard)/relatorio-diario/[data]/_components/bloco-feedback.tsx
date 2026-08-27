@@ -105,11 +105,6 @@ export function BlocoFeedback({
           {editId === item.id ? (
             // ----- modo edição -----
             <div className="space-y-2">
-              <input
-                type="text" value={editProduto} onChange={e => setEditProduto(e.target.value)}
-                placeholder="Produto (opcional)"
-                className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
-              />
               <select
                 value={editCategoria} onChange={e => setEditCategoria(e.target.value as FeedbackCategoria | '')}
                 className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none"
@@ -117,6 +112,11 @@ export function BlocoFeedback({
                 <option value="">Categoria (opcional)…</option>
                 {FEEDBACK_CATEGORIAS.map(c => <option key={c} value={c}>{FEEDBACK_CATEGORIA_LABEL[c]}</option>)}
               </select>
+              <input
+                type="text" value={editProduto} onChange={e => setEditProduto(e.target.value)}
+                placeholder="Produto (opcional)"
+                className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
+              />
               <textarea
                 value={editDescricao} onChange={e => setEditDescricao(e.target.value)}
                 placeholder="Descrição (opcional)…" rows={2}
@@ -159,11 +159,6 @@ export function BlocoFeedback({
 
       {!disabled && (
         <div className="space-y-2 pt-1">
-          <input
-            type="text" value={produto} onChange={e => setProduto(e.target.value)}
-            placeholder="Produto (opcional)"
-            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
-          />
           <select
             value={categoria} onChange={e => setCategoria(e.target.value as FeedbackCategoria | '')}
             className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink focus:border-ember focus:outline-none"
@@ -171,6 +166,11 @@ export function BlocoFeedback({
             <option value="">Categoria (opcional)…</option>
             {FEEDBACK_CATEGORIAS.map(c => <option key={c} value={c}>{FEEDBACK_CATEGORIA_LABEL[c]}</option>)}
           </select>
+          <input
+            type="text" value={produto} onChange={e => setProduto(e.target.value)}
+            placeholder="Produto (opcional)"
+            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
+          />
           <textarea
             value={descricao} onChange={e => setDescricao(e.target.value)}
             placeholder="Descrição (opcional)…" rows={2}

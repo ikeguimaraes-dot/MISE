@@ -40,11 +40,12 @@ export default async function RelatorioPage({
   }
   if (!relatorio) redirect('/relatorio-diario')
 
-  const [periodosRes, unitConfigRes, unitRes, feedbacksRes] = await Promise.all([
+  const [periodosRes, unitConfigRes, unitRes, feedbacksRes, avaliacoesRes] = await Promise.all([
     supabase.from('op_relatorio_periodo').select('*').eq('relatorio_id', relatorio.id),
     supabase.from('op_unit_config').select('periodos, pax_por_genero').eq('unit_id', unit_id).single(),
     supabase.from('units').select('name').eq('id', unit_id).single(),
     supabase.from('op_feedback_cliente').select('id, tipo, produto, categoria, texto').eq('relatorio_id', relatorio.id),
+    supabase.from('op_avaliacao_setor').select('periodo, setor, nota, observacao').eq('relatorio_id', relatorio.id),
   ])
 
   return (
@@ -57,6 +58,7 @@ export default async function RelatorioPage({
       dataParam={dataParam}
       role={session.role}
       feedbacks={feedbacksRes.data ?? []}
+      avaliacoesSetor={avaliacoesRes.data ?? []}
     />
   )
 }

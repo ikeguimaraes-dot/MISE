@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   const { data: dataParam, periodo } = await params
   const body = await request.json()
-  const { unit_id, ...campos } = body
+  const { unit_id, setores, ...campos } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
 
@@ -41,5 +41,27 @@ export async function PATCH(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Avaliação de setores — tabela dedicada op_avaliacao_setor (por período).
+  // setores chega como { [setor]: { nota: number|null, obs: string } }.
+  // Só faz upsert das entradas com nota preenchida; ignora as vazias.
+  if (setores && typeof setores === 'object') {
+    const linhas = Object.entries(setores as Record<string, { nota: number | null; obs?: string }>)
+      .filter(([, av]) => av && av.nota != null)
+      .map(([setor, av]) => ({
+        relatorio_id: relatorio.id,
+        periodo,
+        setor,
+        nota: av.nota,
+        observacao: av.obs?.trim() || null,
+      }))
+    if (linhas.length > 0) {
+      const { error: errSetor } = await supabase
+        .from('op_avaliacao_setor')
+        .upsert(linhas, { onConflict: 'relatorio_id,periodo,setor' })
+      if (errSetor) return NextResponse.json({ error: errSetor.message }, { status: 500 })
+    }
+  }
+
   return NextResponse.json({ id: updated.id })
 }

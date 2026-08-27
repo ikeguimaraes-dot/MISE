@@ -37,7 +37,18 @@ type FormErros = {
   setores?: Partial<Record<SetorAvaliacao, boolean>>
 }
 
-function estadoInicial(row: Record<string, unknown> | undefined): FormState {
+function estadoInicial(
+  row: Record<string, unknown> | undefined,
+  avaliacoesPeriodo?: { setor: string; nota: number | null; observacao: string | null }[]
+): FormState {
+  const setoresBase = Object.fromEntries(
+    SETORES_AVALIACAO.map(s => [s, { nota: null as number | null, obs: '' }])
+  ) as AvaliacaoSetoresState
+  for (const av of avaliacoesPeriodo ?? []) {
+    if (av.setor in setoresBase) {
+      setoresBase[av.setor as SetorAvaliacao] = { nota: av.nota, obs: av.observacao ?? '' }
+    }
+  }
   return {
     horarios: {
       abertura: String(row?.horario_abertura ?? ''),
@@ -58,9 +69,7 @@ function estadoInicial(row: Record<string, unknown> | undefined): FormState {
       tempo: String(row?.clima_tempo ?? ''),
       temperatura: String(row?.clima_temperatura ?? ''),
     },
-    setores: Object.fromEntries(
-      SETORES_AVALIACAO.map(s => [s, { nota: null, obs: '' }])
-    ) as AvaliacaoSetoresState,
+    setores: setoresBase,
     resumo: String(row?.resumo_operacional ?? ''),
     ocorrencia: {
       houve: Boolean(row?.houve_ocorrencia),
@@ -91,6 +100,7 @@ export function RelatorioClient({
   dataParam,
   role,
   feedbacks,
+  avaliacoesSetor,
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
@@ -100,6 +110,7 @@ export function RelatorioClient({
   dataParam: string
   role: string
   feedbacks: { id: string; tipo: string; produto: string | null; categoria: string | null; texto: string | null }[]
+  avaliacoesSetor: { periodo: string; setor: string; nota: number | null; observacao: string | null }[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
@@ -107,7 +118,10 @@ export function RelatorioClient({
 
   const [periodoAtivo, setPeriodoAtivo] = useState(periodosAtivos[0] ?? 'almoco')
   const [form, setForm] = useState<FormState>(() =>
-    estadoInicial(periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>)
+    estadoInicial(
+      periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>,
+      avaliacoesSetor.filter(a => a.periodo === periodoAtivo)
+    )
   )
   const [erros, setErros] = useState<FormErros>({})
   const [salvando, setSalvando] = useState(false)
@@ -129,7 +143,8 @@ export function RelatorioClient({
   // Ao trocar de aba, recarregar estado do período
   useEffect(() => {
     setForm(estadoInicial(
-      periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>
+      periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>,
+      avaliacoesSetor.filter(a => a.periodo === periodoAtivo)
     ))
     setErros({})
   }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -165,6 +180,7 @@ export function RelatorioClient({
         houve_ocorrencia: estado.ocorrencia.houve,
         ocorrencia_texto: estado.ocorrencia.descricao || null,
         responsavel_preenchimento: estado.responsavel || null,
+        setores: estado.setores,
       }),
     })
     setSalvando(false)
