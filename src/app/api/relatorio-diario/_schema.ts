@@ -9,7 +9,7 @@ export const OP_86_MOTIVOS = [
 ] as const
 export type Op86Motivo = typeof OP_86_MOTIVOS[number]
 
-export const PERIODOS = ['almoco', 'jantar', 'manha'] as const
+export const PERIODOS = ['manha', 'almoco', 'jantar', 'eventos'] as const
 export type Periodo = typeof PERIODOS[number]
 
 export const SETORES_AVALIACAO = ['Salão', 'Cozinha', 'Bar', 'Limpeza', 'Caixa', 'Portaria'] as const
@@ -42,9 +42,10 @@ export const TEMPO_OPCOES = ['Sol', 'Nublado', 'Chuva leve', 'Chuva forte', 'Fri
 export type TempoOpcao = typeof TEMPO_OPCOES[number]
 
 export const PERIODO_LABEL: Record<string, string> = {
+  manha: 'Manhã',
   almoco: 'Almoço',
   jantar: 'Jantar',
-  manha: 'Manhã',
+  eventos: 'Eventos',
 }
 
 // Nomes reais confirmados via information_schema.columns (2026-08-24).
