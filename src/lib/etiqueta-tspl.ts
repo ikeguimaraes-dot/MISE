@@ -57,8 +57,11 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   y += 40
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
   y += 32
-  cmds.push(`TEXT ${left},${y},"2",0,1,1,"VALIDADE: ${fmtDate(validade)}"`)
-  y += 48
+  // Validade em destaque — fonte "4" (24x32) só na data, é a info mais crítica pra cozinha.
+  // Rótulo fica na fonte "2" de sempre, centralizado verticalmente contra a data maior.
+  cmds.push(`TEXT ${left},${y + 6},"2",0,1,1,"VALIDADE:"`)
+  cmds.push(`TEXT ${left + 116},${y},"4",0,1,1,"${fmtDate(validade)}"`)
+  y += 56
   cmds.push(`BAR ${left},${y},448,3`)
   // Respiro simétrico antes de responsável/#ID
   y += 90

@@ -293,8 +293,9 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 .nome{font-size:13pt;font-weight:bold;line-height:1.1}
 .metodo{font-size:8pt;line-height:1.2;margin-top:0.5mm;text-transform:uppercase}
 .dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:3mm 0;margin:3mm 0}
-.row{display:flex;justify-content:space-between;font-size:9.5pt;line-height:1.4}
+.row{display:flex;justify-content:space-between;align-items:baseline;font-size:9.5pt;line-height:1.4}
 .row .lbl{font-weight:bold}
+.row .validade-valor{font-size:15pt;font-weight:bold}
 .resp{font-size:9pt}
 .resp b{font-weight:bold}
 .id{font-size:7pt}
@@ -306,7 +307,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
   </div>
   <div class="dates">
     <div class="row"><span class="lbl">MANIPULAÇÃO:</span><span>${fmtDate(dataManipulacao)}</span></div>
-    <div class="row"><span class="lbl">VALIDADE:</span><span>${fmtDate(validade)}</span></div>
+    <div class="row"><span class="lbl">VALIDADE:</span><span class="validade-valor">${fmtDate(validade)}</span></div>
   </div>
   <div class="resp"><b>RESP.:</b> ${respNome}</div>
   <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
@@ -611,9 +612,9 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
                 <span style={{ fontWeight: 'bold' }}>MANIPULAÇÃO:</span>
                 <span>{new Date(dataManipulacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '9.5pt', lineHeight: 1.4 }}>
                 <span style={{ fontWeight: 'bold' }}>VALIDADE:</span>
-                <span>{new Date(validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                <span style={{ fontSize: '15pt', fontWeight: 'bold' }}>{new Date(validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
               </div>
             </div>
             <div style={{ fontSize: '9pt' }}>
