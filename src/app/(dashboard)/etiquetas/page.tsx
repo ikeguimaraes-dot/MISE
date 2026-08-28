@@ -39,16 +39,22 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
     { data: units },
     { data: ingredients },
     { data: menuItems },
-    { data: employees },
+    { data: responsaveisRaw },
   ] = await Promise.all([
     supabase.from('units').select('id, name, cnpj, address').eq('active', true),
     supabase.from('ingredients').select('id, nome, categoria_anvisa').eq('ativo', true).order('nome'),
     supabase.from('menu_items').select('id, nome').order('nome'),
-    supabase.from('employees').select('id, nome, unit_id').eq('ativo', true).eq('mise_ativo', true).order('nome'),
+    supabase.schema('mise').from('responsaveis').select('id, nome, responsavel_unidades(unit_id)').eq('ativo', true).order('nome'),
   ])
 
+  const responsaveis = (responsaveisRaw ?? []).map(r => ({
+    id: r.id,
+    nome: r.nome,
+    unit_ids: (r.responsavel_unidades ?? []).map((ru: { unit_id: string }) => ru.unit_id),
+  }))
+
   let query = supabase.schema('mise').from('labels')
-    .select('id, unit_id, employee_id, nome, tipo, peso_kg, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
+    .select('id, unit_id, employee_id, responsavel_nome, nome, tipo, peso_kg, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
     .order('data_manipulacao', { ascending: false })
     .range(from, to)
 
@@ -56,7 +62,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
   if (status) query = query.eq('status', status)
   if (produto) query = query.ilike('nome', `%${produto}%`)
   if (tipo) query = query.eq('tipo', tipo)
-  if (responsavel) query = query.eq('employee_id', responsavel)
+  if (responsavel) query = query.eq('responsavel_nome', responsavel)
 
   const { data: labels, count } = await query
 
@@ -83,7 +89,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
       <LabelForm
         ingredients={ingredients ?? []}
         menuItems={menuItems ?? []}
-        employees={employees ?? []}
+        responsaveis={responsaveis}
         units={units ?? []}
       />
 
@@ -118,7 +124,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
           <select name="responsavel" defaultValue={responsavel ?? ''}
             className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
             <option value="">Todos os responsáveis</option>
-            {(employees ?? []).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            {responsaveis.map(r => <option key={r.id} value={r.nome}>{r.nome}</option>)}
           </select>
           <button type="submit"
             className="rounded-lg bg-ember px-3 py-1.5 text-sm font-medium text-ember-ink hover:bg-ember-hover transition-colors">
@@ -146,7 +152,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
                   <td className="px-5 py-3 font-medium text-ink">{l.nome}</td>
                   <td className="px-5 py-3 text-ink-muted capitalize">{l.tipo}</td>
                   <td className="px-5 py-3 text-ink-muted">{unitsMap[l.unit_id] ?? '—'}</td>
-                  <td className="px-5 py-3 text-ink-muted">{empsMap[l.employee_id ?? ''] ?? '—'}</td>
+                  <td className="px-5 py-3 text-ink-muted">{l.responsavel_nome ?? empsMap[l.employee_id ?? ''] ?? '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{formatDate(l.data_manipulacao)}</td>
                   <td className="px-5 py-3 text-ink-muted">{formatDate(l.validade)}</td>
                   <td className="px-5 py-3">
@@ -165,7 +171,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
                         metodo={l.metodo_conservacao}
                         dataManipulacao={l.data_manipulacao}
                         validade={l.validade}
-                        respNome={(empsMap[l.employee_id ?? ''] ?? '').split(' ')[0]}
+                        respNome={(l.responsavel_nome ?? empsMap[l.employee_id ?? ''] ?? '').split(' ')[0]}
                       />
                     )}
                   </td>

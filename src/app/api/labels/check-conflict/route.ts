@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const { data } = await supabase
     .schema('mise')
     .from('labels')
-    .select('id, nome, employee_id, data_manipulacao, validade')
+    .select('id, nome, employee_id, responsavel_nome, data_manipulacao, validade')
     .eq('ingredient_id', ingredient_id)
     .eq('unit_id', unit_id)
     .eq('status', 'ativa')
@@ -25,14 +25,14 @@ export async function GET(request: Request) {
 
   if (!data) return NextResponse.json({ conflict: null })
 
-  let employee_name = null
-  if (data.employee_id) {
+  let responsavelNome = data.responsavel_nome
+  if (!responsavelNome && data.employee_id) {
     const { data: emp } = await supabase
       .from('employees')
       .select('nome')
       .eq('id', data.employee_id)
       .single()
-    employee_name = emp?.nome ?? null
+    responsavelNome = emp?.nome ?? null
   }
 
   return NextResponse.json({
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       nome: data.nome,
       data_manipulacao: data.data_manipulacao,
       validade: data.validade,
-      employee_name: employee_name ?? '—',
+      responsavel_nome: responsavelNome ?? '—',
     },
   })
 }

@@ -7,7 +7,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
-type Employee = { id: string; nome: string; unit_id: string | null }
+type Responsavel = { id: string; nome: string; unit_ids: string[] }
 type Unit = { id: string; name: string; cnpj?: string | null; address?: string | null }
 type PrintPoint = { id: string; name: string; icone: string | null }
 
@@ -76,12 +76,12 @@ function nowLocalISO(): string {
 export function LabelForm({
   ingredients,
   menuItems,
-  employees,
+  responsaveis,
   units,
 }: {
   ingredients: Ingredient[]
   menuItems: MenuItem[]
-  employees: Employee[]
+  responsaveis: Responsavel[]
   units: Unit[]
 }) {
   const [search, setSearch] = useState('')
@@ -91,7 +91,7 @@ export function LabelForm({
   const [categoria, setCategoria] = useState('')
   const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(false)
   const [pesoKg, setPesoKg] = useState('')
-  const [selectedEmployee, setSelectedEmployee] = useState<string>('')
+  const [selectedResponsavel, setSelectedResponsavel] = useState<string>('')
   const [empSearch, setEmpSearch] = useState('')
   const [selectedUnit, setSelectedUnit] = useState<string>('')
   const [setor, setSetor] = useState('')
@@ -110,7 +110,7 @@ export function LabelForm({
   const [quantidade, setQuantidade] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [conflictLabel, setConflictLabel] = useState<{ id: string; nome: string; data_manipulacao: string; validade: string; employee_name: string } | null>(null)
+  const [conflictLabel, setConflictLabel] = useState<{ id: string; nome: string; data_manipulacao: string; validade: string; responsavel_nome: string } | null>(null)
   const [showConflictModal, setShowConflictModal] = useState(false)
   const [conflictResolution, setConflictResolution] = useState<'none' | 'overwrite' | 'keep'>('none')
 
@@ -121,13 +121,15 @@ export function LabelForm({
       ].slice(0, 8)
     : []
 
-  const unitEmployees = selectedUnit
-    ? employees.filter(e => e.unit_id === selectedUnit)
+  const unitResponsaveis = selectedUnit
+    ? responsaveis.filter(r => r.unit_ids.includes(selectedUnit))
     : []
 
-  const filteredEmployees = empSearch
-    ? unitEmployees.filter(e => e.nome.toLowerCase().includes(empSearch.toLowerCase()))
-    : unitEmployees
+  const filteredResponsaveis = empSearch
+    ? unitResponsaveis.filter(r => r.nome.toLowerCase().includes(empSearch.toLowerCase()))
+    : unitResponsaveis
+
+  const selectedResponsavelNome = responsaveis.find(r => r.id === selectedResponsavel)?.nome ?? ''
 
   useEffect(() => {
     if (!selectedProduct || !selectedUnit) return
@@ -243,7 +245,8 @@ export function LabelForm({
 
     const payload = {
       unit_id: selectedUnit,
-      employee_id: selectedEmployee || null,
+      responsavel_id: selectedResponsavel || null,
+      responsavel_nome: selectedResponsavelNome || null,
       ingredient_id: selectedProduct.tipo === 'ingrediente' ? selectedProduct.id : null,
       menu_item_id: selectedProduct.tipo === 'preparacao' ? selectedProduct.id : null,
       tipo,
@@ -282,7 +285,7 @@ export function LabelForm({
   function handlePrint() {
     if (!savedLabel) return
     const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
-    const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
+    const respNome = selectedResponsavelNome.split(' ')[0]
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
 <style>@page{size:60mm 60mm;margin:0}
 html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:monospace}
@@ -320,7 +323,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
   // que escreve os bytes diretamente no socket Bluetooth SPP da impressora.
   function handlePrintBluetooth() {
     if (!savedLabel) return
-    const respNome = (employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]
+    const respNome = selectedResponsavelNome.split(' ')[0]
     const tspl = buildTSPL({
       nome: savedLabel.nome,
       metodo,
@@ -377,7 +380,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Unidade */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Unidade *</label>
-            <select value={selectedUnit} onChange={e => { setSelectedUnit(e.target.value); setSelectedEmployee('') }} required
+            <select value={selectedUnit} onChange={e => { setSelectedUnit(e.target.value); setSelectedResponsavel('') }} required
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar unidade</option>
               {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -503,24 +506,27 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           <label className="block text-xs font-medium text-ink-muted mb-2">Responsável</label>
           {!selectedUnit ? (
             <p className="text-sm text-ink-subtle">Selecione uma unidade para ver os responsáveis.</p>
-          ) : unitEmployees.length === 0 ? (
-            <p className="text-sm text-ink-subtle">Nenhum funcionário ativo no MISE para esta unidade.</p>
+          ) : unitResponsaveis.length === 0 ? (
+            <p className="text-sm text-ink-subtle">
+              Nenhum responsável cadastrado para esta unidade. Cadastre em{' '}
+              <a href="/cadastros/responsaveis" className="underline">Cadastros → Responsáveis</a>.
+            </p>
           ) : (
             <>
-              {unitEmployees.length > 6 && (
-                <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar funcionário"
+              {unitResponsaveis.length > 6 && (
+                <input value={empSearch} onChange={e => setEmpSearch(e.target.value)} placeholder="Buscar responsável"
                   className="mb-2 w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
               )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                {filteredEmployees.map(e => (
-                  <button key={e.id} type="button" onClick={() => setSelectedEmployee(e.id)}
+                {filteredResponsaveis.map(r => (
+                  <button key={r.id} type="button" onClick={() => setSelectedResponsavel(r.id)}
                     className={`flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition-colors min-h-[80px] ${
-                      selectedEmployee === e.id ? 'border-ember bg-ember-soft' : 'border-edge bg-surface-raised/50 hover:border-edge-strong'
+                      selectedResponsavel === r.id ? 'border-ember bg-ember-soft' : 'border-edge bg-surface-raised/50 hover:border-edge-strong'
                     }`}>
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-ink ${getColor(e.id)}`}>
-                      {getInitials(e.nome)}
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-ink ${getColor(r.id)}`}>
+                      {getInitials(r.nome)}
                     </div>
-                    <span className="text-xs text-ink-muted leading-tight">{e.nome.split(' ')[0]}</span>
+                    <span className="text-xs text-ink-muted leading-tight">{r.nome.split(' ')[0]}</span>
                   </button>
                 ))}
               </div>
@@ -568,7 +574,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               <p className="text-ink font-medium">{conflictLabel.nome}</p>
               <p className="text-ink-muted">Manipulação: {new Date(conflictLabel.data_manipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
               <p className="text-ink-muted">Validade: {new Date(conflictLabel.validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
-              <p className="text-ink-muted">Responsável: {conflictLabel.employee_name}</p>
+              <p className="text-ink-muted">Responsável: {conflictLabel.responsavel_nome}</p>
             </div>
             <div className="flex flex-col gap-2">
               <button onClick={() => { setConflictResolution('overwrite'); setShowConflictModal(false) }}
@@ -611,7 +617,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               </div>
             </div>
             <div style={{ fontSize: '9pt' }}>
-              <b>RESP.:</b> {(employees.find(e => e.id === selectedEmployee)?.nome ?? '').split(' ')[0]}
+              <b>RESP.:</b> {selectedResponsavelNome.split(' ')[0]}
             </div>
             <div style={{ fontSize: '7pt' }}>#{savedLabel.id.slice(0, 6).toUpperCase()}</div>
           </div>
