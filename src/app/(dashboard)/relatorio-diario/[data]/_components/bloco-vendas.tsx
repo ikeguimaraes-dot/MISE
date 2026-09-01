@@ -70,6 +70,7 @@ export function BlocoVendas({
   const part_alimentos = total_ab > 0 ? alimentos / total_ab : NaN
   const part_bebidas = total_ab > 0 ? bebidas / total_ab : NaN
   const perda_pct = faturamento_bruto > 0 ? perda_produto / faturamento_bruto : NaN
+  const tx_gorjeta = vendas_ab > 0 ? taxa_servico / vendas_ab : NaN
 
   // Alerta de reconciliação: alimentos + bebidas deve bater com Vendas A&B.
   // Só alerta quando os 3 têm valor preenchido (evita alarme falso durante digitação).
@@ -162,6 +163,9 @@ export function BlocoVendas({
 
           <span className="text-ink-muted">% Perda</span>
           <span className="text-ink text-right font-medium">{pct(perda_pct)}</span>
+
+          <span className="text-ink-muted">TX de Gorjeta</span>
+          <span className="text-ink text-right font-medium">{pct(tx_gorjeta)}</span>
         </div>
       </div>
     </div>
