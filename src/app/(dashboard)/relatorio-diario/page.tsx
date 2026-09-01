@@ -33,11 +33,21 @@ export default async function RelatorioDiarioPage({
   const { unit_id } = await searchParams
   const supabase = createServiceClient()
 
-  const { data: units } = await supabase
+  const ORDEM_UNIDADES = ['Meet & Eat', 'Match Point', 'Madonna SP Itaim', 'Frenezze', 'HOS']
+
+  const { data: unitsRaw } = await supabase
     .from('units')
     .select('id, name')
     .eq('active', true)
-    .order('name')
+
+  const units = (unitsRaw ?? []).sort((a, b) => {
+    const ia = ORDEM_UNIDADES.indexOf(a.name)
+    const ib = ORDEM_UNIDADES.indexOf(b.name)
+    if (ia === -1 && ib === -1) return a.name.localeCompare(b.name)
+    if (ia === -1) return 1
+    if (ib === -1) return -1
+    return ia - ib
+  })
 
   const activeUnitId = unit_id ?? units?.[0]?.id ?? ''
 
