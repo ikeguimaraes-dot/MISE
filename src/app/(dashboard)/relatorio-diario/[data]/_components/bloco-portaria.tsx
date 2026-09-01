@@ -37,6 +37,7 @@ export function BlocoPortaria({
   const resultado = reservas - no_show + passantes
   // Taxa de No-Show = no_show / total de reservas
   const taxaNoShow = reservas > 0 ? (no_show / reservas) * 100 : NaN
+  const taxaPassante = resultado > 0 ? (passantes / resultado) * 100 : NaN
 
   async function adicionarDesistencia() {
     setSalvandoDesist(true); setErro('')
@@ -92,6 +93,8 @@ export function BlocoPortaria({
         <span className="text-ink font-medium text-right">{resultado} pax</span>
         <span className="text-ink-muted">Taxa de No-Show</span>
         <span className="text-ink font-medium text-right">{isNaN(taxaNoShow) ? '—' : `${taxaNoShow.toFixed(1)}%`}</span>
+        <span className="text-ink-muted">Taxa de Passante</span>
+        <span className="text-ink font-medium text-right">{isNaN(taxaPassante) ? '—' : `${taxaPassante.toFixed(1)}%`}</span>
       </div>
 
       {/* Desistências */}

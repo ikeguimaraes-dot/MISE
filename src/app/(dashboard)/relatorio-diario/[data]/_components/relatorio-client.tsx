@@ -45,6 +45,7 @@ type FormErros = {
   perda_produto?: boolean
   resumo?: boolean
   responsavel?: boolean
+  clima?: { tempo?: boolean }
   setores?: Partial<Record<SetorAvaliacao, boolean>>
   equipe?: Partial<Record<SetorEquipe, boolean>>
 }
@@ -333,6 +334,7 @@ export function RelatorioClient({
       }
     }
     if (Object.keys(horariosErro).length) e.horarios = horariosErro
+    if (!estado.clima.tempo) { e.clima = { tempo: true }; primeiroId ??= 'clima-tempo' }
     if (!estado.resumo.trim()) { e.resumo = true; primeiroId ??= 'resumo_operacional' }
     if (!estado.responsavel.trim()) { e.responsavel = true; primeiroId ??= 'responsavel_preenchimento' }
 
@@ -533,6 +535,7 @@ export function RelatorioClient({
           value={form.clima}
           onChange={clima => handleFormChange({ clima })}
           disabled={disabled}
+          erros={erros.clima}
         />
         <BlocoSetores
           value={form.setores}

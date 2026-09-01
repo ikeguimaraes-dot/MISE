@@ -1,4 +1,5 @@
 'use client'
+import { TextareaAuto } from './textarea-auto'
 
 export type OcorrenciaState = { houve: boolean; descricao: string }
 
@@ -42,13 +43,12 @@ export function BlocoOcorrencia({
         </div>
       </div>
       {value.houve && (
-        <textarea
+        <TextareaAuto
           value={value.descricao}
-          onChange={e => onChange({ ...value, descricao: e.target.value })}
+          onChange={descricao => onChange({ ...value, descricao })}
           disabled={disabled}
-          rows={3}
           placeholder="Descreva a ocorrência…"
-          className="w-full rounded-lg border border-alert/40 bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-alert focus:outline-none disabled:opacity-50 resize-none"
+          className="w-full rounded-lg border border-alert/40 bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-alert focus:outline-none disabled:opacity-50"
         />
       )}
     </div>

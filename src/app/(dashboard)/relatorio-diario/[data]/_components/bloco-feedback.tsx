@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Trash2, Pencil, Check, X } from 'lucide-react'
+import { TextareaAuto } from './textarea-auto'
 import { FEEDBACK_CATEGORIAS, FEEDBACK_CATEGORIA_LABEL, type FeedbackCategoria } from '@/app/api/relatorio-diario/_schema'
 import { RegistroColapsavel } from './registro-colapsavel'
 
@@ -117,10 +118,11 @@ export function BlocoFeedback({
                 placeholder="Produto (opcional)"
                 className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
               />
-              <textarea
-                value={editDescricao} onChange={e => setEditDescricao(e.target.value)}
-                placeholder="Descrição (opcional)…" rows={2}
-                className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none resize-none"
+              <TextareaAuto
+                value={editDescricao}
+                onChange={setEditDescricao}
+                placeholder="Descrição (opcional)…"
+                className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
               />
               {editErro && <p className="text-xs text-alert-bright">{editErro}</p>}
               <div className="flex gap-2">
@@ -171,10 +173,11 @@ export function BlocoFeedback({
             placeholder="Produto (opcional)"
             className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
           />
-          <textarea
-            value={descricao} onChange={e => setDescricao(e.target.value)}
-            placeholder="Descrição (opcional)…" rows={2}
-            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none resize-none"
+          <TextareaAuto
+            value={descricao}
+            onChange={setDescricao}
+            placeholder="Descrição (opcional)…"
+            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
           />
           {erro && <p className="text-xs text-alert-bright">{erro}</p>}
           <button

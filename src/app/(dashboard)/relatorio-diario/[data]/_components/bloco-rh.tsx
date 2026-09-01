@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { OCORRENCIA_RH_TIPOS, type OcorrenciaRhTipo } from '@/app/api/relatorio-diario/_schema'
+import { TextareaAuto } from './textarea-auto'
 import { RegistroColapsavel } from './registro-colapsavel'
 import { SeletorColaborador, type Colaborador } from './seletor-colaborador'
 
@@ -94,8 +95,12 @@ export function BlocoRh({
             <input type="text" value={cpf} onChange={e => setCpf(mascaraCpf(e.target.value))} placeholder="CPF (opcional)"
               className="rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none" />
           </div>
-          <textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descrição (opcional)…" rows={2}
-            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none resize-none" />
+          <TextareaAuto
+            value={descricao}
+            onChange={setDescricao}
+            placeholder="Descrição (opcional)…"
+            className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none"
+          />
           {erro && <p className="text-xs text-alert-bright">{erro}</p>}
           <button onClick={adicionar} disabled={salvando}
             className="w-full rounded-lg bg-surface-raised border border-edge px-3 py-2 text-sm font-medium text-ink hover:bg-surface transition-colors disabled:opacity-50">

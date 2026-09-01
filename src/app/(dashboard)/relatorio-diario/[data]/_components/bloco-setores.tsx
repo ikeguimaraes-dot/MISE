@@ -1,5 +1,6 @@
 'use client'
 import { SETORES_AVALIACAO, type SetorAvaliacao } from '@/app/api/relatorio-diario/_schema'
+import { TextareaAuto } from './textarea-auto'
 
 export type AvaliacaoItem = { nota: number | null; obs: string }
 export type AvaliacaoSetoresState = Record<SetorAvaliacao, AvaliacaoItem>
@@ -50,6 +51,26 @@ export function BlocoSetores({
         ))}
       </div>
 
+      {/* Nota Geral calculada */}
+      {(() => {
+        const notas = (Object.values(value) as AvaliacaoItem[])
+          .map(av => av.nota)
+          .filter((n): n is number => n !== null)
+        if (notas.length === 0) return null
+        const media = notas.reduce((a, b) => a + b, 0) / notas.length
+        const idx = Math.round(media) as keyof typeof NOTA_COR
+        const cor = NOTA_COR[idx]
+        return (
+          <div
+            className="flex items-center justify-between rounded-lg px-3 py-2"
+            style={{ backgroundColor: cor.bg, color: cor.fg }}
+          >
+            <span className="text-sm font-semibold">Nota Geral</span>
+            <span className="text-sm font-bold">{media.toFixed(1)}</span>
+          </div>
+        )
+      })()}
+
       {SETORES_AVALIACAO.map(setor => {
         const av = value[setor]
         const obsObrigatoria = av.nota !== null && av.nota <= 2
@@ -83,14 +104,13 @@ export function BlocoSetores({
               </div>
             </div>
             {obsObrigatoria && (
-              <textarea
+              <TextareaAuto
                 id={`setor-obs-${setor}`}
                 value={av.obs}
-                onChange={e => onChange({ ...value, [setor]: { ...av, obs: e.target.value } })}
+                onChange={obs => onChange({ ...value, [setor]: { ...av, obs } })}
                 disabled={disabled}
-                rows={2}
                 placeholder={`Observação obrigatória para nota ${av.nota}…`}
-                className={`w-full rounded-lg border px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 bg-base resize-none ${
+                className={`w-full rounded-lg border px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 bg-base ${
                   erroObs ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
                 }`}
               />

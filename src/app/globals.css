@@ -75,3 +75,18 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+@media print {
+  nav,
+  header,
+  [data-no-print] {
+    display: none !important;
+  }
+  [data-colapsavel-content] {
+    display: block !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+}

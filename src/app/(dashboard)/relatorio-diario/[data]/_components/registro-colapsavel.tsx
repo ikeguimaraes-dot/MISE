@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
 
 export function RegistroColapsavel({
   titulo,
@@ -15,11 +14,7 @@ export function RegistroColapsavel({
 
   return (
     <div className="rounded-xl border border-edge bg-surface overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setAberto(a => !a)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-surface-raised/50 transition-colors"
-      >
+      <div className="flex w-full items-center justify-between px-5 py-4">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-ink">{titulo}</span>
           {count > 0 && (
@@ -28,17 +23,33 @@ export function RegistroColapsavel({
             </span>
           )}
         </div>
-        {aberto ? (
-          <ChevronUp className="h-4 w-4 text-ink-muted" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-ink-muted" />
-        )}
-      </button>
-      {aberto && (
-        <div className="border-t border-edge px-5 py-4 space-y-4">
-          {children}
+        <div className="flex gap-2">
+          {(['Não', 'Sim'] as const).map(label => {
+            const isAberto = label === 'Sim'
+            const ativo = aberto === isAberto
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setAberto(isAberto)}
+                className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  ativo
+                    ? 'bg-ember/10 text-ember border border-ember/40'
+                    : 'text-ink-muted hover:text-ink border border-edge'
+                }`}
+              >
+                {label}
+              </button>
+            )
+          })}
         </div>
-      )}
+      </div>
+      <div
+        data-colapsavel-content=""
+        className={`border-t border-edge px-5 py-4 space-y-4 ${aberto ? '' : 'hidden print:!block'}`}
+      >
+        {children}
+      </div>
     </div>
   )
 }
