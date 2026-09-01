@@ -12,7 +12,8 @@ export async function PATCH(
 ) {
   const { data: dataParam, periodo } = await params
   const body = await request.json()
-  const { unit_id, aplicar } = body
+  const { unit_id, aplicar, sequencia: seqRaw } = body
+  const sequencia: number = typeof seqRaw === 'number' ? seqRaw : 1
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
 
@@ -41,6 +42,7 @@ export async function PATCH(
     .select('id, enviado_em')
     .eq('relatorio_id', relatorio.id)
     .eq('periodo', periodo)
+    .eq('sequencia', sequencia)
     .maybeSingle()
 
   if (aplicar && existente?.enviado_em) {
@@ -52,8 +54,8 @@ export async function PATCH(
   const { error } = await supabase
     .from('op_relatorio_periodo')
     .upsert(
-      { relatorio_id: relatorio.id, periodo, status: novoStatus },
-      { onConflict: 'relatorio_id,periodo' }
+      { relatorio_id: relatorio.id, periodo, sequencia, status: novoStatus },
+      { onConflict: 'relatorio_id,periodo,sequencia' }
     )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

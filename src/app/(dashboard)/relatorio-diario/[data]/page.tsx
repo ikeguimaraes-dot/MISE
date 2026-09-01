@@ -45,17 +45,17 @@ export default async function RelatorioPage({
     supabase.from('op_unit_config').select('periodos, pax_por_genero').eq('unit_id', unit_id).single(),
     supabase.from('units').select('name').eq('id', unit_id).single(),
     supabase.from('op_feedback_cliente').select('id, tipo, produto, categoria, texto').eq('relatorio_id', relatorio.id),
-    supabase.from('op_avaliacao_setor').select('periodo, setor, nota, observacao').eq('relatorio_id', relatorio.id),
+    supabase.from('op_avaliacao_setor').select('periodo, sequencia, setor, nota, observacao').eq('relatorio_id', relatorio.id),
     supabase.from('op_portaria_desistencia').select('id, periodo, motivo, pax_perdido').eq('relatorio_id', relatorio.id),
     supabase.from('employees').select('id, nome, sobrenome, funcao, cpf').eq('ativo', true).order('nome'),
-    supabase.from('op_falta_equipe').select('periodo, area, lider_turno, houve_falta, nomes').eq('relatorio_id', relatorio.id),
+    supabase.from('op_falta_equipe').select('periodo, sequencia, area, lider_turno, houve_falta, nomes').eq('relatorio_id', relatorio.id),
   ])
 
   return (
     <RelatorioClient
       relatorio={relatorio}
       periodos={periodosRes.data ?? []}
-      periodosAtivos={(unitConfigRes.data?.periodos as string[] | null) ?? ['almoco', 'jantar']}
+      unitConfigPeriodos={(unitConfigRes.data?.periodos as string[] | null) ?? ['almoco', 'jantar']}
       unitId={unit_id}
       unitName={unitRes.data?.name ?? ''}
       dataParam={dataParam}

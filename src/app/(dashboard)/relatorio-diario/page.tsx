@@ -75,15 +75,20 @@ export default async function RelatorioDiarioPage({
   const { data: periodosDb } = relIds.length
     ? await supabase
         .from('op_relatorio_periodo')
-        .select('relatorio_id, periodo, status, enviado_em')
+        .select('relatorio_id, periodo, sequencia, status, enviado_em')
         .in('relatorio_id', relIds)
     : { data: [] }
 
-  const periodosPorRel = new Map<string, Record<string, string>>()
+  type ChipRow = { periodo: string; sequencia: number; status: string }
+  const periodosPorRel = new Map<string, ChipRow[]>()
   for (const p of periodosDb ?? []) {
-    const m = periodosPorRel.get(p.relatorio_id) ?? {}
-    m[p.periodo] = p.enviado_em ? 'enviado' : (p.status ?? 'rascunho')
-    periodosPorRel.set(p.relatorio_id, m)
+    const arr = periodosPorRel.get(p.relatorio_id) ?? []
+    arr.push({
+      periodo: p.periodo,
+      sequencia: Number(p.sequencia ?? 1),
+      status: p.enviado_em ? 'enviado' : (p.status ?? 'rascunho'),
+    })
+    periodosPorRel.set(p.relatorio_id, arr)
   }
 
   const unitName = units?.find(u => u.id === activeUnitId)?.name ?? ''
@@ -131,7 +136,31 @@ export default async function RelatorioDiarioPage({
         )}
         {relatorios?.map(r => {
           const { cor, label } = getStatusDot(r.status, r.data)
-          const statusPorPeriodo = periodosPorRel.get(r.id) ?? {}
+          const rowsPorDia = periodosPorRel.get(r.id) ?? []
+
+          // Base chips: períodos fixos da config (exceto eventos, que são dinâmicos)
+          const CHIP_ORDER = ['manha', 'almoco', 'jantar']
+          const baseChips = periodosAtivos
+            .filter(p => p !== 'eventos')
+            .map(p => ({
+              periodo: p,
+              sequencia: 1,
+              status: rowsPorDia.find(r => r.periodo === p && r.sequencia === 1)?.status ?? 'pendente',
+            }))
+          // Chips extras: manha adicionada (se não na config) + todos os eventos
+          const extraChips = rowsPorDia.filter(r =>
+            (r.periodo === 'manha' && !periodosAtivos.includes('manha')) ||
+            r.periodo === 'eventos'
+          )
+          const allChips = [...baseChips, ...extraChips].sort((a, b) => {
+            if (a.periodo === 'eventos' && b.periodo === 'eventos') return a.sequencia - b.sequencia
+            if (a.periodo === 'eventos') return 1
+            if (b.periodo === 'eventos') return -1
+            const ia = CHIP_ORDER.indexOf(a.periodo)
+            const ib = CHIP_ORDER.indexOf(b.periodo)
+            return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+          })
+
           return (
             <Link
               key={r.id}
@@ -142,13 +171,15 @@ export default async function RelatorioDiarioPage({
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium text-ink">{fmtDia(r.data)}</span>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {periodosAtivos.map(p => {
-                    const st = statusPorPeriodo[p]
-                    const enviado = st === 'enviado'
-                    const na = st === 'nao_se_aplica'
+                  {allChips.map(chip => {
+                    const enviado = chip.status === 'enviado'
+                    const na = chip.status === 'nao_se_aplica'
+                    const chipLabel = chip.periodo === 'eventos'
+                      ? `Evento ${chip.sequencia}`
+                      : (PERIODO_LABEL[chip.periodo] ?? chip.periodo)
                     return (
                       <span
-                        key={p}
+                        key={`${chip.periodo}-${chip.sequencia}`}
                         className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                           enviado
                             ? 'bg-fresh/15 text-fresh-bright'
@@ -157,7 +188,7 @@ export default async function RelatorioDiarioPage({
                             : 'bg-edge/40 text-ink-muted'
                         }`}
                       >
-                        {PERIODO_LABEL[p] ?? p}
+                        {chipLabel}
                       </span>
                     )
                   })}

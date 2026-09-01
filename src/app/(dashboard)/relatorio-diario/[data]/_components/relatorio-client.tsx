@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check, X } from 'lucide-react'
-import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA, AREA_TO_SETOR_EQUIPE } from '@/app/api/relatorio-diario/_schema'
+import { ArrowLeft, Check, Plus, X } from 'lucide-react'
+import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA } from '@/app/api/relatorio-diario/_schema'
 import type { SetorAvaliacao, SetorEquipe } from '@/app/api/relatorio-diario/_schema'
 import { BlocoHorarios, type HorariosState } from './bloco-horarios'
 import { BlocoVendas, type VendasState } from './bloco-vendas'
@@ -18,6 +18,8 @@ import { Bloco86 } from './bloco-86'
 import { BlocoFeedback } from './bloco-feedback'
 import { BlocoRh } from './bloco-rh'
 import { BlocoPortaria, type PortariaState } from './bloco-portaria'
+
+type PeriodoRef = { periodo: string; sequencia: number }
 
 type FormState = {
   horarios: HorariosState
@@ -115,10 +117,53 @@ function fmtDataPorExtenso(dataParam: string): string {
   return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${dia} de ${mes} de ${ano}`
 }
 
+function labelPeriodo(ref: PeriodoRef): string {
+  if (ref.periodo === 'eventos') return `Evento ${ref.sequencia}`
+  return PERIODO_LABEL[ref.periodo] ?? ref.periodo
+}
+
+function refEq(a: PeriodoRef, b: PeriodoRef) {
+  return a.periodo === b.periodo && a.sequencia === b.sequencia
+}
+
+// Ordem das abas: manha → base da config → eventos (por sequencia)
+function buildTabs(periodos: Record<string, unknown>[], unitConfigPeriodos: string[]): PeriodoRef[] {
+  const hasManhaInConfig = unitConfigPeriodos.includes('manha')
+
+  // Períodos-base: o que vem da config, exceto eventos (eventos são sempre dinâmicos)
+  const base = unitConfigPeriodos
+    .filter(p => p !== 'eventos')
+    .map(p => ({ periodo: p, sequencia: 1 }))
+
+  // Manha adicionada via botão (só para unidades que não têm manha na config)
+  const manhaExtra = !hasManhaInConfig
+    ? periodos.filter(p => p.periodo === 'manha').map(() => ({ periodo: 'manha', sequencia: 1 }))
+    : []
+
+  // Eventos: sempre a partir das linhas existentes
+  const eventosRows = periodos
+    .filter(p => p.periodo === 'eventos')
+    .sort((a, b) => Number(a.sequencia) - Number(b.sequencia))
+    .map(p => ({ periodo: 'eventos', sequencia: Number(p.sequencia) }))
+
+  const ORDER = ['manha', 'almoco', 'jantar']
+  return [...manhaExtra, ...base, ...eventosRows].sort((a, b) => {
+    if (a.periodo === 'eventos' && b.periodo === 'eventos') return a.sequencia - b.sequencia
+    if (a.periodo === 'eventos') return 1
+    if (b.periodo === 'eventos') return -1
+    const ia = ORDER.indexOf(a.periodo)
+    const ib = ORDER.indexOf(b.periodo)
+    if (ia === -1 && ib === -1) return a.periodo.localeCompare(b.periodo)
+    if (ia === -1) return 1
+    if (ib === -1) return -1
+    return ia - ib
+  })
+}
+
 export function RelatorioClient({
   relatorio,
   periodos,
-  periodosAtivos,
+  unitConfigPeriodos,
   unitId,
   unitName,
   dataParam,
@@ -131,57 +176,61 @@ export function RelatorioClient({
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
-  periodosAtivos: string[]
+  unitConfigPeriodos: string[]
   unitId: string
   unitName: string
   dataParam: string
   role: string
   feedbacks: { id: string; tipo: string; produto: string | null; categoria: string | null; texto: string | null }[]
-  avaliacoesSetor: { periodo: string; setor: string; nota: number | null; observacao: string | null }[]
+  avaliacoesSetor: { periodo: string; sequencia: number; setor: string; nota: number | null; observacao: string | null }[]
   desistencias: { id: string; periodo: string | null; motivo: string | null; pax_perdido: number | null }[]
   colaboradores: { id: string; nome: string; sobrenome: string | null; funcao: string | null; cpf: string | null }[]
-  faltas: { periodo: string; area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
+  faltas: { periodo: string; sequencia: number; area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
   const relatorioFechado = relatorio.status === 'enviado'
 
-  const [periodoAtivo, setPeriodoAtivo] = useState(periodosAtivos[0] ?? 'almoco')
+  const tabs = buildTabs(periodos, unitConfigPeriodos)
+  const initialTab = tabs[0] ?? { periodo: 'almoco', sequencia: 1 }
+
+  const [periodoAtivo, setPeriodoAtivo] = useState<PeriodoRef>(initialTab)
   const [form, setForm] = useState<FormState>(() =>
     estadoInicial(
-      periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>,
-      avaliacoesSetor.filter(a => a.periodo === periodoAtivo),
-      faltas.filter(f => f.periodo === periodoAtivo)
+      periodos.find(p => p.periodo === initialTab.periodo && Number(p.sequencia) === initialTab.sequencia) as Record<string, unknown>,
+      avaliacoesSetor.filter(a => a.periodo === initialTab.periodo && a.sequencia === initialTab.sequencia),
+      faltas.filter(f => f.periodo === initialTab.periodo && f.sequencia === initialTab.sequencia)
     )
   )
   const [erros, setErros] = useState<FormErros>({})
   const [salvando, setSalvando] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [adicionando, setAdicionando] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const router = useRouter()
-  const enviados = periodos.filter(
-    p => p.enviado_em && periodosAtivos.includes(p.periodo as string)
-  )
-  // Períodos marcados como "não se aplica" saem da conta: não contam
-  // como pendentes. Estado local semeado do server, atualizável pelo X.
-  const [naoSeAplica, setNaoSeAplica] = useState<string[]>(
-    periodos
-      .filter(p => p.status === 'nao_se_aplica' && periodosAtivos.includes(p.periodo as string))
-      .map(p => p.periodo as string)
-  )
-  const [naOcupado, setNaOcupado] = useState<string | null>(null)
 
-  async function toggleNaoSeAplica(periodo: string, aplicar: boolean) {
-    setNaOcupado(periodo)
+  const enviados = periodos.filter(p => p.enviado_em)
+
+  const [naoSeAplica, setNaoSeAplica] = useState<PeriodoRef[]>(
+    periodos
+      .filter(p => p.status === 'nao_se_aplica')
+      .map(p => ({ periodo: p.periodo as string, sequencia: Number(p.sequencia) }))
+  )
+  const [naOcupado, setNaOcupado] = useState<PeriodoRef | null>(null)
+
+  async function toggleNaoSeAplica(ref: PeriodoRef, aplicar: boolean) {
+    setNaOcupado(ref)
     try {
-      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodo}/na`, {
+      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${ref.periodo}/na`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unit_id: unitId, aplicar }),
+        body: JSON.stringify({ unit_id: unitId, aplicar, sequencia: ref.sequencia }),
       })
       if (res.ok) {
-        setNaoSeAplica(prev => aplicar ? [...prev, periodo] : prev.filter(p => p !== periodo))
+        setNaoSeAplica(prev =>
+          aplicar ? [...prev, ref] : prev.filter(p => !refEq(p, ref))
+        )
         router.refresh()
       }
     } finally {
@@ -189,22 +238,22 @@ export function RelatorioClient({
     }
   }
 
-  const aplicaveis = periodosAtivos.filter(p => !naoSeAplica.includes(p))
+  const aplicaveis = tabs.filter(t => !naoSeAplica.some(na => refEq(na, t)))
   const progressoPct = aplicaveis.length > 0
     ? Math.round((enviados.length / aplicaveis.length) * 100)
     : 0
 
   const periodoAtualEnviado = periodos.some(
-    p => p.periodo === periodoAtivo && p.enviado_em
+    p => p.periodo === periodoAtivo.periodo && Number(p.sequencia) === periodoAtivo.sequencia && p.enviado_em
   )
   const disabled = periodoAtualEnviado || relatorioFechado || role === 'cozinheiro'
 
   // Ao trocar de aba, recarregar estado do período
   useEffect(() => {
     setForm(estadoInicial(
-      periodos.find(p => p.periodo === periodoAtivo) as Record<string, unknown>,
-      avaliacoesSetor.filter(a => a.periodo === periodoAtivo),
-      faltas.filter(f => f.periodo === periodoAtivo)
+      periodos.find(p => p.periodo === periodoAtivo.periodo && Number(p.sequencia) === periodoAtivo.sequencia) as Record<string, unknown>,
+      avaliacoesSetor.filter(a => a.periodo === periodoAtivo.periodo && a.sequencia === periodoAtivo.sequencia),
+      faltas.filter(f => f.periodo === periodoAtivo.periodo && f.sequencia === periodoAtivo.sequencia)
     ))
     setErros({})
   }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -218,11 +267,12 @@ export function RelatorioClient({
 
   async function salvarRascunho(estado: FormState) {
     setSalvando(true)
-    await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo}`, {
+    await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo.periodo}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         unit_id: unitId,
+        sequencia: periodoAtivo.sequencia,
         horario_abertura: estado.horarios.abertura || null,
         horario_ultimo_cliente: estado.horarios.ultimo_cliente || null,
         horario_fechamento: estado.horarios.fechamento || null,
@@ -261,8 +311,6 @@ export function RelatorioClient({
     const e: FormErros = {}
     let primeiroId: string | null = null
 
-    // Todos os campos de venda são obrigatórios — mas '0' é válido,
-    // só string vazia reprova (regra: preencher tudo, mesmo que zero).
     const camposVenda: [keyof typeof estado.vendas, keyof FormErros, string][] = [
       ['vendas_ab', 'vendas_ab', 'vendas_ab'],
       ['pax_total', 'pax_total', 'pax_total'],
@@ -322,14 +370,13 @@ export function RelatorioClient({
     setErros({})
     setEnviando(true)
 
-    // Save-then-submit: garantir que o período está persistido antes do envio
     if (debounceRef.current) clearTimeout(debounceRef.current)
     await salvarRascunho(form)
 
-    const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo}/enviar`, {
+    const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo.periodo}/enviar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ unit_id: unitId }),
+      body: JSON.stringify({ unit_id: unitId, sequencia: periodoAtivo.sequencia }),
     })
 
     if (!res.ok) {
@@ -341,6 +388,29 @@ export function RelatorioClient({
 
     window.location.reload()
   }
+
+  async function adicionarPeriodo(periodo: string) {
+    setAdicionando(periodo)
+    try {
+      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodo}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit_id: unitId }),
+      })
+      if (res.ok) {
+        const { periodo: p, sequencia } = await res.json()
+        setPeriodoAtivo({ periodo: p, sequencia })
+        window.location.reload()
+      } else {
+        const { error } = await res.json()
+        alert(error)
+      }
+    } finally {
+      setAdicionando(null)
+    }
+  }
+
+  const temManha = unitConfigPeriodos.includes('manha') || periodos.some(p => p.periodo === 'manha')
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto pb-24">
@@ -371,51 +441,78 @@ export function RelatorioClient({
         </div>
       </div>
 
-      {/* Abas */}
-      <div className="flex gap-2">
-        {periodosAtivos.map(p => {
-          const enviado = periodos.some(row => row.periodo === p && row.enviado_em)
-          const na = naoSeAplica.includes(p)
-          const ativo = periodoAtivo === p
-          const ocupado = naOcupado === p
-          return (
-            <div
-              key={p}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                ativo
-                  ? 'bg-ember text-white'
-                  : na
-                  ? 'bg-surface border border-edge text-ink-faint'
-                  : 'bg-surface border border-edge text-ink-muted'
-              } ${ocupado ? 'opacity-50' : ''}`}
-            >
-              <button
-                type="button"
-                onClick={() => setPeriodoAtivo(p)}
-                className={`flex items-center gap-1.5 ${na && !ativo ? 'line-through' : ''} ${!ativo ? 'hover:text-ink' : ''}`}
+      {/* Abas + botões de adicionar */}
+      <div className="space-y-2">
+        <div className="flex gap-2 flex-wrap">
+          {tabs.map(ref => {
+            const key = `${ref.periodo}-${ref.sequencia}`
+            const periodoRow = periodos.find(p => p.periodo === ref.periodo && Number(p.sequencia) === ref.sequencia)
+            const enviado = Boolean(periodoRow?.enviado_em)
+            const na = naoSeAplica.some(n => refEq(n, ref))
+            const ativo = refEq(periodoAtivo, ref)
+            const ocupado = naOcupado ? refEq(naOcupado, ref) : false
+            return (
+              <div
+                key={key}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  ativo
+                    ? 'bg-ember text-white'
+                    : na
+                    ? 'bg-surface border border-edge text-ink-faint'
+                    : 'bg-surface border border-edge text-ink-muted'
+                } ${ocupado ? 'opacity-50' : ''}`}
               >
-                {PERIODO_LABEL[p] ?? p}
-                {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
-                {na && <span className="text-[10px] no-underline">N/A</span>}
-              </button>
-              {/* X para dispensar o turno (só quando não enviado). Se já
-                  está N/A, o X reverte. */}
-              {!enviado && !disabled && (
                 <button
                   type="button"
-                  onClick={() => toggleNaoSeAplica(p, !na)}
-                  disabled={ocupado}
-                  title={na ? 'Reverter — voltar a aplicar' : 'Não há este turno neste dia'}
-                  className={`ml-0.5 rounded p-0.5 transition-colors ${
-                    ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
-                  } ${na ? 'rotate-45' : ''}`}
+                  onClick={() => setPeriodoAtivo(ref)}
+                  className={`flex items-center gap-1.5 ${na && !ativo ? 'line-through' : ''} ${!ativo ? 'hover:text-ink' : ''}`}
                 >
-                  <X className="h-3 w-3" />
+                  {labelPeriodo(ref)}
+                  {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
+                  {na && <span className="text-[10px] no-underline">N/A</span>}
                 </button>
-              )}
-            </div>
-          )
-        })}
+                {!enviado && !disabled && (
+                  <button
+                    type="button"
+                    onClick={() => toggleNaoSeAplica(ref, !na)}
+                    disabled={ocupado}
+                    title={na ? 'Reverter — voltar a aplicar' : 'Não há este turno neste dia'}
+                    className={`ml-0.5 rounded p-0.5 transition-colors ${
+                      ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
+                    } ${na ? 'rotate-45' : ''}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {!disabled && !relatorioFechado && (
+          <div className="flex gap-2">
+            {!temManha && (
+              <button
+                type="button"
+                onClick={() => adicionarPeriodo('manha')}
+                disabled={adicionando !== null}
+                className="flex items-center gap-1 rounded-lg border border-edge px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:border-ember transition-colors disabled:opacity-50"
+              >
+                <Plus className="h-3 w-3" />
+                {adicionando === 'manha' ? 'Adicionando…' : 'Café da manhã'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => adicionarPeriodo('eventos')}
+              disabled={adicionando !== null}
+              className="flex items-center gap-1 rounded-lg border border-edge px-3 py-1.5 text-xs font-medium text-ink-muted hover:text-ink hover:border-ember transition-colors disabled:opacity-50"
+            >
+              <Plus className="h-3 w-3" />
+              {adicionando === 'eventos' ? 'Adicionando…' : 'Evento'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Formulário */}
@@ -474,9 +571,9 @@ export function RelatorioClient({
           onChange={portaria => handleFormChange({ portaria })}
           relatorioData={dataParam}
           unitId={unitId}
-          periodo={periodoAtivo}
+          periodo={periodoAtivo.periodo}
           disabled={disabled}
-          desistenciasIniciais={desistencias.filter(d => d.periodo === periodoAtivo).map(d => ({ id: d.id, motivo: d.motivo, pax_perdido: d.pax_perdido }))}
+          desistenciasIniciais={desistencias.filter(d => d.periodo === periodoAtivo.periodo).map(d => ({ id: d.id, motivo: d.motivo, pax_perdido: d.pax_perdido }))}
         />
 
         <CampoResponsavel
@@ -487,7 +584,7 @@ export function RelatorioClient({
         />
       </div>
 
-      {/* Rodapé: autosave indicator + botão de envio */}
+      {/* Rodapé */}
       <div className="space-y-3 pt-2">
         {salvando && (
           <p className="text-center text-xs text-ink-subtle">Salvando rascunho…</p>
@@ -498,11 +595,11 @@ export function RelatorioClient({
             disabled={enviando || disabled}
             className="w-full rounded-xl bg-ember py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
           >
-            {enviando ? 'Enviando…' : `Enviar ${PERIODO_LABEL[periodoAtivo] ?? periodoAtivo}`}
+            {enviando ? 'Enviando…' : `Enviar ${labelPeriodo(periodoAtivo)}`}
           </button>
         ) : periodoAtualEnviado ? (
           <div className="w-full rounded-xl border border-fresh/30 bg-fresh/10 py-3 text-center text-sm font-semibold text-fresh-bright">
-            ✓ {PERIODO_LABEL[periodoAtivo]} enviado
+            ✓ {labelPeriodo(periodoAtivo)} enviado
           </div>
         ) : null}
         {relatorioFechado && (

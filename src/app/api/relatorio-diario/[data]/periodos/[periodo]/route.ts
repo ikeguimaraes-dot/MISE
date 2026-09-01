@@ -8,7 +8,8 @@ export async function PATCH(
 ) {
   const { data: dataParam, periodo } = await params
   const body = await request.json()
-  const { unit_id, setores, equipe, ...campos } = body
+  const { unit_id, setores, equipe, sequencia: seqRaw, ...campos } = body
+  const sequencia: number = typeof seqRaw === 'number' ? seqRaw : 1
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
 
@@ -34,8 +35,8 @@ export async function PATCH(
   const { data: updated, error } = await supabase
     .from('op_relatorio_periodo')
     .upsert(
-      { relatorio_id: relatorio.id, periodo, ...campos },
-      { onConflict: 'relatorio_id,periodo' }
+      { relatorio_id: relatorio.id, periodo, sequencia, ...campos },
+      { onConflict: 'relatorio_id,periodo,sequencia' }
     )
     .select('id')
     .single()
@@ -51,6 +52,7 @@ export async function PATCH(
       .map(([setor, av]) => ({
         relatorio_id: relatorio.id,
         periodo,
+        sequencia,
         setor,
         nota: av.nota,
         observacao: av.obs?.trim() || null,
@@ -58,7 +60,7 @@ export async function PATCH(
     if (linhas.length > 0) {
       const { error: errSetor } = await supabase
         .from('op_avaliacao_setor')
-        .upsert(linhas, { onConflict: 'relatorio_id,periodo,setor' })
+        .upsert(linhas, { onConflict: 'relatorio_id,periodo,sequencia,setor' })
       if (errSetor) return NextResponse.json({ error: errSetor.message }, { status: 500 })
     }
   }
@@ -72,6 +74,7 @@ export async function PATCH(
       .map(e => ({
         relatorio_id: relatorio.id,
         periodo,
+        sequencia,
         area: e.area,
         lider_turno: e.lider_turno ?? null,
         houve_falta: e.houve_falta ?? false,
@@ -80,10 +83,86 @@ export async function PATCH(
     if (linhas.length > 0) {
       const { error: errFalta } = await supabase
         .from('op_falta_equipe')
-        .upsert(linhas, { onConflict: 'relatorio_id,periodo,area' })
+        .upsert(linhas, { onConflict: 'relatorio_id,periodo,sequencia,area' })
       if (errFalta) return NextResponse.json({ error: errFalta.message }, { status: 500 })
     }
   }
 
   return NextResponse.json({ id: updated.id })
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ data: string; periodo: string }> }
+) {
+  const { data: dataParam, periodo } = await params
+  const body = await request.json()
+  const { unit_id } = body
+
+  if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+
+  if (periodo !== 'manha' && periodo !== 'eventos') {
+    return NextResponse.json(
+      { error: 'Apenas "manha" e "eventos" podem ser criados manualmente.' },
+      { status: 400 }
+    )
+  }
+
+  const auth = await canAccessUnit(unit_id)
+  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status })
+
+  const supabase = createServiceClient()
+
+  const { data: relatorio } = await supabase
+    .from('op_relatorio_diario')
+    .select('id')
+    .eq('unit_id', unit_id)
+    .eq('data', dataParam)
+    .single()
+
+  if (!relatorio) {
+    return NextResponse.json({ error: 'Relatório não encontrado. Reabra a página.' }, { status: 404 })
+  }
+
+  if (periodo === 'manha') {
+    const { data: existing } = await supabase
+      .from('op_relatorio_periodo')
+      .select('id')
+      .eq('relatorio_id', relatorio.id)
+      .eq('periodo', 'manha')
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json({ error: 'Café da manhã já adicionado para este dia.' }, { status: 409 })
+    }
+
+    const { data: novo, error } = await supabase
+      .from('op_relatorio_periodo')
+      .insert({ relatorio_id: relatorio.id, periodo: 'manha', sequencia: 1, status: 'rascunho' })
+      .select('periodo, sequencia')
+      .single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(novo)
+  }
+
+  // eventos: sequencia incremental
+  const { data: existentes } = await supabase
+    .from('op_relatorio_periodo')
+    .select('sequencia')
+    .eq('relatorio_id', relatorio.id)
+    .eq('periodo', 'eventos')
+    .order('sequencia', { ascending: false })
+    .limit(1)
+
+  const maxSeq = (existentes?.[0] as { sequencia: number } | undefined)?.sequencia ?? 0
+
+  const { data: novo, error } = await supabase
+    .from('op_relatorio_periodo')
+    .insert({ relatorio_id: relatorio.id, periodo: 'eventos', sequencia: maxSeq + 1, status: 'rascunho' })
+    .select('periodo, sequencia')
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(novo)
 }

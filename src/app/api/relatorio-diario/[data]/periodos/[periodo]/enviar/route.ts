@@ -9,7 +9,8 @@ export async function POST(
 ) {
   const { data: dataParam, periodo } = await params
   const body = await request.json()
-  const { unit_id } = body
+  const { unit_id, sequencia: seqRaw } = body
+  const sequencia: number = typeof seqRaw === 'number' ? seqRaw : 1
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
 
@@ -18,14 +19,16 @@ export async function POST(
 
   const supabase = createServiceClient()
 
-  // 1. Buscar config da unidade — nunca aceitar periodos do payload
+  // 1. Buscar config da unidade — para determinar períodos-base obrigatórios
   const { data: unitConfig } = await supabase
     .from('op_unit_config')
     .select('periodos')
     .eq('unit_id', unit_id)
     .single()
 
-  const ativos: string[] = (unitConfig?.periodos as string[] | null) ?? ['almoco', 'jantar']
+  // Períodos-base: almoco/jantar (e manha se a unidade tiver). eventos são sempre opcionais.
+  const basePeriodos = ((unitConfig?.periodos as string[] | null) ?? ['almoco', 'jantar'])
+    .filter(p => p !== 'eventos')
 
   // 2. Buscar relatorio
   const { data: relatorio } = await supabase
@@ -48,6 +51,7 @@ export async function POST(
     .select('id, enviado_em')
     .eq('relatorio_id', relatorio.id)
     .eq('periodo', periodo)
+    .eq('sequencia', sequencia)
     .single()
 
   if (!per) {
@@ -90,21 +94,25 @@ export async function POST(
 
   if (errPer) return NextResponse.json({ error: errPer.message }, { status: 500 })
 
-  // 5. Verificar se TODOS os períodos configurados estão satisfeitos.
-  // Um período conta como satisfeito se foi enviado OU marcado como
-  // "não se aplica" (nao_se_aplica) — assim um dia sem almoço, p.ex.,
-  // fecha 100% com os períodos que de fato se aplicam.
+  // 5. Verificar se TODOS os períodos estão satisfeitos.
+  // Regra: (a) todos os períodos-base (almoco/jantar/manha da config) têm linha
+  // com enviado_em ou nao_se_aplica; E (b) todas as linhas existentes no relatório
+  // (incluindo eventos extras) estão enviadas ou N/A.
   const { data: todosPeriodos } = await supabase
     .from('op_relatorio_periodo')
-    .select('periodo, enviado_em, status')
+    .select('periodo, sequencia, enviado_em, status')
     .eq('relatorio_id', relatorio.id)
-    .in('periodo', ativos)
 
-  const todosEnviados = ativos.every(tipo =>
+  const todosExistentesOk = (todosPeriodos?.length ?? 0) > 0 &&
+    todosPeriodos!.every(p => p.enviado_em || p.status === 'nao_se_aplica')
+
+  const basePeriodosOk = basePeriodos.every(tipo =>
     todosPeriodos?.some(p =>
       p.periodo === tipo && (p.enviado_em || p.status === 'nao_se_aplica')
     )
   )
+
+  const todosEnviados = todosExistentesOk && basePeriodosOk
 
   // 6. Sempre emite turno.period.closed para o período recém-enviado
   await emitTurnoEvent({
