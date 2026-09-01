@@ -11,10 +11,12 @@ export function BlocoHorarios({
   value,
   onChange,
   disabled,
+  erros,
 }: {
   value: HorariosState
   onChange: (v: HorariosState) => void
   disabled?: boolean
+  erros?: Partial<Record<keyof HorariosState, boolean>>
 }) {
   const campos: { key: keyof HorariosState; label: string }[] = [
     { key: 'abertura', label: 'Abertura' },
@@ -33,11 +35,14 @@ export function BlocoHorarios({
           <div key={key} className="space-y-1">
             <label className="text-xs font-medium text-ink-muted">{label}</label>
             <input
+              id={`horario-${key}`}
               type="time"
               value={value[key]}
               onChange={e => onChange({ ...value, [key]: e.target.value })}
               disabled={disabled}
-              className="w-full rounded-lg border border-edge bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-ember focus:outline-none disabled:opacity-50"
+              className={`w-full rounded-lg border bg-base px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 ${
+                erros?.[key] ? 'border-alert focus:border-alert' : 'border-edge focus:border-ember'
+              }`}
             />
           </div>
         ))}

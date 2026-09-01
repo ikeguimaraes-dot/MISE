@@ -32,6 +32,7 @@ type FormState = {
 }
 
 type FormErros = {
+  horarios?: Partial<Record<keyof HorariosState, boolean>>
   vendas_ab?: boolean
   pax_total?: boolean
   alimentos?: boolean
@@ -275,6 +276,15 @@ export function RelatorioClient({
     for (const [campo, chaveErro, id] of camposVenda) {
       if (estado.vendas[campo] === '') { (e[chaveErro] as boolean) = true; primeiroId ??= id }
     }
+    const horariosErro: FormErros['horarios'] = {}
+    const camposHorario: (keyof HorariosState)[] = ['abertura', 'ultimo_cliente', 'fechamento']
+    for (const campo of camposHorario) {
+      if (!estado.horarios[campo].trim()) {
+        horariosErro[campo] = true
+        primeiroId ??= `horario-${campo}`
+      }
+    }
+    if (Object.keys(horariosErro).length) e.horarios = horariosErro
     if (!estado.resumo.trim()) { e.resumo = true; primeiroId ??= 'resumo_operacional' }
     if (!estado.responsavel.trim()) { e.responsavel = true; primeiroId ??= 'responsavel_preenchimento' }
 
@@ -414,6 +424,7 @@ export function RelatorioClient({
           value={form.horarios}
           onChange={horarios => handleFormChange({ horarios })}
           disabled={disabled}
+          erros={erros.horarios}
         />
         <BlocoVendas
           value={form.vendas}
