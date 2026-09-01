@@ -161,7 +161,7 @@ export function BlocoVendas({
           <span className="text-ink-muted">Part. Bebidas</span>
           <span className="text-ink text-right font-medium">{pct(part_bebidas)}</span>
 
-          <span className="text-ink-muted">% Perda</span>
+          <span className="text-ink-muted">Taxa de Perda</span>
           <span className="text-ink text-right font-medium">{pct(perda_pct)}</span>
 
           <span className="text-ink-muted">TX de Gorjeta</span>
