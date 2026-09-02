@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Check, Plus, Trash2, X } from 'lucide-react'
 import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA } from '@/app/api/relatorio-diario/_schema'
-import type { SetorAvaliacao, SetorEquipe } from '@/app/api/relatorio-diario/_schema'
+import type { SetorAvaliacao, SetorEquipe, Op86Motivo, OcorrenciaRhTipo } from '@/app/api/relatorio-diario/_schema'
 import { BlocoHorarios, type HorariosState } from './bloco-horarios'
 import { BlocoVendas, type VendasState } from './bloco-vendas'
 import { BlocoClima, type ClimaState } from './bloco-clima'
@@ -228,6 +228,8 @@ export function RelatorioClient({
   colaboradores,
   faltas,
   horariosPadrao,
+  itens86,
+  ocorrenciasRh,
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
@@ -242,6 +244,8 @@ export function RelatorioClient({
   colaboradores: { id: string; nome: string; sobrenome: string | null; funcao: string | null; cpf: string | null }[]
   faltas: { periodo: string; sequencia: number; area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
   horariosPadrao: HorarioPadrao[]
+  itens86: { id: string; produto_nome: string; motivo: Op86Motivo }[]
+  ocorrenciasRh: { id: string; nome: string; tipo: OcorrenciaRhTipo; cpf: string | null; observacao: string | null }[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
@@ -711,12 +715,12 @@ export function RelatorioClient({
         />
 
         {/* Registros colapsáveis */}
-        <Bloco86 relatorioData={dataParam} unitId={unitId} disabled={disabled} />
+        <Bloco86 relatorioData={dataParam} unitId={unitId} disabled={disabled} itensIniciais={itens86} />
         <BlocoFeedback tipo="elogio" relatorioData={dataParam} unitId={unitId} disabled={disabled}
           itensIniciais={feedbacks.filter(f => f.tipo === 'elogio').map(f => ({ id: f.id, tipo: f.tipo, produto: f.produto, categoria: f.categoria, descricao: f.texto }))} />
         <BlocoFeedback tipo="reclamacao" relatorioData={dataParam} unitId={unitId} disabled={disabled}
           itensIniciais={feedbacks.filter(f => f.tipo === 'reclamacao').map(f => ({ id: f.id, tipo: f.tipo, produto: f.produto, categoria: f.categoria, descricao: f.texto }))} />
-        <BlocoRh relatorioData={dataParam} unitId={unitId} disabled={disabled} colaboradores={colaboradores} />
+        <BlocoRh relatorioData={dataParam} unitId={unitId} disabled={disabled} colaboradores={colaboradores} itensIniciais={ocorrenciasRh} />
         <BlocoPortaria
           value={form.portaria}
           onChange={portaria => handleFormChange({ portaria })}
