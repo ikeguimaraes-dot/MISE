@@ -139,7 +139,10 @@ function buscarSugestaoHorario(
   if (periodo === 'eventos' || periodo === 'manha') return null
   const diaSemana = new Date(`${dataParam}T12:00:00Z`).getUTCDay()
   const doDia = horariosPadrao.filter(h => h.dia_semana === diaSemana)
-  const achado = doDia.find(h => h.periodo === periodo) ?? doDia.find(h => h.periodo === 'unico')
+  // 'unico' só define QUAIS períodos ficam fixos naquele dia (buildTabs) —
+  // nunca deve virar sugestão de horário pra almoço/jantar, porque a janela
+  // inteira (ex: 07h-00h) não corresponde ao horário real de cada turno.
+  const achado = doDia.find(h => h.periodo === periodo)
   return achado
     ? { abertura: achado.hora_abertura.slice(0, 5), fechamento: achado.hora_fechamento.slice(0, 5) }
     : null
