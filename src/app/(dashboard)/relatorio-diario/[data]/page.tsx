@@ -40,7 +40,7 @@ export default async function RelatorioPage({
   }
   if (!relatorio) redirect('/relatorio-diario')
 
-  const [periodosRes, unitConfigRes, unitRes, feedbacksRes, avaliacoesRes, desistenciasRes, colaboradoresRes, faltasRes] = await Promise.all([
+  const [periodosRes, unitConfigRes, unitRes, feedbacksRes, avaliacoesRes, desistenciasRes, colaboradoresRes, faltasRes, horariosPadraoRes] = await Promise.all([
     supabase.from('op_relatorio_periodo').select('*').eq('relatorio_id', relatorio.id),
     supabase.from('op_unit_config').select('periodos, pax_por_genero').eq('unit_id', unit_id).single(),
     supabase.from('units').select('name').eq('id', unit_id).single(),
@@ -49,6 +49,7 @@ export default async function RelatorioPage({
     supabase.from('op_portaria_desistencia').select('id, periodo, motivo, pax_perdido').eq('relatorio_id', relatorio.id),
     supabase.from('employees').select('id, nome, sobrenome, funcao, cpf').eq('ativo', true).order('nome'),
     supabase.from('op_falta_equipe').select('periodo, sequencia, area, lider_turno, houve_falta, nomes').eq('relatorio_id', relatorio.id),
+    supabase.from('op_horario_padrao').select('dia_semana, periodo, hora_abertura, hora_fechamento').eq('unit_id', unit_id),
   ])
 
   return (
@@ -65,6 +66,7 @@ export default async function RelatorioPage({
       desistencias={desistenciasRes.data ?? []}
       colaboradores={colaboradoresRes.data ?? []}
       faltas={faltasRes.data ?? []}
+      horariosPadrao={horariosPadraoRes.data ?? []}
     />
   )
 }

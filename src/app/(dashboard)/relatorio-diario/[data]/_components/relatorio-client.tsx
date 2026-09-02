@@ -55,9 +55,13 @@ type FormErros = {
 
 function estadoInicial(
   row: Record<string, unknown> | undefined,
-  avaliacoesPeriodo?: { setor: string; nota: number | null; observacao: string | null }[],
-  faltasPeriodo?: { area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
+  avaliacoesPeriodo: { setor: string; nota: number | null; observacao: string | null }[] | undefined,
+  faltasPeriodo: { area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[] | undefined,
+  horariosPadrao: HorarioPadrao[],
+  dataParam: string,
+  periodo: string
 ): FormState {
+  const sugestao = buscarSugestaoHorario(horariosPadrao, dataParam, periodo)
   const setoresBase = Object.fromEntries(
     SETORES_AVALIACAO.map(s => [s, { nota: null as number | null, obs: '' }])
   ) as AvaliacaoSetoresState
@@ -68,9 +72,9 @@ function estadoInicial(
   }
   return {
     horarios: {
-      abertura: String(row?.horario_abertura ?? ''),
+      abertura: String(row?.horario_abertura ?? '') || sugestao?.abertura || '',
       ultimo_cliente: String(row?.horario_ultimo_cliente ?? ''),
-      fechamento: String(row?.horario_fechamento ?? ''),
+      fechamento: String(row?.horario_fechamento ?? '') || sugestao?.fechamento || '',
     },
     vendas: {
       vendas_ab: String(row?.venda_total ?? ''),
@@ -123,6 +127,22 @@ function fmtDataPorExtenso(dataParam: string): string {
   const mes = d.toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' })
   const ano = d.getFullYear()
   return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${dia} de ${mes} de ${ano}`
+}
+
+type HorarioPadrao = { dia_semana: number; periodo: string; hora_abertura: string; hora_fechamento: string }
+
+function buscarSugestaoHorario(
+  horariosPadrao: HorarioPadrao[],
+  dataParam: string,
+  periodo: string
+): { abertura: string; fechamento: string } | null {
+  if (periodo === 'eventos' || periodo === 'manha') return null
+  const diaSemana = new Date(`${dataParam}T12:00:00Z`).getUTCDay()
+  const doDia = horariosPadrao.filter(h => h.dia_semana === diaSemana)
+  const achado = doDia.find(h => h.periodo === periodo) ?? doDia.find(h => h.periodo === 'unico')
+  return achado
+    ? { abertura: achado.hora_abertura.slice(0, 5), fechamento: achado.hora_fechamento.slice(0, 5) }
+    : null
 }
 
 function fmtHora(h: unknown): string | null {
@@ -182,6 +202,7 @@ export function RelatorioClient({
   desistencias,
   colaboradores,
   faltas,
+  horariosPadrao,
 }: {
   relatorio: Record<string, unknown>
   periodos: Record<string, unknown>[]
@@ -195,6 +216,7 @@ export function RelatorioClient({
   desistencias: { id: string; periodo: string | null; motivo: string | null; pax_perdido: number | null }[]
   colaboradores: { id: string; nome: string; sobrenome: string | null; funcao: string | null; cpf: string | null }[]
   faltas: { periodo: string; sequencia: number; area: string; lider_turno: string | null; houve_falta: boolean; nomes: string | null }[]
+  horariosPadrao: HorarioPadrao[]
 }) {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const isHoje = dataParam === hoje
@@ -208,7 +230,10 @@ export function RelatorioClient({
     estadoInicial(
       periodos.find(p => p.periodo === initialTab.periodo && Number(p.sequencia) === initialTab.sequencia) as Record<string, unknown>,
       avaliacoesSetor.filter(a => a.periodo === initialTab.periodo && a.sequencia === initialTab.sequencia),
-      faltas.filter(f => f.periodo === initialTab.periodo && f.sequencia === initialTab.sequencia)
+      faltas.filter(f => f.periodo === initialTab.periodo && f.sequencia === initialTab.sequencia),
+      horariosPadrao,
+      dataParam,
+      initialTab.periodo
     )
   )
   const [erros, setErros] = useState<FormErros>({})
@@ -284,7 +309,10 @@ export function RelatorioClient({
     setForm(estadoInicial(
       periodos.find(p => p.periodo === periodoAtivo.periodo && Number(p.sequencia) === periodoAtivo.sequencia) as Record<string, unknown>,
       avaliacoesSetor.filter(a => a.periodo === periodoAtivo.periodo && a.sequencia === periodoAtivo.sequencia),
-      faltas.filter(f => f.periodo === periodoAtivo.periodo && f.sequencia === periodoAtivo.sequencia)
+      faltas.filter(f => f.periodo === periodoAtivo.periodo && f.sequencia === periodoAtivo.sequencia),
+      horariosPadrao,
+      dataParam,
+      periodoAtivo.periodo
     ))
     setErros({})
   }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
