@@ -39,10 +39,12 @@ export function RegistroColapsavel({
                 key={label}
                 type="button"
                 onClick={() => handleClick(isAberto)}
-                className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
-                  ativo
-                    ? 'bg-ember/10 text-ember border border-ember/40'
-                    : 'text-ink-muted hover:text-ink border border-edge'
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
+                  ativo && !isAberto
+                    ? 'bg-fresh/20 text-fresh-bright border border-fresh/40'
+                    : ativo && isAberto
+                    ? 'bg-alert/10 text-alert-bright border border-alert/40'
+                    : 'border border-edge text-ink-muted hover:text-ink'
                 }`}
               >
                 {label}
