@@ -138,19 +138,18 @@ export default async function RelatorioDiarioPage({
           const { cor, label } = getStatusDot(r.status, r.data)
           const rowsPorDia = periodosPorRel.get(r.id) ?? []
 
-          // Base chips: períodos fixos da config (exceto eventos, que são dinâmicos)
+          // Base chips: espinha dorsal da config (exceto manha e eventos — ambos opt-in)
           const CHIP_ORDER = ['manha', 'almoco', 'jantar']
           const baseChips = periodosAtivos
-            .filter(p => p !== 'eventos')
+            .filter(p => p !== 'eventos' && p !== 'manha')
             .map(p => ({
               periodo: p,
               sequencia: 1,
               status: rowsPorDia.find(r => r.periodo === p && r.sequencia === 1)?.status ?? 'pendente',
             }))
-          // Chips extras: manha adicionada (se não na config) + todos os eventos
+          // Chips extras: manha opt-in + todos os eventos
           const extraChips = rowsPorDia.filter(r =>
-            (r.periodo === 'manha' && !periodosAtivos.includes('manha')) ||
-            r.periodo === 'eventos'
+            r.periodo === 'manha' || r.periodo === 'eventos'
           )
           const allChips = [...baseChips, ...extraChips].sort((a, b) => {
             if (a.periodo === 'eventos' && b.periodo === 'eventos') return a.sequencia - b.sequencia

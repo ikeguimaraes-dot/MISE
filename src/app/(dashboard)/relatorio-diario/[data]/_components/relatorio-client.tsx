@@ -125,10 +125,9 @@ function fmtDataPorExtenso(dataParam: string): string {
   return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${dia} de ${mes} de ${ano}`
 }
 
-const PERIODO_HORARIO: Record<string, string> = {
-  manha: '06h–11:59h',
-  almoco: '12h–17:59h',
-  jantar: '18h–03h',
+function fmtHora(h: unknown): string | null {
+  if (!h || typeof h !== 'string') return null
+  return h.slice(0, 5)
 }
 
 function labelPeriodo(ref: PeriodoRef): string {
@@ -140,21 +139,17 @@ function refEq(a: PeriodoRef, b: PeriodoRef) {
   return a.periodo === b.periodo && a.sequencia === b.sequencia
 }
 
-// Ordem das abas: manha → base da config → eventos (por sequencia)
+// Espinha dorsal: só o que vem da config, excluindo eventos e manha —
+// os dois são sempre opt-in (adicionados por dia, pra qualquer unidade).
 function buildTabs(periodos: Record<string, unknown>[], unitConfigPeriodos: string[]): PeriodoRef[] {
-  const hasManhaInConfig = unitConfigPeriodos.includes('manha')
-
-  // Períodos-base: o que vem da config, exceto eventos (eventos são sempre dinâmicos)
   const base = unitConfigPeriodos
-    .filter(p => p !== 'eventos')
+    .filter(p => p !== 'eventos' && p !== 'manha')
     .map(p => ({ periodo: p, sequencia: 1 }))
 
-  // Manha adicionada via botão (só para unidades que não têm manha na config)
-  const manhaExtra = !hasManhaInConfig
-    ? periodos.filter(p => p.periodo === 'manha').map(() => ({ periodo: 'manha', sequencia: 1 }))
-    : []
+  const manhaExtra = periodos
+    .filter(p => p.periodo === 'manha')
+    .map(() => ({ periodo: 'manha', sequencia: 1 }))
 
-  // Eventos: sempre a partir das linhas existentes
   const eventosRows = periodos
     .filter(p => p.periodo === 'eventos')
     .sort((a, b) => Number(a.sequencia) - Number(b.sequencia))
@@ -453,7 +448,7 @@ export function RelatorioClient({
     }
   }
 
-  const temManha = unitConfigPeriodos.includes('manha') || periodos.some(p => p.periodo === 'manha')
+  const temManha = periodos.some(p => p.periodo === 'manha')
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto pb-24">
@@ -494,6 +489,13 @@ export function RelatorioClient({
             const na = naoSeAplica.some(n => refEq(n, ref))
             const ativo = refEq(periodoAtivo, ref)
             const ocupado = naOcupado ? refEq(naOcupado, ref) : false
+            const horarioLabel = ref.periodo !== 'eventos'
+              ? (() => {
+                  const ab = fmtHora(periodoRow?.horario_abertura)
+                  const fe = fmtHora(periodoRow?.horario_fechamento)
+                  return ab && fe ? `${ab}–${fe}` : null
+                })()
+              : null
             return (
               <div
                 key={key}
@@ -515,9 +517,9 @@ export function RelatorioClient({
                     {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
                     {na && <span className="text-[10px] no-underline">N/A</span>}
                   </span>
-                  {PERIODO_HORARIO[ref.periodo] && (
+                  {horarioLabel && (
                     <span className={`text-[10px] font-normal ${ativo ? 'text-white/70' : 'text-ink-faint'}`}>
-                      {PERIODO_HORARIO[ref.periodo]}
+                      {horarioLabel}
                     </span>
                   )}
                 </button>
