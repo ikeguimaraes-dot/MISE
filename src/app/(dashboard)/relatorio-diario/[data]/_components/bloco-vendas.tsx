@@ -31,9 +31,10 @@ function CampoMoeda({
 
 export type VendasState = {
   vendas_ab: string
-  alimentos: string
+  alimentos: string      // mantido no state (não removido do banco), só sai do formulário
   bebidas: string
   taxa_servico: string
+  desconto: string
   delivery: string
   portaria_valor: string
   pax_total: string
@@ -53,30 +54,20 @@ export function BlocoVendas({
   value: VendasState
   onChange: (v: VendasState) => void
   disabled?: boolean
-  erros?: { vendas_ab?: boolean; pax_total?: boolean; alimentos?: boolean; bebidas?: boolean; taxa_servico?: boolean; delivery?: boolean; portaria_valor?: boolean; perda_produto?: boolean }
+  erros?: { vendas_ab?: boolean; pax_total?: boolean; taxa_servico?: boolean; desconto?: boolean; delivery?: boolean; portaria_valor?: boolean; perda_produto?: boolean }
 }) {
   const vendas_ab = num(value.vendas_ab)
-  const alimentos = num(value.alimentos)
-  const bebidas = num(value.bebidas)
   const taxa_servico = num(value.taxa_servico)
+  const desconto = num(value.desconto)
   const delivery = num(value.delivery)
   const portaria_valor = num(value.portaria_valor)
   const pax_total = num(value.pax_total)
   const perda_produto = num(value.perda_produto)
 
   const faturamento_bruto = vendas_ab + taxa_servico + delivery + portaria_valor
-  const ticket_medio = pax_total > 0 ? vendas_ab / pax_total : NaN
-  const total_ab = alimentos + bebidas
-  const part_alimentos = total_ab > 0 ? alimentos / total_ab : NaN
-  const part_bebidas = total_ab > 0 ? bebidas / total_ab : NaN
+  const ticket_medio = pax_total > 0 ? (vendas_ab + desconto) / pax_total : NaN
   const perda_pct = faturamento_bruto > 0 ? perda_produto / faturamento_bruto : NaN
   const tx_gorjeta = vendas_ab > 0 ? taxa_servico / vendas_ab : NaN
-
-  // Alerta de reconciliação: alimentos + bebidas deve bater com Vendas A&B.
-  // Só alerta quando os 3 têm valor preenchido (evita alarme falso durante digitação).
-  const preenchidos = value.vendas_ab !== '' && value.alimentos !== '' && value.bebidas !== ''
-  const somaAbBate = Math.abs(total_ab - vendas_ab) < 0.01
-  const alertaSoma = preenchidos && !somaAbBate
 
   function field(
     key: keyof VendasState,
@@ -128,22 +119,14 @@ export function BlocoVendas({
       <p className="text-xs font-semibold uppercase tracking-widest text-ink-faint">Vendas</p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {field('vendas_ab', 'Vendas A&B', { required: true, erro: erros?.vendas_ab })}
+        {field('vendas_ab', 'Valor de A&B Produtos', { required: true, erro: erros?.vendas_ab })}
         {field('pax_total', 'PAX Total', { integer: true, required: true, erro: erros?.pax_total })}
-        {field('alimentos', 'Alimentos', { required: true, erro: erros?.alimentos || alertaSoma })}
-        {field('bebidas', 'Bebidas', { required: true, erro: erros?.bebidas || alertaSoma })}
-        {field('taxa_servico', 'Taxa de Serviço', { required: true, erro: erros?.taxa_servico })}
+        {field('taxa_servico', 'Gorjeta', { required: true, erro: erros?.taxa_servico })}
+        {field('desconto', 'Desconto', { erro: erros?.desconto })}
         {field('delivery', 'Delivery', { required: true, erro: erros?.delivery })}
         {field('portaria_valor', 'Portaria (valor)', { required: true, erro: erros?.portaria_valor })}
         {field('perda_produto', 'Perda de Produto', { required: true, erro: erros?.perda_produto })}
       </div>
-
-      {alertaSoma && (
-        <div className="rounded-lg border border-alert bg-alert/10 px-3 py-2 text-xs text-alert-bright">
-          Alimentos + Bebidas ({brl(total_ab)}) não bate com Vendas A&B ({brl(vendas_ab)}).
-          Diferença de {brl(Math.abs(total_ab - vendas_ab))}.
-        </div>
-      )}
 
       {/* Fechamento calculado — read-only */}
       <div className="rounded-lg border border-edge/50 bg-base p-4 space-y-2">
@@ -155,16 +138,10 @@ export function BlocoVendas({
           <span className="text-ink-muted">Ticket médio</span>
           <span className="text-ink text-right font-medium">{brl(ticket_medio)}</span>
 
-          <span className="text-ink-muted">Part. Alimentos</span>
-          <span className="text-ink text-right font-medium">{pct(part_alimentos)}</span>
-
-          <span className="text-ink-muted">Part. Bebidas</span>
-          <span className="text-ink text-right font-medium">{pct(part_bebidas)}</span>
-
           <span className="text-ink-muted">Taxa de Perda</span>
           <span className="text-ink text-right font-medium">{pct(perda_pct)}</span>
 
-          <span className="text-ink-muted">Taxa de Serviço</span>
+          <span className="text-ink-muted">Taxa de Gorjeta</span>
           <span className="text-ink text-right font-medium">{pct(tx_gorjeta)}</span>
         </div>
       </div>

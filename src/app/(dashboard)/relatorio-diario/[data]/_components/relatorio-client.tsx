@@ -39,8 +39,7 @@ type FormErros = {
   horarios?: Partial<Record<keyof HorariosState, boolean>>
   vendas_ab?: boolean
   pax_total?: boolean
-  alimentos?: boolean
-  bebidas?: boolean
+  desconto?: boolean
   taxa_servico?: boolean
   delivery?: boolean
   portaria_valor?: boolean
@@ -81,6 +80,7 @@ function estadoInicial(
       alimentos: String(row?.venda_alimentos ?? ''),
       bebidas: String(row?.venda_bebidas ?? ''),
       taxa_servico: String(row?.taxa_servico ?? ''),
+      desconto: String(row?.desconto ?? ''),
       delivery: String(row?.delivery ?? ''),
       portaria_valor: String(row?.portaria ?? ''),
       pax_total: String(row?.pax_total ?? ''),
@@ -382,6 +382,7 @@ export function RelatorioClient({
         venda_alimentos: estado.vendas.alimentos ? parseFloat(estado.vendas.alimentos) : null,
         venda_bebidas: estado.vendas.bebidas ? parseFloat(estado.vendas.bebidas) : null,
         taxa_servico: estado.vendas.taxa_servico ? parseFloat(estado.vendas.taxa_servico) : null,
+        desconto: estado.vendas.desconto ? parseFloat(estado.vendas.desconto) : null,
         delivery: estado.vendas.delivery ? parseFloat(estado.vendas.delivery) : null,
         portaria: estado.vendas.portaria_valor ? parseFloat(estado.vendas.portaria_valor) : null,
         pax_total: estado.vendas.pax_total ? parseInt(estado.vendas.pax_total) : null,
@@ -418,8 +419,6 @@ export function RelatorioClient({
     const camposVenda: [keyof typeof estado.vendas, keyof FormErros, string][] = [
       ['vendas_ab', 'vendas_ab', 'vendas_ab'],
       ['pax_total', 'pax_total', 'pax_total'],
-      ['alimentos', 'alimentos', 'alimentos'],
-      ['bebidas', 'bebidas', 'bebidas'],
       ['taxa_servico', 'taxa_servico', 'taxa_servico'],
       ['delivery', 'delivery', 'delivery'],
       ['portaria_valor', 'portaria_valor', 'portaria_valor'],
@@ -681,7 +680,7 @@ export function RelatorioClient({
           value={form.vendas}
           onChange={vendas => handleFormChange({ vendas })}
           disabled={disabled}
-          erros={{ vendas_ab: erros.vendas_ab, pax_total: erros.pax_total, alimentos: erros.alimentos, bebidas: erros.bebidas, taxa_servico: erros.taxa_servico, delivery: erros.delivery, portaria_valor: erros.portaria_valor, perda_produto: erros.perda_produto }}
+          erros={{ vendas_ab: erros.vendas_ab, pax_total: erros.pax_total, desconto: erros.desconto, taxa_servico: erros.taxa_servico, delivery: erros.delivery, portaria_valor: erros.portaria_valor, perda_produto: erros.perda_produto }}
         />
         <BlocoClima
           value={form.clima}
