@@ -91,6 +91,58 @@ export async function PATCH(
   return NextResponse.json({ id: updated.id })
 }
 
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ data: string; periodo: string }> }
+) {
+  const { data: dataParam, periodo } = await params
+  const body = await request.json()
+  const { unit_id, sequencia } = body
+
+  if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+  if (periodo !== 'eventos') {
+    return NextResponse.json({ error: 'Só é possível excluir períodos do tipo Evento.' }, { status: 400 })
+  }
+
+  const auth = await canAccessUnit(unit_id)
+  if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status })
+
+  const supabase = createServiceClient()
+
+  const { data: relatorio } = await supabase
+    .from('op_relatorio_diario')
+    .select('id, status')
+    .eq('unit_id', unit_id)
+    .eq('data', dataParam)
+    .single()
+
+  if (!relatorio) return NextResponse.json({ error: 'Relatório não encontrado.' }, { status: 404 })
+  if (relatorio.status === 'enviado') {
+    return NextResponse.json({ error: 'Relatório já enviado.' }, { status: 409 })
+  }
+
+  const { data: periodoRow } = await supabase
+    .from('op_relatorio_periodo')
+    .select('id, enviado_em')
+    .eq('relatorio_id', relatorio.id)
+    .eq('periodo', 'eventos')
+    .eq('sequencia', sequencia)
+    .maybeSingle()
+
+  if (!periodoRow) return NextResponse.json({ error: 'Evento não encontrado.' }, { status: 404 })
+  if (periodoRow.enviado_em) {
+    return NextResponse.json({ error: 'Este evento já foi enviado — não pode ser excluído.' }, { status: 409 })
+  }
+
+  await supabase.from('op_avaliacao_setor').delete()
+    .eq('relatorio_id', relatorio.id).eq('periodo', 'eventos').eq('sequencia', sequencia)
+  await supabase.from('op_falta_equipe').delete()
+    .eq('relatorio_id', relatorio.id).eq('periodo', 'eventos').eq('sequencia', sequencia)
+  await supabase.from('op_relatorio_periodo').delete().eq('id', periodoRow.id)
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ data: string; periodo: string }> }

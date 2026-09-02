@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Check, Plus, X } from 'lucide-react'
+import { ArrowLeft, Check, Plus, Trash2, X } from 'lucide-react'
 import { PERIODO_LABEL, SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA } from '@/app/api/relatorio-diario/_schema'
 import type { SetorAvaliacao, SetorEquipe } from '@/app/api/relatorio-diario/_schema'
 import { BlocoHorarios, type HorariosState } from './bloco-horarios'
@@ -18,6 +18,7 @@ import { Bloco86 } from './bloco-86'
 import { BlocoFeedback } from './bloco-feedback'
 import { BlocoRh } from './bloco-rh'
 import { BlocoPortaria, type PortariaState } from './bloco-portaria'
+import { BlocoEventoInfo, type EventoInfoState } from './bloco-evento-info'
 
 type PeriodoRef = { periodo: string; sequencia: number }
 
@@ -31,6 +32,7 @@ type FormState = {
   equipe: EquipeState
   responsavel: string
   portaria: PortariaState
+  evento: EventoInfoState
 }
 
 type FormErros = {
@@ -48,6 +50,7 @@ type FormErros = {
   clima?: { tempo?: boolean }
   setores?: Partial<Record<SetorAvaliacao, boolean>>
   equipe?: Partial<Record<SetorEquipe, boolean>>
+  evento?: boolean
 }
 
 function estadoInicial(
@@ -105,6 +108,10 @@ function estadoInicial(
       reservas: row?.portaria_reservas_previstas != null ? String(row.portaria_reservas_previstas) : '',
       no_show: row?.portaria_noshow_qty != null ? String(row.portaria_noshow_qty) : '',
       passantes: row?.portaria_passantes != null ? String(row.portaria_passantes) : '',
+    },
+    evento: {
+      nome: String(row?.evento_nome ?? ''),
+      contato: String(row?.evento_contato ?? ''),
     },
   }
 }
@@ -219,6 +226,28 @@ export function RelatorioClient({
       .map(p => ({ periodo: p.periodo as string, sequencia: Number(p.sequencia) }))
   )
   const [naOcupado, setNaOcupado] = useState<PeriodoRef | null>(null)
+  const [excluindo, setExcluindo] = useState<PeriodoRef | null>(null)
+
+  async function excluirEvento(ref: PeriodoRef) {
+    if (!confirm(`Excluir ${labelPeriodo(ref)}? Essa ação não pode ser desfeita.`)) return
+    setExcluindo(ref)
+    try {
+      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/eventos`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit_id: unitId, sequencia: ref.sequencia }),
+      })
+      if (res.ok) {
+        if (refEq(periodoAtivo, ref)) setPeriodoAtivo(tabs.find(t => !refEq(t, ref)) ?? tabs[0])
+        router.refresh()
+      } else {
+        const { error } = await res.json()
+        alert(error)
+      }
+    } finally {
+      setExcluindo(null)
+    }
+  }
 
   async function toggleNaoSeAplica(ref: PeriodoRef, aplicar: boolean) {
     setNaOcupado(ref)
@@ -295,6 +324,8 @@ export function RelatorioClient({
         portaria_reservas_previstas: estado.portaria.reservas !== '' ? parseInt(estado.portaria.reservas) : null,
         portaria_noshow_qty: estado.portaria.no_show !== '' ? parseInt(estado.portaria.no_show) : null,
         portaria_passantes: estado.portaria.passantes !== '' ? parseInt(estado.portaria.passantes) : null,
+        evento_nome: estado.evento.nome || null,
+        evento_contato: estado.evento.contato || null,
         equipe: SETORES_EQUIPE.map(s => ({
           area: SETOR_EQUIPE_TO_AREA[s],
           lider_turno: estado.equipe[s].lider || null,
@@ -337,6 +368,10 @@ export function RelatorioClient({
     if (!estado.clima.tempo) { e.clima = { tempo: true }; primeiroId ??= 'clima-tempo' }
     if (!estado.resumo.trim()) { e.resumo = true; primeiroId ??= 'resumo_operacional' }
     if (!estado.responsavel.trim()) { e.responsavel = true; primeiroId ??= 'responsavel_preenchimento' }
+    if (periodoAtivo.periodo === 'eventos' && !estado.evento.nome.trim()) {
+      e.evento = true
+      primeiroId ??= 'evento_nome'
+    }
 
     const setoresErro: FormErros['setores'] = {}
     for (const setor of SETORES_AVALIACAO) {
@@ -486,6 +521,19 @@ export function RelatorioClient({
                     <X className="h-3 w-3" />
                   </button>
                 )}
+                {ref.periodo === 'eventos' && !enviado && !disabled && (
+                  <button
+                    type="button"
+                    onClick={() => excluirEvento(ref)}
+                    disabled={excluindo !== null}
+                    title="Excluir este evento"
+                    className={`ml-0.5 rounded p-0.5 transition-colors ${
+                      ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
+                    }`}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             )
           })}
@@ -519,6 +567,14 @@ export function RelatorioClient({
 
       {/* Formulário */}
       <div className="space-y-4">
+        {periodoAtivo.periodo === 'eventos' && (
+          <BlocoEventoInfo
+            value={form.evento}
+            onChange={evento => handleFormChange({ evento })}
+            disabled={disabled}
+            erro={erros.evento}
+          />
+        )}
         <BlocoHorarios
           value={form.horarios}
           onChange={horarios => handleFormChange({ horarios })}
