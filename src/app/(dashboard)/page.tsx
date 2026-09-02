@@ -21,7 +21,7 @@ const FRENTES: Frente[] = [
   { href: '/producao', nome: 'Produção', descricao: 'Registro e planejamento das produções do dia', icon: ChefHat },
   { href: '/inventario', nome: 'Inventário', descricao: 'Contagem e controle de estoque', icon: ClipboardList },
   { href: '/checklists', nome: 'Checklists', descricao: 'Rotinas e conferências operacionais', icon: ClipboardCheck },
-  { href: '/relatorio-diario', nome: 'Relatório Diário', descricao: 'Fechamento de turno e indicadores da operação', icon: BookOpen },
+  { href: '/relatorio-diario', nome: 'Resumo Operacional', descricao: 'Fechamento de turno e indicadores da operação', icon: BookOpen },
   { href: '/relatorios', nome: 'Relatórios', descricao: 'Histórico de produção e consolidados', icon: FileText, soGestor: true },
   { href: '/painel', nome: 'Dashboard', descricao: 'Visão geral do dia em números', icon: LayoutDashboard, soGestor: true },
 ]

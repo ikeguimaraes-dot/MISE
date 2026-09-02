@@ -30,8 +30,19 @@ export default async function RelatorioDiarioPage({
   if (!session) redirect('/login')
   if (session.role === 'cozinheiro') redirect('/')
 
-  const { unit_id } = await searchParams
   const supabase = createServiceClient()
+
+  let ownUnitId: string | null = null
+  if (session.role !== 'admin') {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('unit_id')
+      .eq('id', session.employeeId)
+      .single()
+    ownUnitId = emp?.unit_id ?? null
+  }
+
+  const { unit_id } = await searchParams
 
   const ORDEM_UNIDADES = ['Meet & Eat', 'Match Point', 'Madonna SP Itaim', 'Frenezze', 'HOS']
 
@@ -49,7 +60,9 @@ export default async function RelatorioDiarioPage({
     return ia - ib
   })
 
-  const activeUnitId = unit_id ?? units?.[0]?.id ?? ''
+  const activeUnitId = session.role === 'admin'
+    ? (unit_id ?? units?.[0]?.id ?? '')
+    : (ownUnitId ?? '')
 
   const since = new Date()
   since.setDate(since.getDate() - 30)
@@ -99,18 +112,28 @@ export default async function RelatorioDiarioPage({
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-ink">Relatório Diário</h1>
+          <h1 className="text-xl font-bold text-ink">Resumo Operacional</h1>
           <p className="text-sm text-ink-muted">{unitName} · últimos 30 dias</p>
         </div>
-        <Link
-          href={`/relatorio-diario/${hoje}?unit_id=${activeUnitId}`}
-          className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-        >
-          {temHoje ? 'Continuar hoje' : 'Preencher hoje'}
-        </Link>
+        <div className="flex gap-2">
+          {session.role === 'admin' && (
+            <Link
+              href="/relatorio-diario/painel-geral"
+              className="rounded-lg border border-edge px-4 py-2 text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+            >
+              Painel Geral
+            </Link>
+          )}
+          <Link
+            href={`/relatorio-diario/${hoje}?unit_id=${activeUnitId}`}
+            className="rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            {temHoje ? 'Continuar hoje' : 'Preencher hoje'}
+          </Link>
+        </div>
       </div>
 
-      {(units?.length ?? 0) > 1 && (
+      {session.role === 'admin' && (units?.length ?? 0) > 1 && (
         <div className="flex gap-2 flex-wrap">
           {units?.map(u => (
             <Link
