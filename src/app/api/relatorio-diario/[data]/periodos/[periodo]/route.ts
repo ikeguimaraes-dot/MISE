@@ -100,8 +100,8 @@ export async function DELETE(
   const { unit_id, sequencia } = body
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
-  if (periodo !== 'eventos') {
-    return NextResponse.json({ error: 'Só é possível excluir períodos do tipo Evento.' }, { status: 400 })
+  if (periodo !== 'eventos' && periodo !== 'manha') {
+    return NextResponse.json({ error: 'Este período não pode ser excluído.' }, { status: 400 })
   }
 
   const auth = await canAccessUnit(unit_id)
@@ -125,19 +125,19 @@ export async function DELETE(
     .from('op_relatorio_periodo')
     .select('id, enviado_em')
     .eq('relatorio_id', relatorio.id)
-    .eq('periodo', 'eventos')
+    .eq('periodo', periodo)
     .eq('sequencia', sequencia)
     .maybeSingle()
 
-  if (!periodoRow) return NextResponse.json({ error: 'Evento não encontrado.' }, { status: 404 })
+  if (!periodoRow) return NextResponse.json({ error: 'Período não encontrado.' }, { status: 404 })
   if (periodoRow.enviado_em) {
-    return NextResponse.json({ error: 'Este evento já foi enviado — não pode ser excluído.' }, { status: 409 })
+    return NextResponse.json({ error: 'Este período já foi enviado — não pode ser excluído.' }, { status: 409 })
   }
 
   await supabase.from('op_avaliacao_setor').delete()
-    .eq('relatorio_id', relatorio.id).eq('periodo', 'eventos').eq('sequencia', sequencia)
+    .eq('relatorio_id', relatorio.id).eq('periodo', periodo).eq('sequencia', sequencia)
   await supabase.from('op_falta_equipe').delete()
-    .eq('relatorio_id', relatorio.id).eq('periodo', 'eventos').eq('sequencia', sequencia)
+    .eq('relatorio_id', relatorio.id).eq('periodo', periodo).eq('sequencia', sequencia)
   await supabase.from('op_relatorio_periodo').delete().eq('id', periodoRow.id)
 
   return NextResponse.json({ ok: true })

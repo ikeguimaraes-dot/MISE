@@ -229,11 +229,11 @@ export function RelatorioClient({
   const [naOcupado, setNaOcupado] = useState<PeriodoRef | null>(null)
   const [excluindo, setExcluindo] = useState<PeriodoRef | null>(null)
 
-  async function excluirEvento(ref: PeriodoRef) {
+  async function excluirPeriodo(ref: PeriodoRef) {
     if (!confirm(`Excluir ${labelPeriodo(ref)}? Essa ação não pode ser desfeita.`)) return
     setExcluindo(ref)
     try {
-      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/eventos`, {
+      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${ref.periodo}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ unit_id: unitId, sequencia: ref.sequencia }),
@@ -536,10 +536,10 @@ export function RelatorioClient({
                     <X className="h-3 w-3" />
                   </button>
                 )}
-                {ref.periodo === 'eventos' && !enviado && !disabled && (
+                {(ref.periodo === 'eventos' || ref.periodo === 'manha') && !enviado && !disabled && (
                   <button
                     type="button"
-                    onClick={() => excluirEvento(ref)}
+                    onClick={() => excluirPeriodo(ref)}
                     disabled={excluindo !== null}
                     title="Excluir este evento"
                     className={`ml-0.5 rounded p-0.5 transition-colors ${
