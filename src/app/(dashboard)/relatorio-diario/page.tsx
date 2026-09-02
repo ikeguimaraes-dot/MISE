@@ -85,12 +85,16 @@ export default async function RelatorioDiarioPage({
 
   // Períodos de todos os relatórios listados, pra montar os chips por dia
   const relIds = (relatorios ?? []).map(r => r.id)
-  const { data: periodosDb } = relIds.length
-    ? await supabase
-        .from('op_relatorio_periodo')
-        .select('relatorio_id, periodo, sequencia, status, enviado_em')
-        .in('relatorio_id', relIds)
-    : { data: [] }
+  const [{ data: periodosDb }, { data: horarioPadraoRaw }] = await Promise.all([
+    relIds.length
+      ? supabase.from('op_relatorio_periodo').select('relatorio_id, periodo, sequencia, status, enviado_em').in('relatorio_id', relIds)
+      : Promise.resolve({ data: [] }),
+    activeUnitId
+      ? supabase.from('op_horario_padrao').select('dia_semana, periodo').eq('unit_id', activeUnitId)
+      : Promise.resolve({ data: [] }),
+  ])
+  const horarioPadrao = horarioPadraoRaw ?? []
+  const unitTemHorario = horarioPadrao.length > 0
 
   type ChipRow = { periodo: string; sequencia: number; status: string }
   const periodosPorRel = new Map<string, ChipRow[]>()
@@ -161,10 +165,19 @@ export default async function RelatorioDiarioPage({
           const { cor, label } = getStatusDot(r.status, r.data)
           const rowsPorDia = periodosPorRel.get(r.id) ?? []
 
-          // Base chips: espinha dorsal da config (exceto manha e eventos — ambos opt-in)
+          // Espinha dorsal por dia da semana (baseada em op_horario_padrao)
+          const diaSemanaRel = new Date(`${r.data}T12:00:00Z`).getUTCDay()
+          const doDia = horarioPadrao.filter(h => h.dia_semana === diaSemanaRel).map(h => h.periodo)
+          let periodosFixosDoDia: string[]
+          if (unitTemHorario) {
+            const set = new Set(doDia)
+            periodosFixosDoDia = set.has('unico') ? ['almoco', 'jantar'] : doDia.filter(p => p !== 'unico')
+          } else {
+            periodosFixosDoDia = periodosAtivos.filter(p => p !== 'eventos' && p !== 'manha')
+          }
+
           const CHIP_ORDER = ['manha', 'almoco', 'jantar']
-          const baseChips = periodosAtivos
-            .filter(p => p !== 'eventos' && p !== 'manha')
+          const baseChips = periodosFixosDoDia
             .map(p => ({
               periodo: p,
               sequencia: 1,

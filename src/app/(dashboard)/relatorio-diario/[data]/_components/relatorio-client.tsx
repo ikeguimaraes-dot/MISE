@@ -161,14 +161,36 @@ function refEq(a: PeriodoRef, b: PeriodoRef) {
 
 // Espinha dorsal: só o que vem da config, excluindo eventos e manha —
 // os dois são sempre opt-in (adicionados por dia, pra qualquer unidade).
-function buildTabs(periodos: Record<string, unknown>[], unitConfigPeriodos: string[]): PeriodoRef[] {
-  const base = unitConfigPeriodos
-    .filter(p => p !== 'eventos' && p !== 'manha')
-    .map(p => ({ periodo: p, sequencia: 1 }))
+function buildTabs(
+  periodos: Record<string, unknown>[],
+  unitConfigPeriodos: string[],
+  horarioPadraoDoDia: { periodo: string }[],
+  unitTemHorarioConfigurado: boolean
+): PeriodoRef[] {
+  let base: PeriodoRef[]
 
-  const manhaExtra = periodos
-    .filter(p => p.periodo === 'manha')
-    .map(() => ({ periodo: 'manha', sequencia: 1 }))
+  if (unitTemHorarioConfigurado) {
+    const doDia = new Set(horarioPadraoDoDia.map(h => h.periodo))
+    const fixos: string[] = []
+    if (doDia.has('unico')) {
+      fixos.push('almoco', 'jantar')
+    } else {
+      if (doDia.has('almoco')) fixos.push('almoco')
+      if (doDia.has('jantar')) fixos.push('jantar')
+    }
+    if (doDia.has('manha')) fixos.push('manha')
+    base = fixos.map(p => ({ periodo: p, sequencia: 1 }))
+  } else {
+    // Fallback: unidade sem horário cadastrado — comportamento antigo.
+    base = unitConfigPeriodos
+      .filter(p => p !== 'eventos' && p !== 'manha')
+      .map(p => ({ periodo: p, sequencia: 1 }))
+  }
+
+  const manhaJaFixa = base.some(b => b.periodo === 'manha')
+  const manhaExtra = !manhaJaFixa
+    ? periodos.filter(p => p.periodo === 'manha').map(() => ({ periodo: 'manha', sequencia: 1 }))
+    : []
 
   const eventosRows = periodos
     .filter(p => p.periodo === 'eventos')
@@ -222,7 +244,13 @@ export function RelatorioClient({
   const isHoje = dataParam === hoje
   const relatorioFechado = relatorio.status === 'enviado'
 
-  const tabs = buildTabs(periodos, unitConfigPeriodos)
+  const unitTemHorarioConfigurado = horariosPadrao.length > 0
+  const diaSemanaHoje = new Date(`${dataParam}T12:00:00Z`).getUTCDay()
+  const horarioPadraoDoDia = horariosPadrao.filter(h => h.dia_semana === diaSemanaHoje)
+  const diaFechado = unitTemHorarioConfigurado && horarioPadraoDoDia.length === 0
+  const manhaFixaHoje = unitTemHorarioConfigurado && horarioPadraoDoDia.some(h => h.periodo === 'manha')
+
+  const tabs = buildTabs(periodos, unitConfigPeriodos, horarioPadraoDoDia, unitTemHorarioConfigurado)
   const initialTab = tabs[0] ?? { periodo: 'almoco', sequencia: 1 }
 
   const [periodoAtivo, setPeriodoAtivo] = useState<PeriodoRef>(initialTab)
@@ -576,7 +604,7 @@ export function RelatorioClient({
                     <X className="h-3 w-3" />
                   </button>
                 )}
-                {(ref.periodo === 'eventos' || ref.periodo === 'manha') && !enviado && !disabled && (
+                {(ref.periodo === 'eventos' || (ref.periodo === 'manha' && !manhaFixaHoje)) && !enviado && !disabled && (
                   <button
                     type="button"
                     onClick={() => excluirPeriodo(ref)}
@@ -596,7 +624,7 @@ export function RelatorioClient({
 
         {!disabled && !relatorioFechado && (
           <div className="flex gap-2">
-            {!temManha && (
+            {!diaFechado && !temManha && (
               <button
                 type="button"
                 onClick={() => adicionarPeriodo('manha')}
@@ -620,8 +648,14 @@ export function RelatorioClient({
         )}
       </div>
 
+      {tabs.length === 0 && (
+        <div className="rounded-xl border border-edge bg-surface p-6 text-center text-sm text-ink-muted">
+          Esta unidade não funciona neste dia da semana. Se algo aconteceu mesmo assim, adicione um Evento acima.
+        </div>
+      )}
+
       {/* Formulário */}
-      <div className="space-y-4">
+      {tabs.length > 0 && <div className="space-y-4">
         {periodoAtivo.periodo === 'eventos' && (
           <BlocoEventoInfo
             value={form.evento}
@@ -696,10 +730,10 @@ export function RelatorioClient({
           disabled={disabled}
           erro={erros.responsavel}
         />
-      </div>
+      </div>}
 
       {/* Rodapé */}
-      <div className="space-y-3 pt-2">
+      {tabs.length > 0 && <div className="space-y-3 pt-2">
         {salvando && (
           <p className="text-center text-xs text-ink-subtle">Salvando rascunho…</p>
         )}
@@ -721,7 +755,7 @@ export function RelatorioClient({
             Todos os períodos enviados — relatório fechado.
           </p>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
