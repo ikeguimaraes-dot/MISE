@@ -276,18 +276,26 @@ export function RelatorioClient({
   }
 
   async function toggleNaoSeAplica(ref: PeriodoRef, aplicar: boolean) {
+    let motivo: string | null = null
+    if (aplicar) {
+      motivo = prompt('Por que este período não vai acontecer? (ex: falta de energia, feriado, etc.)')
+      if (!motivo?.trim()) return
+    }
     setNaOcupado(ref)
     try {
       const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${ref.periodo}/na`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unit_id: unitId, aplicar, sequencia: ref.sequencia }),
+        body: JSON.stringify({ unit_id: unitId, aplicar, sequencia: ref.sequencia, motivo }),
       })
       if (res.ok) {
         setNaoSeAplica(prev =>
           aplicar ? [...prev, ref] : prev.filter(p => !refEq(p, ref))
         )
         router.refresh()
+      } else {
+        const { error } = await res.json()
+        alert(error)
       }
     } finally {
       setNaOcupado(null)
@@ -556,7 +564,11 @@ export function RelatorioClient({
                     type="button"
                     onClick={() => toggleNaoSeAplica(ref, !na)}
                     disabled={ocupado}
-                    title={na ? 'Reverter — voltar a aplicar' : 'Não há este turno neste dia'}
+                    title={
+                      na
+                        ? (periodoRow?.na_motivo ? `Motivo: ${periodoRow.na_motivo}` : 'Reverter — voltar a aplicar')
+                        : 'Não há este turno neste dia'
+                    }
                     className={`ml-0.5 rounded p-0.5 transition-colors ${
                       ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
                     } ${na ? 'rotate-45' : ''}`}

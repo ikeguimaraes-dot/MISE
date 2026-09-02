@@ -12,10 +12,13 @@ export async function PATCH(
 ) {
   const { data: dataParam, periodo } = await params
   const body = await request.json()
-  const { unit_id, aplicar, sequencia: seqRaw } = body
+  const { unit_id, aplicar, sequencia: seqRaw, motivo } = body
   const sequencia: number = typeof seqRaw === 'number' ? seqRaw : 1
 
   if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+  if (aplicar && !motivo?.trim()) {
+    return NextResponse.json({ error: 'Informe o motivo.' }, { status: 400 })
+  }
 
   const auth = await canAccessUnit(unit_id)
   if (!auth.ok) return NextResponse.json({ error: auth.message }, { status: auth.status })
@@ -54,7 +57,7 @@ export async function PATCH(
   const { error } = await supabase
     .from('op_relatorio_periodo')
     .upsert(
-      { relatorio_id: relatorio.id, periodo, sequencia, status: novoStatus },
+      { relatorio_id: relatorio.id, periodo, sequencia, status: novoStatus, na_motivo: aplicar ? motivo.trim() : null },
       { onConflict: 'relatorio_id,periodo,sequencia' }
     )
 
