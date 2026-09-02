@@ -58,8 +58,12 @@ export function BlocoRh({
     if (res.ok) setItens(prev => prev.filter(i => i.id !== id))
   }
 
+  async function apagarTudo() {
+    await Promise.all(itens.map(item => remover(item.id)))
+  }
+
   return (
-    <RegistroColapsavel titulo="Ocorrências RH" count={itens.length}>
+    <RegistroColapsavel titulo="Ocorrências RH" count={itens.length} onNao={apagarTudo}>
       {itens.map(item => (
         <div key={item.id} className="flex items-start justify-between rounded-lg border border-edge bg-base px-3 py-2 gap-2">
           <div>

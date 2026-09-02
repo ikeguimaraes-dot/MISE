@@ -99,8 +99,12 @@ export function BlocoFeedback({
     if (res.ok) setItens(prev => prev.filter(i => i.id !== id))
   }
 
+  async function apagarTudo() {
+    await Promise.all(itens.map(item => remover(item.id)))
+  }
+
   return (
-    <RegistroColapsavel titulo={titulo} count={itens.length}>
+    <RegistroColapsavel titulo={titulo} count={itens.length} onNao={apagarTudo}>
       {itens.map(item => (
         <div key={item.id} className="rounded-lg border border-edge bg-base px-3 py-2">
           {editId === item.id ? (

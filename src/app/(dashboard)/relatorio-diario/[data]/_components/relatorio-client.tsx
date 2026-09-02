@@ -125,6 +125,12 @@ function fmtDataPorExtenso(dataParam: string): string {
   return `${diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1)}, ${dia} de ${mes} de ${ano}`
 }
 
+const PERIODO_HORARIO: Record<string, string> = {
+  manha: '06h–11:59h',
+  almoco: '12h–17:59h',
+  jantar: '18h–03h',
+}
+
 function labelPeriodo(ref: PeriodoRef): string {
   if (ref.periodo === 'eventos') return `Evento ${ref.sequencia}`
   return PERIODO_LABEL[ref.periodo] ?? ref.periodo
@@ -502,11 +508,18 @@ export function RelatorioClient({
                 <button
                   type="button"
                   onClick={() => setPeriodoAtivo(ref)}
-                  className={`flex items-center gap-1.5 ${na && !ativo ? 'line-through' : ''} ${!ativo ? 'hover:text-ink' : ''}`}
+                  className={`flex flex-col items-start leading-tight ${!ativo ? 'hover:text-ink' : ''}`}
                 >
-                  {labelPeriodo(ref)}
-                  {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
-                  {na && <span className="text-[10px] no-underline">N/A</span>}
+                  <span className={`flex items-center gap-1.5 ${na && !ativo ? 'line-through' : ''}`}>
+                    {labelPeriodo(ref)}
+                    {enviado && <Check className="h-3.5 w-3.5 text-fresh" />}
+                    {na && <span className="text-[10px] no-underline">N/A</span>}
+                  </span>
+                  {PERIODO_HORARIO[ref.periodo] && (
+                    <span className={`text-[10px] font-normal ${ativo ? 'text-white/70' : 'text-ink-faint'}`}>
+                      {PERIODO_HORARIO[ref.periodo]}
+                    </span>
+                  )}
                 </button>
                 {!enviado && !disabled && (
                   <button

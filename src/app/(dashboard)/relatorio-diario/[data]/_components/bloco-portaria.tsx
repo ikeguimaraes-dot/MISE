@@ -73,8 +73,12 @@ export function BlocoPortaria({
     ['passantes', 'Passantes'],
   ]
 
+  async function apagarTudo() {
+    await Promise.all(desistencias.map(d => removerDesistencia(d.id)))
+  }
+
   return (
-    <RegistroColapsavel titulo="Portaria" count={desistencias.length}>
+    <RegistroColapsavel titulo="Portaria" count={desistencias.length} onNao={apagarTudo}>
       {/* Entradas — salvam via autosave do período (sem botão dedicado) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {campos.map(([key, label]) => (

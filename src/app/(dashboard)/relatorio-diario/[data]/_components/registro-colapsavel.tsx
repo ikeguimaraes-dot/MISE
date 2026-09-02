@@ -2,15 +2,22 @@
 import { useState } from 'react'
 
 export function RegistroColapsavel({
-  titulo,
-  count,
-  children,
+  titulo, count, onNao, children,
 }: {
   titulo: string
   count: number
+  onNao?: () => void | Promise<void>
   children: React.ReactNode
 }) {
-  const [aberto, setAberto] = useState(false)
+  const [aberto, setAberto] = useState(count > 0)
+
+  async function handleClick(valor: boolean) {
+    if (!valor && count > 0) {
+      if (!confirm(`Marcar "Não" vai apagar os ${count} registro(s) já adicionados aqui. Confirma?`)) return
+      await onNao?.()
+    }
+    setAberto(valor)
+  }
 
   return (
     <div className="rounded-xl border border-edge bg-surface overflow-hidden">
@@ -31,7 +38,7 @@ export function RegistroColapsavel({
               <button
                 key={label}
                 type="button"
-                onClick={() => setAberto(isAberto)}
+                onClick={() => handleClick(isAberto)}
                 className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
                   ativo
                     ? 'bg-ember/10 text-ember border border-ember/40'
