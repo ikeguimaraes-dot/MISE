@@ -3,6 +3,14 @@ import { notFound, redirect } from 'next/navigation'
 import { getMiseSession } from '@/lib/session'
 import { CrivoExecucaoClient } from './_components/crivo-execucao-client'
 
+function classificar(pct: number): string {
+  if (pct < 50) return 'Crítico'
+  if (pct < 60) return 'Ruim'
+  if (pct < 75) return 'Regular'
+  if (pct < 90) return 'Bom'
+  return 'Excelente'
+}
+
 export default async function CrivoExecucaoPage({
   params,
 }: {
@@ -18,16 +26,17 @@ export default async function CrivoExecucaoPage({
   const { data: execucao } = await supabase
     .schema('mise')
     .from('checklist_executions')
-    .select('id, template_id, unit_id, status')
+    .select('id, template_id, unit_id, local_id, status')
     .eq('id', id)
     .single()
 
   if (!execucao) notFound()
+
   if (execucao.status === 'concluido') {
-    redirect(execucao.unit_id ? `/crivo/${execucao.unit_id}` : '/crivo')
+    redirect(execucao.local_id ? `/crivo/${execucao.local_id}` : '/crivo')
   }
 
-  // If still 'agendado', mark it as em_andamento
+  // Mark agendado → em_andamento
   if (execucao.status === 'agendado') {
     await supabase
       .schema('mise')
@@ -36,16 +45,27 @@ export default async function CrivoExecucaoPage({
       .eq('id', id)
   }
 
-  const [{ data: template }, { data: itemsRaw }, { data: respostas }] = await Promise.all([
+  const [{ data: template }, { data: itemsRaw }, { data: respostas }, notaAnteriorResult] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('nome').eq('id', execucao.template_id).single(),
     supabase.schema('mise').from('checklist_template_items')
-      .select('id, ordem, titulo, descricao, tipo_resposta, opcoes, peso, requer_comentario, criterio_regramento, requer_foto')
+      .select('id, ordem, titulo, descricao, tipo_resposta, opcoes, peso, requer_comentario, criterio_regramento, requer_foto, topico_ordem, topico_nome')
       .eq('template_id', execucao.template_id)
       .eq('ativo', true)
       .order('ordem'),
     supabase.schema('mise').from('checklist_responses')
       .select('item_id, resposta, comentario, nao_aplicavel, foto_url')
       .eq('execution_id', id),
+    execucao.local_id
+      ? supabase.schema('mise').from('checklist_executions')
+          .select('percentual, concluido_em')
+          .eq('local_id', execucao.local_id)
+          .eq('template_id', execucao.template_id)
+          .eq('status', 'concluido')
+          .neq('id', id)
+          .order('concluido_em', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
   if (!template) notFound()
@@ -54,14 +74,25 @@ export default async function CrivoExecucaoPage({
     ...item,
     descricao: item.descricao ?? null,
     requer_comentario: String(item.requer_comentario ?? 'nao'),
-    criterio_regramento: item.criterio_regramento as string | null ?? null,
+    criterio_regramento: (item.criterio_regramento as string | null) ?? null,
     requer_foto: String(item.requer_foto ?? 'nao'),
+    topico_ordem: item.topico_ordem ?? null,
+    topico_nome: (item.topico_nome as string | null) ?? null,
   }))
+
+  const notaAnteriorData = notaAnteriorResult.data
+  const notaAnterior = notaAnteriorData?.percentual != null
+    ? {
+        percentual: notaAnteriorData.percentual as number,
+        classificacao: classificar(notaAnteriorData.percentual as number),
+        data: (notaAnteriorData.concluido_em as string)?.slice(0, 10) ?? '',
+      }
+    : undefined
 
   return (
     <CrivoExecucaoClient
       executionId={id}
-      unitId={execucao.unit_id ?? ''}
+      localId={execucao.local_id ?? ''}
       templateNome={template.nome}
       items={items}
       existingRespostas={(respostas ?? []).map(r => ({
@@ -71,6 +102,7 @@ export default async function CrivoExecucaoPage({
         nao_aplicavel: r.nao_aplicavel,
         foto_url: r.foto_url,
       }))}
+      notaAnterior={notaAnterior}
     />
   )
 }

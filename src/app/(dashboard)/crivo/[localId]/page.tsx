@@ -9,6 +9,8 @@ const CATEGORIA_LABEL: Record<string, string> = {
   documentacao: 'Documentação',
   operacional: 'Operacional',
   estrutural: 'Estrutural',
+  inspecao_higiene: 'Inspeção e Higiene',
+  manutencao: 'Manutenção',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -27,6 +29,12 @@ function fmtData(d: string): string {
   return new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-BR', {
     weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
   })
+}
+
+function corPct(pct: number): string {
+  if (pct >= 75) return 'text-fresh-bright'
+  if (pct >= 50) return 'text-warn-bright'
+  return 'text-alert-bright'
 }
 
 type Execucao = {
@@ -51,28 +59,27 @@ function agruparPorVisita(execucoes: Execucao[]): Map<string, Execucao[]> {
   return map
 }
 
-export default async function CrivoUnitPage({
+export default async function CrivoLocalPage({
   params,
 }: {
-  params: Promise<{ unitId: string }>
+  params: Promise<{ localId: string }>
 }) {
   const session = await getMiseSession()
   if (!session) redirect('/login')
   if (session.role !== 'admin') redirect('/')
 
-  const { unitId } = await params
+  const { localId } = await params
   const supabase = createServiceClient()
 
-  const [{ data: unit }, { data: templates }] = await Promise.all([
-    supabase.from('units').select('id, name').eq('id', unitId).single(),
+  const [{ data: local }, { data: templates }] = await Promise.all([
+    supabase.schema('mise').from('crivo_locais').select('id, nome, unit_id').eq('id', localId).single(),
     supabase.schema('mise').from('checklist_templates')
       .select('id, categoria')
       .eq('modulo', 'CRIVO')
-      .eq('ativo', true)
-      .or(`unit_id.eq.${unitId},unit_id.is.null`),
+      .eq('ativo', true),
   ])
 
-  if (!unit) notFound()
+  if (!local) notFound()
 
   const templateIds = (templates ?? []).map(t => t.id)
   const catMap = new Map((templates ?? []).map(t => [t.id, t.categoria as string | null]))
@@ -80,9 +87,9 @@ export default async function CrivoUnitPage({
   const { data: execucoesRaw } = templateIds.length
     ? await supabase.schema('mise').from('checklist_executions')
         .select('id, template_id, status, percentual, agendado_para, iniciado_em')
-        .eq('unit_id', unitId)
-        .in('template_id', templateIds)
-        .order('agendado_para', { ascending: false })
+        .eq('local_id', localId)
+        .order('agendado_para', { ascending: false, nullsFirst: false })
+        .order('iniciado_em', { ascending: false, nullsFirst: false })
     : { data: [] }
 
   const execucoes: Execucao[] = (execucoesRaw ?? []).map(ex => ({
@@ -99,12 +106,12 @@ export default async function CrivoUnitPage({
         <Link href="/crivo" className="flex items-center gap-1 text-sm text-ink-subtle hover:text-ink-muted mb-3 w-fit">
           <ArrowLeft className="h-3.5 w-3.5" /> CRIVO
         </Link>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-xl font-bold text-ink">{unit.name}</h1>
+            <h1 className="text-xl font-bold text-ink">{local.nome}</h1>
             <p className="text-sm text-ink-muted">Histórico de visitas</p>
           </div>
-          <AgendarVisita unitId={unitId} />
+          <AgendarVisita localId={localId} />
         </div>
       </div>
 
@@ -118,7 +125,6 @@ export default async function CrivoUnitPage({
           {datasOrdenadas.map(data => {
             const exs = visitasPorData.get(data)!
             const todasConcluidas = exs.every(e => e.status === 'concluido')
-            const algumaConcluida = exs.some(e => e.status === 'concluido')
             const scoreMedio = todasConcluidas && exs.every(e => e.percentual != null)
               ? exs.reduce((s, e) => s + (e.percentual ?? 0), 0) / exs.length
               : null
@@ -128,7 +134,7 @@ export default async function CrivoUnitPage({
                 <div className="flex items-center justify-between px-4 py-3 border-b border-edge/60">
                   <span className="text-sm font-semibold text-ink capitalize">{fmtData(data)}</span>
                   {scoreMedio != null && (
-                    <span className={`text-sm font-bold ${scoreMedio >= 80 ? 'text-fresh-bright' : scoreMedio >= 60 ? 'text-warn-bright' : 'text-alert-bright'}`}>
+                    <span className={`text-sm font-bold ${corPct(scoreMedio)}`}>
                       {scoreMedio.toFixed(0)}% geral
                     </span>
                   )}
@@ -137,14 +143,16 @@ export default async function CrivoUnitPage({
                   {exs.map(ex => (
                     <div key={ex.id} className="flex items-center justify-between px-4 py-3 gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-ink">{CATEGORIA_LABEL[ex.categoria ?? ''] ?? ex.categoria ?? 'Auditoria'}</p>
+                        <p className="text-sm text-ink">
+                          {CATEGORIA_LABEL[ex.categoria ?? ''] ?? ex.categoria ?? 'Auditoria'}
+                        </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_COR[ex.status] ?? 'bg-edge/40 text-ink-muted'}`}>
                             {STATUS_LABEL[ex.status] ?? ex.status}
                           </span>
                           {ex.status === 'concluido' && ex.percentual != null && (
-                            <span className={`text-xs font-semibold ${ex.percentual >= 80 ? 'text-fresh-bright' : ex.percentual >= 60 ? 'text-warn-bright' : 'text-alert-bright'}`}>
-                              {ex.percentual.toFixed(0)}%
+                            <span className={`text-xs font-semibold ${corPct(ex.percentual)}`}>
+                              {Number(ex.percentual).toFixed(0)}%
                             </span>
                           )}
                         </div>

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Loader2 } from 'lucide-react'
 
-export function AgendarVisita({ unitId }: { unitId: string }) {
+export function AgendarVisita({ localId }: { localId: string }) {
   const [aberto, setAberto] = useState(false)
   const [data, setData] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -19,7 +19,7 @@ export function AgendarVisita({ unitId }: { unitId: string }) {
       const res = await fetch('/api/crivo/visitas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ unit_id: unitId, agendado_para: `${data}T12:00:00Z` }),
+        body: JSON.stringify({ local_id: localId, agendado_para: `${data}T12:00:00Z` }),
       })
       const json = await res.json()
       if (!res.ok) { setErro(json.error ?? 'Erro ao agendar.'); return }
@@ -44,9 +44,9 @@ export function AgendarVisita({ unitId }: { unitId: string }) {
   }
 
   return (
-    <div className="rounded-xl border border-edge bg-surface p-4 space-y-3">
+    <div className="rounded-xl border border-edge bg-surface p-4 space-y-3 w-full sm:w-auto">
       <p className="text-sm font-semibold text-ink">Agendar nova visita</p>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <input
           type="date"
           value={data}

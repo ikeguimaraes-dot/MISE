@@ -1,20 +1,25 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Loader2, Camera, X, Info } from 'lucide-react'
+import {
+  ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw,
+  Loader2, Camera, X, Info, ImageOff,
+} from 'lucide-react'
 
 type Item = {
   id: string
   ordem: number
   titulo: string
   descricao: string | null
-  tipo_resposta: 'sim_nao' | 'data' | 'selecao' | 'checklist_multiplo' | 'assinatura' | 'texto'
+  tipo_resposta: 'sim_nao' | 'data' | 'selecao' | 'checklist_multiplo' | 'assinatura' | 'texto' | 'texto_livre'
   opcoes: unknown
   peso: number
   requer_comentario: string
   criterio_regramento: string | null
   requer_foto: string
+  topico_ordem: number | null
+  topico_nome: string | null
 }
 
 type StoredResponse = {
@@ -32,6 +37,14 @@ type LocalAnswer = {
   foto_url?: string | null
 }
 
+type ResultState = {
+  percentual: number
+  pontuacao_total: number
+  pontuacao_obtida: number
+  classificacao?: string
+  topicos?: { topico_ordem: number; topico_nome: string; percentual: number }[]
+}
+
 function getOpcoes(item: Item): string[] {
   if (!item.opcoes) return []
   if (Array.isArray(item.opcoes)) return item.opcoes as string[]
@@ -39,6 +52,8 @@ function getOpcoes(item: Item): string[] {
 }
 
 function isAnswered(answer: LocalAnswer | undefined, item: Item): boolean {
+  // texto_livre sempre conta como respondido — campo catch-all
+  if (item.tipo_resposta === 'texto_livre') return true
   if (!answer) return false
   if (answer.nao_aplicavel) return true
   const r = answer.resposta
@@ -54,18 +69,51 @@ function isAnswered(answer: LocalAnswer | undefined, item: Item): boolean {
   }
 }
 
+function classificarCor(pct: number): string {
+  if (pct < 50) return 'text-alert-bright'
+  if (pct < 75) return 'text-warn-bright'
+  return 'text-fresh-bright'
+}
+
+function classificarBg(pct: number): string {
+  if (pct < 50) return 'bg-alert/15'
+  if (pct < 60) return 'bg-orange-400/15'
+  if (pct < 75) return 'bg-warn/20'
+  if (pct < 90) return 'bg-fresh/15'
+  return 'bg-fresh/30'
+}
+
+function fmtData(d: string): string {
+  return new Date(`${d}T12:00:00Z`).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
+  })
+}
+
+async function getGeo(): Promise<{ lat: number; lng: number } | null> {
+  if (!('geolocation' in navigator)) return null
+  return new Promise(resolve => {
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 5000, maximumAge: 30000 }
+    )
+  })
+}
+
 export function CrivoExecucaoClient({
   executionId,
-  unitId,
+  localId,
   templateNome,
   items,
   existingRespostas,
+  notaAnterior,
 }: {
   executionId: string
-  unitId: string
+  localId: string
   templateNome: string
   items: Item[]
   existingRespostas: StoredResponse[]
+  notaAnterior?: { percentual: number; classificacao: string; data: string }
 }) {
   const router = useRouter()
 
@@ -88,12 +136,24 @@ export function CrivoExecucaoClient({
   const photoTargetItemId = useRef<string | null>(null)
   const [showSummary, setShowSummary] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState<{ percentual: number; pontuacao_total: number; pontuacao_obtida: number } | null>(null)
+  const [result, setResult] = useState<ResultState | null>(null)
   const [needsComment, setNeedsComment] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const isDrawing = useRef(false)
   const lastPos = useRef<{ x: number; y: number } | null>(null)
+
+  // Capturar geo_inicio ao abrir
+  useEffect(() => {
+    getGeo().then(geo => {
+      if (!geo) return
+      fetch(`/api/crivo/execucoes/${executionId}/geo-inicio`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat: geo.lat, lng: geo.lng }),
+      }).catch(() => {})
+    })
+  }, [executionId])
 
   const currentItem = items[currentIndex]
   const currentAnswer = currentItem ? (answers[currentItem.id] ?? { resposta: null, comentario: '', nao_aplicavel: false }) : null
@@ -241,7 +301,15 @@ export function CrivoExecucaoClient({
   async function handleConcluir() {
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/checklists/execucoes/${executionId}/concluir`, { method: 'POST' })
+      const geo = await getGeo()
+      const res = await fetch(`/api/checklists/execucoes/${executionId}/concluir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          geo_fim_lat: geo?.lat ?? null,
+          geo_fim_lng: geo?.lng ?? null,
+        }),
+      })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setResult(json)
@@ -251,28 +319,62 @@ export function CrivoExecucaoClient({
     }
   }
 
+  // ── Tela de resultado ──
   if (result) {
     const pct = result.percentual
-    const color = pct >= 80 ? '#34d399' : pct >= 60 ? '#facc15' : '#f87171'
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-base px-6 text-center gap-6">
-        <CheckCircle2 className="h-16 w-16 text-fresh-bright" />
-        <h2 className="text-2xl font-bold text-ink">Auditoria concluída!</h2>
-        <div style={{ color }} className="text-6xl font-black">{pct.toFixed(0)}%</div>
-        <p className="text-ink-muted">{Number(result.pontuacao_obtida).toFixed(1)} de {result.pontuacao_total} pontos</p>
+      <div className="flex flex-col min-h-screen bg-base px-4 py-6 gap-6 max-w-lg mx-auto">
+        <div className="flex flex-col items-center gap-3 pt-4">
+          <CheckCircle2 className="h-12 w-12 text-fresh-bright" />
+          <h2 className="text-2xl font-bold text-ink">Auditoria concluída!</h2>
+          <div className={`text-5xl font-black ${classificarCor(pct)}`}>{pct.toFixed(2)}%</div>
+          {result.classificacao && (
+            <span className={`rounded-full px-4 py-1 text-sm font-bold ${classificarBg(pct)} ${classificarCor(pct)}`}>
+              {result.classificacao}
+            </span>
+          )}
+          <p className="text-xs text-ink-muted">{templateNome}</p>
+        </div>
+
+        {(result.topicos ?? []).length > 0 && (
+          <div className="rounded-xl border border-edge bg-surface overflow-hidden">
+            <p className="px-4 py-2.5 text-xs font-semibold text-ink-subtle border-b border-edge/60 uppercase tracking-wider">
+              Resumo por tópico
+            </p>
+            <div className="divide-y divide-edge/40">
+              {(result.topicos ?? []).map(t => (
+                <div key={t.topico_ordem} className="flex items-center justify-between px-4 py-2.5 gap-3">
+                  <p className="text-xs text-ink flex-1 min-w-0 leading-snug">{t.topico_nome}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="h-1.5 w-16 bg-surface-raised rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${t.percentual >= 75 ? 'bg-fresh' : t.percentual >= 50 ? 'bg-warn' : 'bg-alert'}`}
+                        style={{ width: `${t.percentual}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-bold w-9 text-right tabular-nums ${classificarCor(t.percentual)}`}>
+                      {t.percentual.toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
-          onClick={() => router.push(unitId ? `/crivo/${unitId}` : '/crivo')}
-          className="w-full max-w-xs rounded-lg bg-ember py-3 font-bold text-white hover:opacity-90"
+          onClick={() => router.push(localId ? `/crivo/${localId}` : '/crivo')}
+          className="w-full rounded-lg bg-ember py-3 font-bold text-white hover:opacity-90"
         >
-          Voltar à unidade
+          Voltar ao local
         </button>
       </div>
     )
   }
 
+  // ── Tela de resumo ──
   if (showSummary) {
     const unanswered = items.filter(it => !isAnswered(answers[it.id], it))
-    // Block concluir if any item requires foto and doesn't have one
     const semFoto = items.filter(it => {
       if (it.requer_foto !== 'sim') return false
       if (answers[it.id]?.nao_aplicavel) return false
@@ -292,7 +394,9 @@ export function CrivoExecucaoClient({
 
         {unanswered.length > 0 && (
           <div className="rounded-lg border border-warn/30 bg-warn/5 p-4">
-            <p className="text-sm font-semibold text-warn-bright mb-2">{unanswered.length} {unanswered.length === 1 ? 'item sem resposta' : 'itens sem resposta'}:</p>
+            <p className="text-sm font-semibold text-warn-bright mb-2">
+              {unanswered.length} {unanswered.length === 1 ? 'item sem resposta' : 'itens sem resposta'}:
+            </p>
             <ul className="space-y-1">
               {unanswered.map(it => (
                 <li key={it.id} className="text-xs text-ink-muted flex items-center gap-2">
@@ -303,13 +407,18 @@ export function CrivoExecucaoClient({
           </div>
         )}
 
+        {/* SEM FOTO — aviso visual, não bloqueia */}
         {semFoto.length > 0 && (
-          <div className="rounded-lg border border-alert/30 bg-alert/5 p-4">
-            <p className="text-sm font-semibold text-alert-bright mb-2">{semFoto.length} {semFoto.length === 1 ? 'item exige foto' : 'itens exigem foto'} — adicione antes de concluir:</p>
-            <ul className="space-y-1">
+          <div className="rounded-lg border border-edge bg-surface p-4">
+            <p className="text-sm font-semibold text-ink-muted mb-2 flex items-center gap-1.5">
+              <ImageOff className="h-3.5 w-3.5" />
+              {semFoto.length} {semFoto.length === 1 ? 'item' : 'itens'} sem evidência fotográfica:
+            </p>
+            <ul className="space-y-1.5">
               {semFoto.map(it => (
                 <li key={it.id} className="text-xs text-ink-muted flex items-center gap-2">
-                  <Camera className="h-3 w-3 text-alert-bright shrink-0" /> {it.titulo}
+                  <span className="inline-block rounded bg-surface-raised px-1.5 py-0.5 text-[10px] font-medium text-ink-subtle">SEM FOTO</span>
+                  {it.titulo}
                 </li>
               ))}
             </ul>
@@ -319,10 +428,10 @@ export function CrivoExecucaoClient({
         <div className="flex flex-col gap-3 mt-auto">
           <button
             onClick={handleConcluir}
-            disabled={submitting || semFoto.length > 0}
+            disabled={submitting}
             className="w-full rounded-lg bg-ember py-4 font-bold text-white hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</> : 'Concluir e calcular score'}
+            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Calculando score…</> : 'Concluir e calcular score'}
           </button>
           <button
             onClick={() => { setShowSummary(false); setCurrentIndex(items.length - 1) }}
@@ -335,14 +444,27 @@ export function CrivoExecucaoClient({
     )
   }
 
+  // ── Tela de execução ──
   if (!currentItem) return <div className="p-6 text-ink-muted">Nenhum item.</div>
 
   const opcoes = getOpcoes(currentItem)
   const answered = isAnswered(currentAnswer ?? undefined, currentItem)
+  const showSemFoto = currentItem.requer_foto === 'sim'
+    && currentAnswer?.resposta?.valor === 'nao'
+    && !currentAnswer?.foto_url
 
   return (
     <div className="flex flex-col min-h-screen bg-base">
+      {/* Barra de progresso */}
       <div className="sticky top-0 z-10 bg-base border-b border-edge px-4 py-3">
+        {notaAnterior && (
+          <div className="mb-2 rounded-lg bg-surface-raised px-3 py-1.5 flex items-center justify-between gap-3">
+            <span className="text-[10px] text-ink-faint">Nota anterior</span>
+            <span className="text-xs font-semibold text-ink-muted">
+              {notaAnterior.percentual.toFixed(2)}% · {notaAnterior.classificacao} · {fmtData(notaAnterior.data)}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-ink-subtle truncate max-w-[200px]">{templateNome}</span>
           <span className="text-xs text-ink-muted font-mono">{currentIndex + 1}/{items.length}</span>
@@ -352,13 +474,22 @@ export function CrivoExecucaoClient({
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-6 flex flex-col gap-5 max-w-lg mx-auto w-full">
+      {/* Badge de tópico */}
+      {currentItem.topico_nome && (
+        <div className="px-4 pt-4">
+          <span className="inline-block rounded bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-ink-subtle uppercase tracking-wide">
+            {currentItem.topico_nome}
+          </span>
+        </div>
+      )}
+
+      <div className="flex-1 px-4 py-4 flex flex-col gap-5 max-w-lg mx-auto w-full">
         <div>
           <p className="text-xs font-semibold text-ink-subtle uppercase tracking-wider mb-1">Item {currentItem.ordem}</p>
           <h2 className="text-xl font-bold text-ink leading-snug">{currentItem.titulo}</h2>
           {currentItem.descricao && <p className="mt-1.5 text-sm text-ink-muted">{currentItem.descricao}</p>}
 
-          {/* CRIVO: critério de regramento */}
+          {/* Critério de regramento */}
           {currentItem.criterio_regramento && (
             <div className="mt-3 flex items-start gap-2 rounded-lg border border-edge bg-surface-raised px-3 py-2.5">
               <Info className="h-3.5 w-3.5 text-ink-faint shrink-0 mt-0.5" />
@@ -407,6 +538,14 @@ export function CrivoExecucaoClient({
                     <XCircle className="h-8 w-8" />
                     Não conforme
                   </button>
+                </div>
+              )}
+
+              {/* SEM FOTO — placeholder visual, não bloqueia */}
+              {showSemFoto && (
+                <div className="flex items-center gap-2 rounded-lg border border-edge bg-surface-raised px-3 py-2">
+                  <ImageOff className="h-3.5 w-3.5 text-ink-muted shrink-0" />
+                  <span className="text-xs font-medium text-ink-muted">SEM FOTO — adicione evidência abaixo</span>
                 </div>
               )}
 
@@ -486,18 +625,23 @@ export function CrivoExecucaoClient({
                 />
               )}
 
-              {currentItem.tipo_resposta === 'texto' && (
-                <textarea
-                  className="w-full rounded-lg bg-surface border border-edge-strong px-4 py-3 text-ink placeholder-ink-faint resize-none focus:outline-none focus:border-ember"
-                  rows={5}
-                  placeholder="Digite sua resposta..."
-                  value={(currentAnswer?.resposta?.texto as string) ?? ''}
-                  onChange={async e => {
-                    const answer: LocalAnswer = { resposta: { texto: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
-                    updateAnswer(currentItem.id, answer)
-                    await saveToServer(currentItem.id, answer)
-                  }}
-                />
+              {(currentItem.tipo_resposta === 'texto' || currentItem.tipo_resposta === 'texto_livre') && (
+                <div>
+                  {currentItem.tipo_resposta === 'texto_livre' && (
+                    <p className="text-xs text-ink-faint mb-1">Campo livre — opcional</p>
+                  )}
+                  <textarea
+                    className="w-full rounded-lg bg-surface border border-edge-strong px-4 py-3 text-ink placeholder-ink-faint resize-none focus:outline-none focus:border-ember"
+                    rows={5}
+                    placeholder={currentItem.tipo_resposta === 'texto_livre' ? 'Demais não conformidades observadas…' : 'Digite sua resposta…'}
+                    value={(currentAnswer?.resposta?.texto as string) ?? ''}
+                    onChange={async e => {
+                      const answer: LocalAnswer = { resposta: { texto: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
+                      updateAnswer(currentItem.id, answer)
+                      await saveToServer(currentItem.id, answer)
+                    }}
+                  />
+                </div>
               )}
 
               {currentItem.tipo_resposta === 'assinatura' && (
@@ -530,7 +674,7 @@ export function CrivoExecucaoClient({
                 </div>
               )}
 
-              {currentItem.requer_comentario === 'opcional' && (
+              {currentItem.requer_comentario === 'opcional' && !needsComment && (
                 <div>
                   <label className="block text-xs text-ink-subtle mb-1">Comentário (opcional)</label>
                   <textarea
@@ -543,7 +687,7 @@ export function CrivoExecucaoClient({
                 </div>
               )}
 
-              {/* Foto — obrigatória se requer_foto === 'sim' */}
+              {/* Foto */}
               <div className="flex items-center gap-3 pt-1">
                 {currentAnswer?.foto_url ? (
                   <div className="relative shrink-0">
@@ -559,14 +703,10 @@ export function CrivoExecucaoClient({
                   <button
                     onClick={() => { photoTargetItemId.current = currentItem.id; photoInputRef.current?.click() }}
                     disabled={uploadingPhoto === currentItem.id}
-                    className={`flex items-center gap-1.5 text-xs border rounded-lg px-3 py-2 transition-colors disabled:opacity-40 ${
-                      currentItem.requer_foto === 'sim'
-                        ? 'border-alert/50 text-alert-bright hover:border-alert'
-                        : 'border-edge text-ink-subtle hover:text-ember hover:border-ember'
-                    }`}
+                    className="flex items-center gap-1.5 text-xs border border-edge rounded-lg px-3 py-2 text-ink-subtle hover:text-ember hover:border-ember transition-colors disabled:opacity-40"
                   >
                     {uploadingPhoto === currentItem.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-                    {currentItem.requer_foto === 'sim' ? 'Foto obrigatória' : 'Foto'}
+                    Foto{currentItem.requer_foto === 'sim' ? ' (recomendada)' : ''}
                   </button>
                 )}
               </div>

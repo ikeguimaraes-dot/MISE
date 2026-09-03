@@ -8,14 +8,26 @@ export async function POST(request: Request) {
   if (session.role !== 'admin') return NextResponse.json({ error: 'Acesso restrito.' }, { status: 403 })
 
   const body = await request.json()
-  const { unit_id, agendado_para } = body
+  const { local_id, agendado_para } = body
 
-  if (!unit_id) return NextResponse.json({ error: 'unit_id obrigatório.' }, { status: 400 })
+  if (!local_id) return NextResponse.json({ error: 'local_id obrigatório.' }, { status: 400 })
   if (!agendado_para || !/^\d{4}-\d{2}-\d{2}(T\S+)?$/.test(String(agendado_para))) {
     return NextResponse.json({ error: 'agendado_para obrigatório (ISO date).' }, { status: 400 })
   }
 
   const supabase = createServiceClient()
+
+  const { data: local } = await supabase
+    .schema('mise')
+    .from('crivo_locais')
+    .select('id, unit_id')
+    .eq('id', local_id)
+    .eq('ativo', true)
+    .single()
+
+  if (!local) {
+    return NextResponse.json({ error: 'Local não encontrado.' }, { status: 404 })
+  }
 
   const { data: templates } = await supabase
     .schema('mise')
@@ -23,7 +35,7 @@ export async function POST(request: Request) {
     .select('id, categoria')
     .eq('modulo', 'CRIVO')
     .eq('ativo', true)
-    .or(`unit_id.eq.${unit_id},unit_id.is.null`)
+    .or(`unit_id.eq.${local.unit_id},unit_id.is.null`)
     .order('created_at', { ascending: false })
 
   if (!templates || templates.length === 0) {
@@ -46,7 +58,8 @@ export async function POST(request: Request) {
 
   const rows = toCreate.map(t => ({
     template_id: t.id,
-    unit_id,
+    unit_id: local.unit_id,
+    local_id,
     status: 'agendado',
     agendado_para,
     agendado_por: session.employeeId,
