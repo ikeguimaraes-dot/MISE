@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
   Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen,
-  ChevronDown, Menu, X, Upload, UserCheck, ShieldCheck,
+  ChevronDown, Menu, X, Upload, UserCheck, ShieldCheck, Bell,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -284,6 +284,7 @@ function MobileDrawer({
             <>
               <DrawerSection label="Auditoria" />
               <DrawerLink href="/crivo" label="CRIVO" icon={ShieldCheck} pathname={pathname} onClose={onClose} />
+              <DrawerLink href="/alertas" label="Alertas" icon={Bell} pathname={pathname} onClose={onClose} />
             </>
           )}
         </nav>
@@ -366,7 +367,10 @@ export function TopNav({
             )}
 
             {showCrivo && (
-              <NavLink href="/crivo" label="CRIVO" icon={ShieldCheck} pathname={pathname} />
+              <>
+                <NavLink href="/crivo" label="CRIVO" icon={ShieldCheck} pathname={pathname} />
+                <NavLink href="/alertas" label="Alertas" icon={Bell} pathname={pathname} />
+              </>
             )}
           </nav>
 
