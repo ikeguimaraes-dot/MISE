@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { nome, tipo, descricao, unit_id, itens } = await request.json()
+  const { nome, tipo, descricao, unit_id, itens, modulo, categoria } = await request.json()
   if (!nome?.trim()) {
     return NextResponse.json({ error: 'nome é obrigatório' }, { status: 400 })
   }
@@ -24,7 +24,15 @@ export async function POST(request: Request) {
   const { data: template, error: templateError } = await supabase
     .schema('mise')
     .from('checklist_templates')
-    .insert({ nome: nome.trim(), tipo: tipo ?? null, descricao: descricao ?? null, unit_id: unit_id ?? null, ativo: true })
+    .insert({
+      nome: nome.trim(),
+      tipo: tipo ?? null,
+      descricao: descricao ?? null,
+      unit_id: unit_id ?? null,
+      ativo: true,
+      modulo: modulo ?? 'RITMO',
+      categoria: categoria ?? null,
+    })
     .select('id')
     .single()
   if (templateError) return NextResponse.json({ error: templateError.message }, { status: 400 })
@@ -38,6 +46,8 @@ export async function POST(request: Request) {
       opcoes: item.opcoes ?? null,
       peso: typeof item.peso === 'number' ? item.peso : 1,
       ordem: typeof item.ordem === 'number' ? item.ordem : i + 1,
+      criterio_regramento: item.criterio_regramento ? String(item.criterio_regramento).trim() : null,
+      requer_foto: item.requer_foto ?? 'nao',
     }))
     const { error: itemsError } = await supabase
       .schema('mise')

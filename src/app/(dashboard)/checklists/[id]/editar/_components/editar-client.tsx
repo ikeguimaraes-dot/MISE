@@ -28,6 +28,8 @@ type Item = {
   tipo_resposta: string
   opcoes: string[] | null
   ordem: number
+  criterio_regramento: string | null
+  requer_foto: string | null
 }
 
 type EditState = {
@@ -35,6 +37,8 @@ type EditState = {
   descricao: string
   tipo_resposta: string
   opcoes_str: string
+  criterio_regramento: string
+  requer_foto: string
 }
 
 type Props = {
@@ -45,7 +49,7 @@ type Props = {
 export function EditarClient({ templateId, initialItems }: Props) {
   const [items, setItems] = useState<Item[]>(initialItems)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editState, setEditState] = useState<EditState>({ titulo: '', descricao: '', tipo_resposta: 'sim_nao', opcoes_str: '' })
+  const [editState, setEditState] = useState<EditState>({ titulo: '', descricao: '', tipo_resposta: 'sim_nao', opcoes_str: '', criterio_regramento: '', requer_foto: 'nao' })
   const [saving, setSaving] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
@@ -53,6 +57,8 @@ export function EditarClient({ templateId, initialItems }: Props) {
   const [descricao, setDescricao] = useState('')
   const [tipoResposta, setTipoResposta] = useState('sim_nao')
   const [opcoesStr, setOpcoesStr] = useState('')
+  const [criterioRegramentoAdd, setCriterioRegramentoAdd] = useState('')
+  const [requerFotoAdd, setRequerFotoAdd] = useState('nao')
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState('')
 
@@ -66,6 +72,8 @@ export function EditarClient({ templateId, initialItems }: Props) {
       descricao: item.descricao ?? '',
       tipo_resposta: item.tipo_resposta,
       opcoes_str: item.opcoes?.join(', ') ?? '',
+      criterio_regramento: item.criterio_regramento ?? '',
+      requer_foto: item.requer_foto ?? 'nao',
     })
   }
 
@@ -89,6 +97,8 @@ export function EditarClient({ templateId, initialItems }: Props) {
           descricao: editState.descricao.trim() || null,
           tipo_resposta: editState.tipo_resposta,
           opcoes: opcoes && opcoes.length > 0 ? opcoes : null,
+          criterio_regramento: editState.criterio_regramento.trim() || null,
+          requer_foto: editState.requer_foto,
         }),
       })
       const data = await res.json()
@@ -141,6 +151,8 @@ export function EditarClient({ templateId, initialItems }: Props) {
           descricao: descricao.trim() || null,
           tipo_resposta: tipoResposta,
           opcoes: opcoes && opcoes.length > 0 ? opcoes : null,
+          criterio_regramento: criterioRegramentoAdd.trim() || null,
+          requer_foto: requerFotoAdd,
         }),
       })
       const data = await res.json()
@@ -153,6 +165,8 @@ export function EditarClient({ templateId, initialItems }: Props) {
       setDescricao('')
       setOpcoesStr('')
       setTipoResposta('sim_nao')
+      setCriterioRegramentoAdd('')
+      setRequerFotoAdd('nao')
     } catch {
       setAddError('Erro ao adicionar item.')
     } finally {
@@ -222,6 +236,29 @@ export function EditarClient({ templateId, initialItems }: Props) {
                           />
                         </div>
                       )}
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-ink-muted mb-1">Critério / Regramento</label>
+                        <textarea
+                          rows={2}
+                          value={editState.criterio_regramento}
+                          onChange={e => setEditState(s => ({ ...s, criterio_regramento: e.target.value }))}
+                          placeholder="O que a norma exige (texto de apoio para o auditor)"
+                          className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none resize-none"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-ink-muted">Exige foto?</span>
+                        {(['nao', 'sim'] as const).map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setEditState(s => ({ ...s, requer_foto: v }))}
+                            className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${editState.requer_foto === v ? 'bg-ember text-white' : 'border border-edge text-ink-muted hover:text-ink'}`}
+                          >
+                            {v === 'sim' ? 'Sim' : 'Não'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -341,6 +378,29 @@ export function EditarClient({ templateId, initialItems }: Props) {
                 />
               </div>
             )}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-ink-muted mb-1">Critério / Regramento</label>
+              <textarea
+                rows={2}
+                value={criterioRegramentoAdd}
+                onChange={e => setCriterioRegramentoAdd(e.target.value)}
+                placeholder="O que a norma exige (texto de apoio para o auditor)"
+                className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none resize-none"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-ink-muted">Exige foto?</span>
+              {(['nao', 'sim'] as const).map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setRequerFotoAdd(v)}
+                  className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${requerFotoAdd === v ? 'bg-ember text-white' : 'border border-edge text-ink-muted hover:text-ink'}`}
+                >
+                  {v === 'sim' ? 'Sim' : 'Não'}
+                </button>
+              ))}
+            </div>
           </div>
 
           {addError && <p className="text-sm text-alert-bright">{addError}</p>}

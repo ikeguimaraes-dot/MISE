@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import {
   LayoutDashboard, Tag, Clock, PackageCheck, ChefHat, ClipboardList, LogOut,
   Package, FolderTree, Printer, Users, KeyRound, FileText, ClipboardCheck, BookOpen,
-  ChevronDown, Menu, X, Upload, UserCheck,
+  ChevronDown, Menu, X, Upload, UserCheck, ShieldCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -194,6 +194,7 @@ function MobileDrawer({
   pathname,
   showAdminSections,
   showChecklists,
+  showCrivo,
   onSignOut,
 }: {
   open: boolean
@@ -201,6 +202,7 @@ function MobileDrawer({
   pathname: string
   showAdminSections: boolean
   showChecklists: boolean
+  showCrivo: boolean
   onSignOut: () => void
 }) {
   useEffect(() => {
@@ -277,6 +279,13 @@ function MobileDrawer({
               ))}
             </>
           )}
+
+          {showAdminSections && showCrivo && (
+            <>
+              <DrawerSection label="Auditoria" />
+              <DrawerLink href="/crivo" label="CRIVO" icon={ShieldCheck} pathname={pathname} onClose={onClose} />
+            </>
+          )}
         </nav>
 
         {/* Sair fixo no rodapé */}
@@ -323,6 +332,7 @@ export function TopNav({
 
   const showAdminSections = role !== 'cozinheiro'
   const showChecklists = role !== 'cozinheiro' || hasChecklists
+  const showCrivo = role === 'admin'
 
   return (
     <>
@@ -353,6 +363,10 @@ export function TopNav({
                 <NavDropdown label="Cadastros" icon={Package} items={cadastrosItems} pathname={pathname} />
                 <NavDropdown label="Configurações" icon={Printer} items={configuracoesItems} pathname={pathname} />
               </>
+            )}
+
+            {showCrivo && (
+              <NavLink href="/crivo" label="CRIVO" icon={ShieldCheck} pathname={pathname} />
             )}
           </nav>
 
@@ -388,6 +402,7 @@ export function TopNav({
         pathname={pathname}
         showAdminSections={showAdminSections}
         showChecklists={showChecklists}
+        showCrivo={showCrivo}
         onSignOut={handleSignOut}
       />
     </>

@@ -40,6 +40,8 @@ export async function POST(
       ordem: nextOrdem,
       peso: body.peso ?? 1,
       ativo: true,
+      criterio_regramento: body.criterio_regramento?.trim() || null,
+      requer_foto: body.requer_foto ?? 'nao',
     })
     .select('*')
     .single()

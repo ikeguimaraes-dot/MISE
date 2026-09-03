@@ -12,7 +12,7 @@ export default async function ChecklistsPage() {
     { data: lastExecs, error: errExecs },
     { data: units, error: errUnits },
   ] = await Promise.all([
-    supabase.schema('mise').from('checklist_templates').select('*').eq('ativo', true).order('nome'),
+    supabase.schema('mise').from('checklist_templates').select('*').eq('ativo', true).eq('modulo', 'RITMO').order('nome'),
     supabase.schema('mise').from('checklist_template_items').select('template_id', { count: 'exact' }),
     supabase.schema('mise').from('checklist_executions').select('template_id, percentual, concluido_em').eq('status', 'concluido').order('concluido_em', { ascending: false }),
     supabase.from('units').select('id, name').eq('active', true),

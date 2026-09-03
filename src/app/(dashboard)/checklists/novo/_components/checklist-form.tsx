@@ -38,6 +38,7 @@ type HeaderState = {
   tipo: string
   unit_id: string
   descricao: string
+  categoria: string
 }
 
 type FormItem = {
@@ -284,7 +285,13 @@ function ItemPreview({ item, index }: { item: FormItem; index: number }) {
 
 // ─── ChecklistForm ────────────────────────────────────────────────────────────
 
-export function ChecklistForm({ units }: { units: Unit[] }) {
+const CATEGORIAS_CRIVO = [
+  { value: 'documentacao', label: 'Documentação' },
+  { value: 'operacional', label: 'Operacional' },
+  { value: 'estrutural', label: 'Estrutural' },
+]
+
+export function ChecklistForm({ units, modulo = 'RITMO' }: { units: Unit[]; modulo?: string }) {
   const router = useRouter()
   const idCounter = useRef(0)
   const newId = () => {
@@ -292,12 +299,14 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
     return `item-${idCounter.current}`
   }
 
+  const isCrivo = modulo === 'CRIVO'
   const [step, setStep] = useState<1 | 2>(1)
   const [header, setHeader] = useState<HeaderState>({
     nome: '',
     tipo: 'abertura',
     unit_id: '',
     descricao: '',
+    categoria: 'documentacao',
   })
   const [items, setItems] = useState<FormItem[]>([
     { id: newId(), titulo: '', descricao: '', tipo_resposta: 'sim_nao', opcoes_str: '', peso: 1 },
@@ -351,6 +360,8 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
           tipo: header.tipo || null,
           descricao: header.descricao.trim() || null,
           unit_id: header.unit_id || null,
+          modulo,
+          categoria: isCrivo ? header.categoria : null,
           itens: validItems.map((item, index) => ({
             titulo: item.titulo.trim(),
             descricao: item.descricao.trim() || null,
@@ -367,7 +378,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao criar checklist')
-      router.push(`/checklists/${json.id}`)
+      router.push(isCrivo ? `/crivo/templates` : `/checklists/${json.id}`)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Erro desconhecido')
       setSubmitting(false)
@@ -398,8 +409,23 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          {isCrivo && (
             <div>
+              <label className="block text-xs font-medium text-ink-muted mb-1">Categoria *</label>
+              <select
+                value={header.categoria}
+                onChange={e => setHeader(s => ({ ...s, categoria: e.target.value }))}
+                className={INPUT_CLASS}
+              >
+                {CATEGORIAS_CRIVO.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {!isCrivo && <div>
               <label className="block text-xs font-medium text-ink-muted mb-1">Tipo</label>
               <select
                 value={header.tipo}
@@ -412,7 +438,7 @@ export function ChecklistForm({ units }: { units: Unit[] }) {
                   </option>
                 ))}
               </select>
-            </div>
+            </div>}
             <div>
               <label className="block text-xs font-medium text-ink-muted mb-1">Unidade</label>
               <select
