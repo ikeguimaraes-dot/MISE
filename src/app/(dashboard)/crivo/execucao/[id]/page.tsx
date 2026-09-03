@@ -50,7 +50,6 @@ export default async function CrivoExecucaoPage({
     supabase.schema('mise').from('checklist_template_items')
       .select('id, ordem, titulo, descricao, tipo_resposta, opcoes, peso, requer_comentario, criterio_regramento, requer_foto, topico_ordem, topico_nome')
       .eq('template_id', execucao.template_id)
-      .eq('ativo', true)
       .order('ordem'),
     supabase.schema('mise').from('checklist_responses')
       .select('item_id, resposta, comentario, nao_aplicavel, foto_url')

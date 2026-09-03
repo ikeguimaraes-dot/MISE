@@ -22,7 +22,6 @@ export async function POST(
     .from('checklist_template_items')
     .select('ordem')
     .eq('template_id', template_id)
-    .eq('ativo', true)
     .order('ordem', { ascending: false })
     .limit(1)
 
@@ -39,7 +38,6 @@ export async function POST(
       opcoes: body.opcoes ?? null,
       ordem: nextOrdem,
       peso: body.peso ?? 1,
-      ativo: true,
       criterio_regramento: body.criterio_regramento?.trim() || null,
       requer_foto: body.requer_foto ?? 'nao',
     })
