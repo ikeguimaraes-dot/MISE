@@ -4,12 +4,18 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { PERIODO_LABEL } from '@/app/api/relatorio-diario/_schema'
+import { BotaoExcluirDia } from './_components/botao-excluir-dia'
 
 function getStatusDot(status: string, dataStr: string): { cor: string; label: string } {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   if (status === 'enviado' || status === 'auditado') return { cor: 'bg-fresh', label: status === 'auditado' ? 'Auditado' : 'Enviado' }
   if (dataStr === hoje) return { cor: 'bg-warn', label: 'Em aberto' }
   return { cor: 'bg-alert', label: 'Não enviado' }
+}
+
+function fmtDataCurta(dataStr: string): string {
+  const d = new Date(`${dataStr}T12:00:00Z`)
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })
 }
 
 function fmtDia(dataStr: string): string {
@@ -197,41 +203,45 @@ export default async function RelatorioDiarioPage({
           })
 
           return (
-            <Link
-              key={r.id}
-              href={`/relatorio-diario/${r.data}?unit_id=${activeUnitId}`}
-              className="flex items-center gap-4 px-5 py-4 hover:bg-surface-raised/50 transition-colors"
-            >
-              <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cor}`} />
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-ink">{fmtDia(r.data)}</span>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {allChips.map(chip => {
-                    const enviado = chip.status === 'enviado'
-                    const na = chip.status === 'nao_se_aplica'
-                    const chipLabel = chip.periodo === 'eventos'
-                      ? `Evento ${chip.sequencia}`
-                      : (PERIODO_LABEL[chip.periodo] ?? chip.periodo)
-                    return (
-                      <span
-                        key={`${chip.periodo}-${chip.sequencia}`}
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                          enviado
-                            ? 'bg-fresh/15 text-fresh-bright'
-                            : na
-                            ? 'bg-edge/20 text-ink-faint/60'
-                            : 'bg-edge/40 text-ink-muted'
-                        }`}
-                      >
-                        {chipLabel}
-                      </span>
-                    )
-                  })}
+            <div key={r.id} className="flex items-center hover:bg-surface-raised/50 transition-colors">
+              <Link
+                href={`/relatorio-diario/${r.data}?unit_id=${activeUnitId}`}
+                className="flex flex-1 items-center gap-4 px-5 py-4"
+              >
+                <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cor}`} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-ink">{fmtDia(r.data)}</span>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {allChips.map(chip => {
+                      const enviado = chip.status === 'enviado'
+                      const na = chip.status === 'nao_se_aplica'
+                      const chipLabel = chip.periodo === 'eventos'
+                        ? `Evento ${chip.sequencia}`
+                        : (PERIODO_LABEL[chip.periodo] ?? chip.periodo)
+                      return (
+                        <span
+                          key={`${chip.periodo}-${chip.sequencia}`}
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                            enviado
+                              ? 'bg-fresh/15 text-fresh-bright'
+                              : na
+                              ? 'bg-edge/20 text-ink-faint/60'
+                              : 'bg-edge/40 text-ink-muted'
+                          }`}
+                        >
+                          {chipLabel}
+                        </span>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-              <span className="text-xs text-ink-muted shrink-0">{label}</span>
-              <ChevronRight className="h-4 w-4 text-ink-faint shrink-0" />
-            </Link>
+                <span className="text-xs text-ink-muted shrink-0">{label}</span>
+                <ChevronRight className="h-4 w-4 text-ink-faint shrink-0" />
+              </Link>
+              {session.role === 'admin' && (
+                <BotaoExcluirDia unitId={activeUnitId} data={r.data} label={fmtDataCurta(r.data)} />
+              )}
+            </div>
           )
         })}
       </div>
