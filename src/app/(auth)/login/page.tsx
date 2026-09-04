@@ -25,6 +25,10 @@ export default function LoginPage() {
       return
     }
 
+    // Limpa cookie PIN residual — se sobrar, o middleware ignora a sessão
+    // Supabase e o gestor cai num loop de login.
+    await fetch('/api/auth/pin-logout', { method: 'POST' })
+
     router.push('/')
     router.refresh()
   }
