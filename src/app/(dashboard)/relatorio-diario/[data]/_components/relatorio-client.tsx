@@ -288,6 +288,7 @@ export function RelatorioClient({
   )
   const [naOcupado, setNaOcupado] = useState<PeriodoRef | null>(null)
   const [excluindo, setExcluindo] = useState<PeriodoRef | null>(null)
+  const [limpando, setLimpando] = useState(false)
 
   async function excluirPeriodo(ref: PeriodoRef) {
     if (!confirm(`Excluir ${labelPeriodo(ref)}? Essa ação não pode ser desfeita.`)) return
@@ -495,6 +496,26 @@ export function RelatorioClient({
     }
 
     window.location.reload()
+  }
+
+  async function limparPeriodo(ref: PeriodoRef) {
+    if (!confirm(`Limpar TODOS os dados de ${labelPeriodo(ref)}? Isso reabre o período e apaga o que foi preenchido. Não pode ser desfeito.`)) return
+    setLimpando(true)
+    try {
+      const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${ref.periodo}/limpar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unit_id: unitId, sequencia: ref.sequencia }),
+      })
+      if (res.ok) {
+        router.refresh()
+      } else {
+        const { error } = await res.json()
+        alert(error)
+      }
+    } finally {
+      setLimpando(false)
+    }
   }
 
   async function adicionarPeriodo(periodo: string) {
@@ -760,6 +781,18 @@ export function RelatorioClient({
           <p className="text-center text-xs text-ink-subtle">
             Todos os períodos enviados — relatório fechado.
           </p>
+        )}
+        {role === 'admin' && (
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={() => limparPeriodo(periodoAtivo)}
+              disabled={limpando}
+              className="text-xs text-alert/70 hover:text-alert transition-colors disabled:opacity-50"
+            >
+              {limpando ? 'Limpando…' : `Limpar dados de ${labelPeriodo(periodoAtivo)} (admin)`}
+            </button>
+          </div>
         )}
       </div>}
     </div>
