@@ -592,7 +592,7 @@ export function RelatorioClient({
                 key={key}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   ativo
-                    ? 'bg-ember text-white'
+                    ? 'bg-ember text-ember-ink'
                     : na
                     ? 'bg-surface border border-edge text-ink-faint'
                     : 'bg-surface border border-edge text-ink-muted'
@@ -609,7 +609,7 @@ export function RelatorioClient({
                     {na && <span className="text-[10px] no-underline">N/A</span>}
                   </span>
                   {horarioLabel && (
-                    <span className={`text-[10px] font-normal ${ativo ? 'text-white/70' : 'text-ink-faint'}`}>
+                    <span className={`text-[10px] font-normal ${ativo ? 'text-ember-ink/80' : 'text-ink-faint'}`}>
                       {horarioLabel}
                     </span>
                   )}
@@ -625,7 +625,7 @@ export function RelatorioClient({
                         : 'Não há este turno neste dia'
                     }
                     className={`ml-0.5 rounded p-0.5 transition-colors ${
-                      ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
+                      ativo ? 'text-ember-ink/80 hover:text-ember-ink' : 'text-ink-faint hover:text-alert'
                     } ${na ? 'rotate-45' : ''}`}
                   >
                     <X className="h-3 w-3" />
@@ -638,7 +638,7 @@ export function RelatorioClient({
                     disabled={excluindo !== null}
                     title="Excluir este evento"
                     className={`ml-0.5 rounded p-0.5 transition-colors ${
-                      ativo ? 'text-white/70 hover:text-white' : 'text-ink-faint hover:text-alert'
+                      ativo ? 'text-ember-ink/80 hover:text-ember-ink' : 'text-ink-faint hover:text-alert'
                     }`}
                   >
                     <Trash2 className="h-3 w-3" />

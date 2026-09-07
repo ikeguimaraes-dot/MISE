@@ -3,6 +3,12 @@ import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
   if (process.env.NODE_ENV === 'development') {
+    // Keep the local layout review accessible when credentials are placeholders.
+    // This only redirects the entry page; it never grants a session or API access.
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+    if (request.nextUrl.pathname === '/' && !/^https?:\/\//.test(url)) {
+      return NextResponse.redirect(new URL('/preview', request.url))
+    }
     return NextResponse.next()
   }
 

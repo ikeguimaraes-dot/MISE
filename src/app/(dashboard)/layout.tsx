@@ -3,24 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  let role: 'admin' | 'gerente' | 'cozinheiro' = 'admin'
-  let isPinUser = false
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    const session = await getMiseSession()
-    if (session) {
-      role = session.role
-      isPinUser = true
-    }
-  }
+  const session = await getMiseSession()
+  const role = session?.role ?? 'cozinheiro'
+  const isPinUser = !user && !!session
 
   return (
     <div className="min-h-screen bg-base">
-      <TopNav role={role} isPinUser={isPinUser} />
-      <main className="w-full">
+      <TopNav role={role} isPinUser={isPinUser} employeeName={session?.employeeName} />
+      <main id="main-content" tabIndex={-1} className="workspace-main">
         {children}
       </main>
     </div>

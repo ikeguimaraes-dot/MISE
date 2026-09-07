@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Printer, ChevronDown, ChevronUp } from 'lucide-react'
+import { X, Printer, ChevronDown, ChevronUp, Tag, Clock3, ChefHat, Trash2, ArrowUpRight, CalendarDays } from 'lucide-react'
 import type { KpiItem, LabelGroup } from '../painel/page'
+import { printBrandHeader } from '@/lib/brand'
 
 const STATUS_BADGE: Record<string, string> = {
   ativa: 'text-fresh-bright bg-fresh/10',
@@ -44,6 +45,7 @@ th{background:#f0f0f0;padding:6px 8px;text-align:left;font-size:9pt;border-botto
 td{padding:5px 8px;font-size:9pt;border-bottom:1px solid #eee}
 .foot{margin-top:16px;font-size:8pt;color:#888}
 </style></head><body>
+${printBrandHeader()}
 <h1>${title}</h1>
 <p class="sub">Impresso em ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>
 <table>
@@ -68,12 +70,19 @@ type ModalConfig = {
 }
 
 function KpiModal({ config, onClose }: { config: ModalConfig; onClose: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const dialog = dialogRef.current
+    dialog?.showModal()
+    return () => dialog?.close()
+  }, [])
+
   function handlePrint() {
     printTable(config.title, config.headers, config.items.map(config.printRow))
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+    <dialog ref={dialogRef} aria-label={config.title} onCancel={onClose} onClick={event => { if (event.target === event.currentTarget) onClose() }} className="fixed inset-0 m-auto w-[calc(100%-32px)] max-w-lg rounded-xl bg-transparent p-0 text-ink">
       <div className="flex w-full max-w-lg flex-col rounded-xl border border-edge bg-surface shadow-xl max-h-[80vh]">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-edge px-5 py-4">
@@ -86,7 +95,7 @@ function KpiModal({ config, onClose }: { config: ModalConfig; onClose: () => voi
                 Imprimir
               </button>
             )}
-            <button onClick={onClose}
+            <button onClick={onClose} aria-label="Fechar detalhes"
               className="flex h-8 w-8 items-center justify-center rounded-md text-ink-muted hover:bg-surface-raised hover:text-ink transition-colors">
               <X className="h-4 w-4" />
             </button>
@@ -123,7 +132,7 @@ function KpiModal({ config, onClose }: { config: ModalConfig; onClose: () => voi
           <p className="text-xs text-ink-subtle">{config.items.length} item{config.items.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
-    </div>
+    </dialog>
   )
 }
 
@@ -186,6 +195,7 @@ type Props = {
   kpiProducoes: KpiItem[]
   kpiDescartes: KpiItem[]
   labelGroups: LabelGroup[]
+  preview?: boolean
 }
 
 type OpenModal = 'etiquetas' | 'criticas' | 'producoes' | 'descartes' | null
@@ -198,13 +208,16 @@ export function DashboardClient({
   kpiProducoes,
   kpiDescartes,
   labelGroups,
+  preview = false,
 }: Props) {
   const router = useRouter()
   const [openModal, setOpenModal] = useState<OpenModal>(null)
 
   function handleUnitChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const val = e.target.value
-    router.push(val ? `/?unit=${val}` : '/')
+    const params = new URLSearchParams(preview ? { module: '/painel' } : {})
+    if (val) params.set('unit', val)
+    router.push(`${preview ? '/preview' : '/painel'}${params.size ? `?${params}` : ''}`)
   }
 
   const MODALS: Record<NonNullable<OpenModal>, ModalConfig> = {
@@ -280,25 +293,27 @@ export function DashboardClient({
     },
   }
 
-  const CARDS: { key: NonNullable<OpenModal>; label: string; value: number; color: string }[] = [
-    { key: 'etiquetas', label: 'Etiquetas Hoje', value: kpiEtiquetasHoje.length, color: 'text-fresh' },
-    { key: 'criticas', label: 'Validades Críticas', value: kpiCriticas.length, color: 'text-warn' },
-    { key: 'producoes', label: 'Produções do Dia', value: kpiProducoes.length, color: 'text-info' },
-    { key: 'descartes', label: 'Descartes do Dia', value: kpiDescartes.length, color: 'text-alert' },
+  const CARDS = [
+    { key: 'etiquetas' as const, label: 'Etiquetas emitidas', value: kpiEtiquetasHoje.length, color: 'text-ember', icon: Tag, detail: 'Manipuladas hoje' },
+    { key: 'criticas' as const, label: 'Validades críticas', value: kpiCriticas.length, color: 'text-warn', icon: Clock3, detail: 'Vencidas ou vencem em 24h' },
+    { key: 'producoes' as const, label: 'Produções do dia', value: kpiProducoes.length, color: 'text-info', icon: ChefHat, detail: 'Ordens registradas hoje' },
+    { key: 'descartes' as const, label: 'Etiquetas descartadas', value: kpiDescartes.length, color: 'text-alert-bright', icon: Trash2, detail: 'Etiquetas criadas hoje' },
   ]
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto max-w-[1540px] p-5 sm:p-8 lg:p-10 space-y-7">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-ink">Dashboard</h1>
-          <p className="text-sm text-ink-muted">Visão geral do dia</p>
+          <p className="section-eyebrow mb-2">VISÃO GERAL</p>
+          <h1 className="text-3xl font-medium tracking-tight text-ink">Painel da operação<span className="text-ember">.</span></h1>
+          <p className="mt-2 flex items-center gap-2 text-xs text-ink-subtle"><CalendarDays size={13} />Indicadores de hoje · {preview ? 'dados demonstrativos' : 'acompanhamento da cozinha'}</p>
         </div>
         <select
+          aria-label="Filtrar painel por unidade"
           value={currentUnit}
           onChange={handleUnitChange}
-          className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none"
+          className="min-h-11 max-w-full rounded-lg border border-edge-strong bg-surface px-4 py-2 text-xs text-ink"
         >
           <option value="">Todas as unidades</option>
           {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -307,14 +322,16 @@ export function DashboardClient({
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {CARDS.map(({ key, label, value, color }) => (
+        {CARDS.map(({ key, label, value, color, icon: Icon, detail }) => (
           <button
             key={key}
             onClick={() => setOpenModal(key)}
-            className="rounded-xl border border-edge bg-surface p-4 text-left transition-colors hover:border-edge-strong hover:bg-surface-raised/50"
+            className="group rounded-xl border border-edge bg-surface p-5 text-left transition-colors hover:border-edge-strong hover:bg-surface-raised/50"
           >
-            <p className="text-xs font-medium text-ink-subtle">{label}</p>
-            <p className={`mt-1 text-3xl font-bold ${color}`}>{value}</p>
+            <div className="mb-5 flex items-center justify-between"><Icon size={18} className={color} /><ArrowUpRight size={14} className="text-ink-faint group-hover:text-ink" /></div>
+            <p className="text-[11px] font-medium text-ink-subtle">{label}</p>
+            <p className={`mt-2 text-4xl font-medium tracking-tight tabular-nums ${color}`}>{value.toString().padStart(2, '0')}</p>
+            <p className="mt-4 border-t border-edge pt-3 text-[10px] text-ink-faint">{detail}</p>
           </button>
         ))}
       </div>

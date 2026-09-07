@@ -1,62 +1,10 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getMiseSession } from '@/lib/session'
-import {
-  Tag, Clock, PackageCheck, ChefHat, ClipboardList,
-  ClipboardCheck, FileText, BookOpen, LayoutDashboard,
-} from 'lucide-react'
-
-type Frente = {
-  href: string
-  nome: string
-  descricao: string
-  icon: React.ElementType
-  soGestor?: boolean
-}
-
-const FRENTES: Frente[] = [
-  { href: '/etiquetas', nome: 'Etiquetas', descricao: 'Impressão e controle de etiquetas de manipulação', icon: Tag },
-  { href: '/validades', nome: 'Validades', descricao: 'Acompanhe o que está próximo do vencimento', icon: Clock },
-  { href: '/recebimento', nome: 'Recebimento', descricao: 'Conferência e entrada de mercadorias', icon: PackageCheck },
-  { href: '/producao', nome: 'Produção', descricao: 'Registro e planejamento das produções do dia', icon: ChefHat },
-  { href: '/inventario', nome: 'Inventário', descricao: 'Contagem e controle de estoque', icon: ClipboardList },
-  { href: '/checklists', nome: 'Checklists', descricao: 'Rotinas e conferências operacionais', icon: ClipboardCheck },
-  { href: '/relatorio-diario', nome: 'Resumo Operacional', descricao: 'Fechamento de turno e indicadores da operação', icon: BookOpen },
-  { href: '/relatorios', nome: 'Relatórios', descricao: 'Histórico de produção e consolidados', icon: FileText, soGestor: true },
-  { href: '/painel', nome: 'Dashboard', descricao: 'Visão geral do dia em números', icon: LayoutDashboard, soGestor: true },
-]
+import { OperationsHome } from '@/components/layout/operations-home'
 
 export default async function HomePage() {
   const session = await getMiseSession()
   if (!session) redirect('/pin-login')
 
-  const isGestor = session.role !== 'cozinheiro'
-  const frentes = FRENTES.filter(f => !f.soGestor || isGestor)
-
-  return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold text-ink">Orkestri OPX</h1>
-        <p className="text-sm text-ink-muted">Escolha uma frente para começar</p>
-      </header>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {frentes.map(({ href, nome, descricao, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group flex flex-col gap-3 rounded-xl border border-edge bg-surface p-5 transition-colors hover:border-ember hover:bg-surface-raised"
-          >
-            <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-ember-soft text-ember transition-colors group-hover:bg-ember group-hover:text-ember-ink">
-              <Icon className="h-5 w-5" />
-            </span>
-            <div>
-              <h2 className="text-base font-semibold text-ink">{nome}</h2>
-              <p className="mt-0.5 text-sm text-ink-muted">{descricao}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  )
+  return <OperationsHome role={session.role} employeeName={session.employeeName} />
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FileText } from 'lucide-react'
+import { printBrandHeader } from '@/lib/brand'
 
 type LabelItem = {
   id: string
@@ -112,7 +113,7 @@ export function RelatorioClient({
   function handlePrint() {
     const rows = groups.flatMap(g =>
       g.labels.map(l => `
-        <tr style="background:#1f2937;color:#fff" class="group-header">
+        <tr style="background:#eeebe5;color:#171716" class="group-header">
           <td colspan="8" style="padding:6px 10px;font-weight:bold">${g.nome} — ${g.total_count} etiqueta${g.total_count !== 1 ? 's' : ''} · ${g.total_peso_kg.toFixed(3)} kg</td>
         </tr>
         <tr>
@@ -132,6 +133,7 @@ export function RelatorioClient({
 table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:4px 6px;text-align:left;font-size:8pt}
 th{background:#f3f4f6;font-weight:bold}.page-break{page-break-inside:avoid}h2{font-size:12pt;margin:0 0 4px}
 .sub{font-size:9pt;color:#555;margin:0 0 12px}</style></head><body>
+${printBrandHeader()}
 <h2>Relatório de Produção — ${unitName}</h2>
 <p class="sub">Período: ${dataInicio} a ${dataFim} · Emitido: ${new Date().toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})}</p>
 <table><thead><tr>

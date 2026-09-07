@@ -1,0 +1,38 @@
+.wordmark-page { min-height: 100dvh; padding: 24px; color: #171716; background: #dedbd2; }
+.wordmark-page nav { max-width: 1200px; margin: 0 auto 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; font-size: 12px; }
+.wordmark-page nav a { padding: 12px 0; }
+.wordmark-board { max-width: 1200px; margin: auto; padding: 40px; background: #faf6f0; }
+.wordmark-board header { display: flex; justify-content: space-between; gap: 20px; font-size: 10px; letter-spacing: .13em; padding-bottom: 22px; border-bottom: 1px solid #d4cec2; }
+.wordmark-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; padding: 30px 0; }
+.wordmark-heading h1 { font-size: 40px; line-height: 1.1; font-weight: 500; letter-spacing: -1.4px; }
+.wordmark-heading em { font-family: Georgia, serif; font-weight: 400; }
+.wordmark-heading p { font-size: 12px; line-height: 1.9; color: #6a665a; }
+.wordmark-hero { background: #171716; color: #bcb9af; padding: 24px 30px; display: flex; flex-direction: column; align-items: center; }
+.wordmark-hero > span { align-self: start; font-size: 10px; letter-spacing: .12em; }
+.wordmark-hero > img { width: 54%; height: auto; margin: 30px 0 22px; }
+.wordmark-hero > p { font-size: 9px; letter-spacing: .22em; margin-bottom: 10px; }
+.wordmark-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.wordmark-comparison article { padding: 24px; border: 1px solid #d4cec2; }
+.wordmark-comparison article:last-child { background: #f5ecdf; border-color: #c4654150; }
+.wordmark-comparison article > span,.wordmark-uses article > span { display: block; font-size: 10px; letter-spacing: .1em; color: #6a665a; }
+.wordmark-comparison article > div { display: flex; align-items: center; height: 132px; }
+.wordmark-comparison img { width: 62%; height: auto; }
+.wordmark-comparison p { font-size: 12px; color: #6a665a; }
+.wordmark-refinement article > div { container-type: inline-size; }
+.wordmark-comparison.wordmark-refinement img { width: min(270px, 88.525cqw); max-width: none; }
+.wordmark-comparison.wordmark-refinement img.wordmark-before { width: min(305px, 100cqw); max-width: none; }
+.wordmark-uses { display: grid; grid-template-columns: 1.15fr .85fr 1fr; gap: 16px; margin-top: 16px; }
+.wordmark-uses article { min-width: 0; padding: 22px; min-height: 170px; }
+.wordmark-one-color { background: #f47748; }
+.wordmark-one-color > span { color: #171716 !important; }
+.wordmark-one-color > img { width: 80%; height: auto; margin: 29px 0 0; }
+.wordmark-icon { background: #e8e4da; }
+.wordmark-icon > div { width: 78px; height: 78px; background: #171716; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-top: 20px; }
+.wordmark-icon img { width: 54px; height: auto; }
+.wordmark-small { background: #e6e9df; }
+.wordmark-small > div { margin-top: 22px; }
+.wordmark-small img { width: 112px; height: auto; }
+.wordmark-small p { font-size: 11px; line-height: 1.8; color: #62695a; margin-top: 14px; }
+.wordmark-board footer { margin-top: 26px; border-top: 1px solid #d4cec2; padding-top: 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 10px; color: #6a665a; }
+.wordmark-board footer > span { letter-spacing: .07em; }
+@media(max-width:700px) { .wordmark-page { padding: 12px; } .wordmark-board { padding: 22px; } .wordmark-heading { flex-direction: column; align-items: start; } .wordmark-heading h1 { font-size: 34px; } .wordmark-comparison,.wordmark-uses { grid-template-columns: 1fr; } .wordmark-hero { padding: 22px 18px; } .wordmark-hero > img { width: 95%; } .wordmark-hero > span { font-size: 8px; } .wordmark-hero > p { font-size: 8px; letter-spacing: .12em; } .wordmark-comparison img { max-width: 280px; width: 90%; } .wordmark-one-color > img { max-width: 250px; } }

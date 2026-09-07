@@ -1,0 +1,100 @@
+.brand-guide { background: #dedbd2; color: #171716; padding: 24px 24px 64px; min-height: 100dvh; }
+.brand-guide-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; max-width: 1200px; margin: 0 auto 24px; }
+.brand-guide-top a { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-size: 12px; color: #555449; }
+.brand-sheet { max-width: 1200px; margin: auto; background: #f4f0e7; padding: 44px; box-shadow: 0 10px 60px #1717160a; }
+.brand-sheet-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 28px; border-bottom: 1px solid #17171625; }
+.brand-sheet-header > img { width: 102px; height: auto; }
+.brand-sheet-header > span { color: #727063; font-size: 9px; letter-spacing: .15em; }
+.brand-sheet-header b { margin-left: 24px; color: #171716; font-weight: 500; }
+.brand-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding: 42px 0; }
+.brand-kicker { font-size: 9px; letter-spacing: .14em; font-weight: 500; color: #77715f; }
+.brand-intro h1 { font-size: 61px; line-height: 1.03; font-weight: 500; letter-spacing: -2.8px; margin-top: 20px; }
+.brand-intro h1 em { font-family: Georgia, serif; font-weight: 400; }
+.brand-intro > p { font-size: 12px; line-height: 1.9; color: #6a665a; padding-bottom: 5px; }
+.brand-evolution { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+.brand-evolution > div { padding: 24px; border: 1px solid #17171625; display: flex; flex-direction: column; align-items: flex-start; }
+.brand-evolution-before { background: #e7e2d5; }
+.brand-evolution-after { background: #faf6f0; border-color: #b3573660 !important; }
+.brand-evolution img { width: 190px; max-width: 100%; height: auto; margin: 24px 0 18px; }
+.brand-evolution p { font-size: 11px; line-height: 1.7; color: #6a665a; }
+.brand-origin { display: grid; grid-template-columns: .65fr 1.5fr 1fr; gap: 24px; padding: 4px 0 30px; }
+.brand-origin p { font-size: 12px; line-height: 1.85; color: #6a665a; }
+@media(max-width:650px) { .brand-evolution { grid-template-columns: 1fr; } .brand-evolution > div { padding: 20px; } .brand-origin { grid-template-columns: 1fr; gap: 14px; } }
+.brand-logo-grid { display: grid; grid-template-columns: 1.65fr 1fr; gap: 14px; }
+.brand-primary-logo { background: #171716; color: #a49d8e; min-height: 308px; position: relative; display: flex; align-items: center; justify-content: center; }
+.brand-primary-logo > img { width: 63%; height: auto; }
+.brand-tile-label { position: absolute; left: 23px; top: 20px; font-size: 8px; font-weight: 500; letter-spacing: .12em; }
+.brand-tile-foot { position: absolute; bottom: 22px; right: 23px; font-size: 8px; letter-spacing: .14em; }
+.brand-logo-variants { display: grid; grid-template-rows: 1fr 1fr; gap: 14px; }
+.brand-logo-variants > div { position: relative; display: flex; align-items: center; justify-content: center; padding-top: 24px; }
+.brand-logo-variants img { width: 45%; height: auto; }
+.brand-light-logo { background: #FAF6F0; border: 1px solid #1717161c; }
+.brand-mono-logo { background: #F47748; }
+.brand-parts-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; margin-top: 14px; }
+.brand-parts-grid > div { min-height: 307px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px 26px; }
+.brand-parts-grid p { font-size: 10px; line-height: 1.9; }
+.brand-symbol-tile { background: #e7e2d5; }
+.brand-symbol-tile > img { width: 140px; height: 112px; margin: 28px 0 18px; filter: brightness(0) saturate(100%); }
+.brand-symbol-tile > p { color: #77715f; margin-top: 22px; }
+.brand-seal-tile { background: #28261f; color: #b9a88f; }
+.brand-seal-tile > img { width: 200px; height: 200px; }
+.brand-seal-tile > p { margin-top: 10px; }
+.brand-type-tile { background: #e5e8de; align-items: flex-start !important; padding-left: 26px !important; }
+.brand-type-tile strong { font-size: 74px; font-weight: 500; letter-spacing: -4px; line-height: 1; margin: 10px 0 17px; }
+.brand-type-tile strong span { color: #b35736; }
+.brand-type-tile h2 { font-size: 15px; font-weight: 500; line-height: 1.7; }
+.brand-type-tile h2 em { font-family: Georgia, serif; font-weight: 400; font-size: 18px; }
+.brand-type-tile p { color: #707567; margin-top: 13px; }
+.brand-palette { display: grid; grid-template-columns: 1.35fr 1.2fr 1fr 1fr; margin-top: 14px; }
+.brand-palette > div { min-height: 92px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 17px 20px; }
+.brand-palette b { font-size: 9px; letter-spacing: .1em; font-weight: 500; }
+.brand-palette span { font-size: 9px; opacity: .75; }
+.brand-section-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 40px 0 20px; }
+.brand-section-title h2 { font-size: 27px; font-weight: 500; letter-spacing: -1px; }
+.brand-section-title > span { font-size: 9px; color: #77715f; letter-spacing: .1em; }
+.brand-applications { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+.brand-applications figure { min-width: 0; }
+.brand-applications figure > div { height: 285px; overflow: hidden; position: relative; }
+.brand-app-screen { background: #292922; padding: 24px 16px 0; }
+.brand-app-screen > img { width: 100%; height: auto; border: 1px solid #77715f30; border-radius: 0 0 7px 7px; }
+.brand-browser-bar { display: flex; align-items: center; gap: 4px; padding: 8px; border-radius: 6px 6px 0 0; background: #3c3b31; }
+.brand-browser-bar i { width: 4px; height: 4px; background: #9b9686; border-radius: 50%; }
+.brand-browser-bar span { color: #aba48e; font-size: 6px; margin-left: 8px; }
+.brand-app-icon { position: absolute; bottom: 15px; right: 19px; display: flex; align-items: center; gap: 9px; background: #f4f0e7; padding: 9px 17px 9px 9px; border-radius: 12px; box-shadow: 0 3px 20px #0004; }
+.brand-app-icon img { width: 35px; height: 35px; border-radius: 8px; }
+.brand-app-icon span { font-size: 14px; font-weight: 500; }
+.brand-paper-scene { background: #d7d7cb; padding: 25px 40px 0; }
+.brand-paper { position: relative; width: 100%; min-height: 290px; background: #fffdf8; padding: 18px; transform: rotate(-5deg); box-shadow: 0 6px 20px #17171618; }
+.brand-paper-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #d8d2c4; padding-bottom: 10px; }
+.brand-paper-head > img { width: 55px; height: auto; }
+.brand-paper-head > span { font-size: 5px; letter-spacing: .05em; white-space: nowrap; }
+.brand-paper-eyebrow { font-size: 5px; letter-spacing: .12em; margin-top: 18px; }
+.brand-paper h3 { font-size: 19px; line-height: 1.1; font-weight: 500; letter-spacing: -.7px; margin-top: 8px; }
+.brand-paper-rule { height: 1px; background: #ccc6b9; margin-top: 18px; }
+.brand-paper-label { font-size: 5px; letter-spacing: .08em; margin-top: 8px; }
+.brand-paper-lines i { height: 1px; background: #dfd9cd; display: block; margin-top: 10px; }
+.brand-paper-lines i:last-child { width: 60%; }
+.brand-paper > img { position: absolute; right: 15px; bottom: 18px; transform: rotate(12deg); opacity: .7; }
+.brand-paper-foot { position: absolute; left: 18px; bottom: 20px; font-size: 5px; letter-spacing: .08em; }
+.brand-package-scene { background: #c9ac88; display: flex; align-items: center; justify-content: center; }
+.brand-package { position: relative; width: 83%; height: 220px; border: 1px solid #90714c45; background: #b99a73; transform: rotate(7deg); box-shadow: 0 12px 25px #68492333; }
+.brand-package::before { content: ''; position: absolute; inset: 7px; border: 1px solid #e6cfac40; }
+.brand-package-band { position: absolute; inset: -2px 38% -2px 17%; background: #26241e; padding: 24px 12px; display: flex; flex-direction: column; justify-content: space-between; }
+.brand-package-band img { width: 100%; height: auto; }
+.brand-package-band span { font-size: 8px; line-height: 1.7; letter-spacing: .1em; color: #e4c5a4; }
+.brand-package > img { position: absolute; right: 5px; bottom: 17px; width: 98px; height: 98px; transform: rotate(-16deg); opacity: .82; }
+.brand-applications figcaption { margin-top: 15px; }
+.brand-applications figcaption b { display: block; font-size: 12px; font-weight: 500; }
+.brand-applications figcaption span { display: block; font-size: 9px; color: #77715f; margin-top: 6px; line-height: 1.7; }
+.brand-sheet-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid #17171625; padding-top: 23px; margin-top: 37px; }
+.brand-sheet-footer span { font-size: 8px; letter-spacing: .1em; color: #77715f; }
+.brand-sheet-footer p { font-family: Georgia, serif; font-size: 16px; font-style: italic; }
+.brand-files { max-width: 1100px; margin: 48px auto 0; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.brand-files h2 { margin-top: 14px; font-size: 28px; font-weight: 500; letter-spacing: -1px; }
+.brand-files p:not(.brand-kicker) { color: #686252; font-size: 12px; max-width: 320px; line-height: 1.9; margin-top: 16px; }
+.brand-downloads a { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; min-height: 46px; border-bottom: 1px solid #17171625; font-size: 12px; }
+.brand-downloads a > span:last-child { display: flex; gap: 14px; align-items: center; color: #77715f; font-size: 10px; }
+.brand-downloads a:hover { color: #9e441f; }
+.brand-back-to-app { display: inline-flex; align-items: center; gap: 14px; font-size: 12px; min-height: 44px; }
+@media(max-width:900px) { .brand-sheet { padding: 30px; } .brand-intro h1 { font-size: 48px; } .brand-intro > p { max-width: 225px; font-size: 11px; } .brand-palette > div { flex-direction: column; align-items: start; justify-content: flex-end; } .brand-applications figure > div { height: 235px; } .brand-paper-scene { padding: 18px 20px 0; } .brand-parts-grid > div { min-height: 280px; } .brand-seal-tile > img { width: 165px; height: 165px; } .brand-symbol-tile > img { width: 110px; } .brand-type-tile h2 { font-size: 12px; } .brand-type-tile h2 em { font-size: 15px; } .brand-package { height: 180px; } .brand-package > img { width: 80px; height: 80px; } }
+@media(max-width:650px) { .brand-guide { padding: 14px 12px 35px; } .brand-sheet { padding: 22px; } .brand-sheet-header { align-items: start; } .brand-sheet-header > span { max-width: 130px; font-size: 8px; line-height: 1.8; text-align: right; } .brand-sheet-header b { display: block; } .brand-intro { flex-direction: column; align-items: start; gap: 22px; padding: 30px 0; } .brand-intro h1 { font-size: 48px; } .brand-intro > p { max-width: none; font-size: 12px; } .brand-logo-grid { grid-template-columns: 1fr; } .brand-primary-logo { min-height: 235px; } .brand-logo-variants { grid-template-columns: 1fr 1fr; grid-template-rows: 130px; } .brand-logo-variants img { width: 65%; } .brand-tile-label { font-size: 7px; left: 14px; top: 15px; right: 12px; line-height: 1.5; } .brand-parts-grid { grid-template-columns: 1fr 1fr; } .brand-type-tile { grid-column: 1 / -1; min-height: auto !important; display: grid !important; grid-template-columns: .7fr 1fr; gap: 5px 20px; align-items: center !important; padding: 45px 23px 22px !important; } .brand-type-tile strong { grid-row: 1 / 3; font-size: 68px; } .brand-type-tile h2 { font-size: 12px; } .brand-type-tile p { margin: 0; } .brand-parts-grid > div { min-height: 240px; padding: 35px 12px 18px; } .brand-parts-grid p { font-size: 9px; } .brand-seal-tile > img { width: 135px; height: 135px; } .brand-symbol-tile > img { width: 90px; height: 95px; } .brand-palette { grid-template-columns: 1fr 1fr; } .brand-palette > div { min-height: 85px; } .brand-applications { grid-template-columns: 1fr; gap: 27px; } .brand-applications figure > div { height: 300px; } .brand-app-screen { padding: 24px; } .brand-paper-scene { padding: 26px 55px 0; } .brand-package { height: 240px; width: 78%; } .brand-package > img { width: 105px; height: 105px; } .brand-package-band { padding: 25px 13px; } .brand-package-band span { font-size: 10px; } .brand-applications figcaption span { font-size: 11px; } .brand-sheet-footer { align-items: start; } .brand-sheet-footer p { order: -1; width: 100%; } .brand-files { grid-template-columns: 1fr; padding: 0 12px; } .brand-section-title h2 { font-size: 23px; } .brand-section-title > span { font-size: 8px; } }
