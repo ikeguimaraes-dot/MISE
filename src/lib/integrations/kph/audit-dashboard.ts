@@ -106,10 +106,51 @@ export async function unitExists(supabase: SupabaseClient, unitId: string): Prom
   return result.length > 0
 }
 
+type OperationalLabel = { id: string; nome: string; status: string; data_manipulacao: string; validade: string }
+
+export async function loadOperationsDashboard(supabase: SupabaseClient, unitId: string): Promise<KphAuditDashboardResponse['operations']> {
+  const mise = supabase.schema('mise')
+  const today = localDate(new Date().toISOString())
+  const tomorrow = dayAfter(today)
+  const todayStart = startOfSaoPauloDay(today)
+  const tomorrowStart = startOfSaoPauloDay(tomorrow)
+  const now = new Date()
+  const next24Hours = new Date(now.getTime() + 86_400_000).toISOString()
+
+  const results = await Promise.all([
+    mise.from('labels').select('id', { count: 'exact', head: true }).eq('unit_id', unitId)
+      .gte('data_manipulacao', todayStart).lt('data_manipulacao', tomorrowStart),
+    mise.from('labels').select('id,nome,status,data_manipulacao,validade', { count: 'exact' }).eq('unit_id', unitId)
+      .eq('status', 'ativa').lte('validade', next24Hours).order('validade').limit(10),
+    mise.from('production_orders').select('id', { count: 'exact', head: true }).eq('unit_id', unitId)
+      .gte('created_at', todayStart).lt('created_at', tomorrowStart),
+    mise.from('labels').select('id', { count: 'exact', head: true }).eq('unit_id', unitId).eq('status', 'descartada')
+      .gte('created_at', todayStart).lt('created_at', tomorrowStart),
+    mise.from('labels').select('id,nome,status,data_manipulacao,validade').eq('unit_id', unitId)
+      .order('data_manipulacao', { ascending: false }).limit(10),
+  ])
+  const failed = results.find((result) => result.error)
+  if (failed?.error) throw new AuditDashboardDatabaseError(failed.error.message, failed.error.code)
+  const critical = (results[1].data ?? []) as OperationalLabel[]
+  const recent = (results[4].data ?? []) as OperationalLabel[]
+
+  return {
+    labelsIssuedToday: results[0].count ?? 0,
+    criticalExpirations: results[1].count ?? 0,
+    productionsToday: results[2].count ?? 0,
+    discardedToday: results[3].count ?? 0,
+    recentLabels: recent.map((row) => ({
+      id: row.id, name: row.nome, status: row.status,
+      manipulatedAt: row.data_manipulacao, expiresAt: row.validade,
+    })),
+    criticalItems: critical.map((row) => ({ id: row.id, name: row.nome, expiresAt: row.validade })),
+  }
+}
+
 export async function loadAuditDashboard(
   supabase: SupabaseClient,
   input: { unitId: string; from: string; to: string; bucket: AuditBucket; topLimit: number },
-): Promise<KphAuditDashboardResponse> {
+): Promise<Omit<KphAuditDashboardResponse, 'operations'>> {
   const mise = supabase.schema('mise')
   const executions = await unwrap<Execution[]>(
     mise.from('checklist_executions')

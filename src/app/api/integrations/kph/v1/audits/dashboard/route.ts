@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { authenticateKphIntegration } from '@/lib/integrations/kph/auth'
-import { AuditDashboardDatabaseError, loadAuditDashboard, unitExists } from '@/lib/integrations/kph/audit-dashboard'
+import { AuditDashboardDatabaseError, loadAuditDashboard, loadOperationsDashboard, unitExists } from '@/lib/integrations/kph/audit-dashboard'
 import type { AuditBucket, IntegrationErrorCode, IntegrationErrorResponse } from '@/lib/integrations/kph/contracts'
 
 export const dynamic = 'force-dynamic'
@@ -76,9 +76,11 @@ export async function GET(request: Request) {
   try {
     const exists = await withTimeout(unitExists(supabase, unitId), timeout)
     if (!exists) return error(404, 'UNIT_NOT_FOUND', 'Unidade não encontrada', requestId)
-    const payload = await withTimeout(loadAuditDashboard(supabase, {
-      unitId, from, to, bucket: bucketValue as AuditBucket, topLimit,
-    }), timeout)
+    const [auditPayload, operations] = await withTimeout(Promise.all([
+      loadAuditDashboard(supabase, { unitId, from, to, bucket: bucketValue as AuditBucket, topLimit }),
+      loadOperationsDashboard(supabase, unitId),
+    ]), timeout)
+    const payload = { ...auditPayload, operations }
     console.info('KPH audit dashboard', {
       requestId, route: 'audit-dashboard', unitId, from, to,
       status: 200, durationMs: Date.now() - startedAt,

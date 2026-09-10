@@ -29,6 +29,24 @@ export type KphAuditDashboardResponse = {
     occurrences: number
     lastOccurredAt: string
   }>
+  operations: {
+    labelsIssuedToday: number
+    criticalExpirations: number
+    productionsToday: number
+    discardedToday: number
+    recentLabels: Array<{
+      id: string
+      name: string
+      status: string
+      manipulatedAt: string
+      expiresAt: string
+    }>
+    criticalItems: Array<{
+      id: string
+      name: string
+      expiresAt: string
+    }>
+  }
 }
 
 export type IntegrationErrorCode =
