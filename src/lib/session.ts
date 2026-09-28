@@ -79,3 +79,10 @@ export async function getMiseSession(): Promise<MiseSession | null> {
     role: session.role as 'admin' | 'gerente' | 'cozinheiro',
   }
 }
+
+export async function requireMiseRole(
+  allowed: ReadonlyArray<MiseSession['role']>,
+): Promise<MiseSession | null> {
+  const session = await getMiseSession()
+  return session && allowed.includes(session.role) ? session : null
+}

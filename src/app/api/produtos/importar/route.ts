@@ -1,6 +1,9 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { requireMiseRole } from '@/lib/session'
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024
 
 const REQUIRED_COLUMNS = ['Item', 'Descrição do Item', 'UM', 'Grande Grupo']
 
@@ -15,11 +18,19 @@ const UNIDADES_VALIDAS = ['kg', 'g', 'l', 'ml', 'un', 'cx', 'fardo', 'duzia']
 
 export async function POST(request: Request) {
   try {
+    const actor = await requireMiseRole(['admin', 'gerente'])
+    if (!actor) {
+      return NextResponse.json({ error: 'Acesso restrito.' }, { status: 403 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
 
     if (!file) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado.' }, { status: 400 })
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      return NextResponse.json({ error: 'Arquivo excede o limite de 10 MB.' }, { status: 413 })
     }
 
     const buffer = await file.arrayBuffer()
