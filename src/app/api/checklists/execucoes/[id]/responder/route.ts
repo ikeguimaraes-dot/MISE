@@ -1,4 +1,5 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { authorizeChecklistPhoto } from '@/lib/checklists/photo-access'
+import { checklistPhotoPath, checklistPhotoUrl } from '@/lib/checklists/photo-path'
 import { NextResponse } from 'next/server'
 
 export async function POST(
@@ -13,7 +14,12 @@ export async function POST(
     return NextResponse.json({ error: 'item_id é obrigatório' }, { status: 400 })
   }
 
-  const supabase = createServiceClient()
+  const access = await authorizeChecklistPhoto(execution_id, item_id)
+  if (!access.ok) return NextResponse.json({ error: 'Acesso negado.' }, { status: access.status })
+  const photoPath = foto_url ? checklistPhotoPath(foto_url) : null
+  if (foto_url && (!photoPath || !photoPath.startsWith(`${execution_id}/${item_id}/`))) return NextResponse.json({ error: 'Foto não pertence a esta resposta.' }, { status: 400 })
+  const storedPhoto = photoPath ? checklistPhotoUrl(photoPath) : null
+  const supabase = access.service
 
   const { data: existing } = await supabase
     .schema('mise')
@@ -27,14 +33,14 @@ export async function POST(
     const { error } = await supabase
       .schema('mise')
       .from('checklist_responses')
-      .update({ resposta: resposta ?? null, comentario: comentario ?? null, foto_url: foto_url ?? null, nao_aplicavel: nao_aplicavel ?? false })
+      .update({ resposta: resposta ?? null, comentario: comentario ?? null, foto_url: storedPhoto, nao_aplicavel: nao_aplicavel ?? false })
       .eq('id', existing.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   } else {
     const { error } = await supabase
       .schema('mise')
       .from('checklist_responses')
-      .insert({ execution_id, item_id, resposta: resposta ?? null, comentario: comentario ?? null, foto_url: foto_url ?? null, nao_aplicavel: nao_aplicavel ?? false })
+      .insert({ execution_id, item_id, resposta: resposta ?? null, comentario: comentario ?? null, foto_url: storedPhoto, nao_aplicavel: nao_aplicavel ?? false })
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
