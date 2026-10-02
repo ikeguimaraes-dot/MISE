@@ -26,6 +26,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // These endpoints validate real sessions and return JSON 401 themselves.
+  if (request.nextUrl.pathname === '/api/checklists/foto' || request.nextUrl.pathname === '/api/checklists/upload-foto') return NextResponse.next()
+
   const miseSession = request.cookies.get('mise-session')
   if (miseSession?.value) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL

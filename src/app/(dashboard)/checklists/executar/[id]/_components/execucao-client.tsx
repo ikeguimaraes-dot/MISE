@@ -1,5 +1,7 @@
 'use client'
 
+import { checklistPhotoUrl } from '@/lib/checklists/photo-path'
+
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw, Loader2, Camera, X } from 'lucide-react'
@@ -577,7 +579,7 @@ export function ExecucaoClient({
                 {currentAnswer?.foto_url ? (
                   <div className="relative shrink-0">
                     <img
-                      src={currentAnswer.foto_url}
+                      src={checklistPhotoUrl(currentAnswer.foto_url)}
                       alt="Foto"
                       className="h-20 w-20 object-cover rounded-lg border border-edge"
                     />

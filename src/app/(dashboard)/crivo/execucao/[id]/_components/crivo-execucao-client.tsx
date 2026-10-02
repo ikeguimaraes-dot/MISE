@@ -1,5 +1,7 @@
 'use client'
 
+import { checklistPhotoUrl } from '@/lib/checklists/photo-path'
+
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -691,7 +693,7 @@ export function CrivoExecucaoClient({
               <div className="flex items-center gap-3 pt-1">
                 {currentAnswer?.foto_url ? (
                   <div className="relative shrink-0">
-                    <img src={currentAnswer.foto_url} alt="Foto" className="h-20 w-20 object-cover rounded-lg border border-edge" />
+                    <img src={checklistPhotoUrl(currentAnswer.foto_url)} alt="Foto" className="h-20 w-20 object-cover rounded-lg border border-edge" />
                     <button
                       onClick={() => handleRemovePhoto(currentItem.id)}
                       className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-raised border border-edge-strong flex items-center justify-center hover:bg-alert-soft"

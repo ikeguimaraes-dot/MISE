@@ -1,3 +1,5 @@
+
+import { checklistPhotoUrl } from '@/lib/checklists/photo-path'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -137,9 +139,9 @@ export default async function ChecklistExecucaoRelatorioPage({ params }: { param
                         </ul>
                       )}
                       {r.foto_url && (
-                        <a href={r.foto_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+                        <a href={checklistPhotoUrl(r.foto_url)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
                           <img
-                            src={r.foto_url}
+                            src={checklistPhotoUrl(r.foto_url)}
                             alt="Foto do item"
                             className="h-16 w-16 object-cover rounded-lg border border-edge hover:border-edge-strong transition-colors"
                           />
