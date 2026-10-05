@@ -1,3 +1,4 @@
+import {expectedDays} from '@/lib/operational-calendar'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
@@ -74,7 +75,7 @@ export default async function AlertasPage() {
       .order('concluido_em', { ascending: false }),
   ])
 
-  const units = unitsRaw ?? []
+  const units = (unitsRaw ?? []).filter(u=>u.name.trim().toUpperCase()!=='HOS')
   const unitIds = units.map(u => u.id)
   const unitMap = new Map(units.map(u => [u.id, u.name]))
   const localMap = new Map((locaisRaw ?? []).map(l => [l.id, l.nome as string]))
@@ -168,6 +169,22 @@ export default async function AlertasPage() {
     extrasWarnings = ['Alertas de Extras indisponíveis. Não foi possível consultar a alçada e as solicitações; tente novamente.']
   }
 
+  // Read all open plans, including older visits; a pending correction cannot age out of alerts.
+  const actionCounts=new Map<string,{count:number;execution:string}>();
+  for(let offset=0;;offset+=500){
+    const result=await supabase.schema('mise').from('crivo_plano_acao').select('id,execution_id,descricao,responsavel_nome,prazo,status,execution:checklist_executions!inner(unit_id,local_id)').not('status','in','(resolvido,cancelado)').order('id').range(offset,offset+499);
+    if(result.error){extrasWarnings.push('Planos de ação do CRIVO indisponíveis.');break;}
+    for(const a of result.data){
+      const e=Array.isArray(a.execution)?a.execution[0]:a.execution;
+      if(!e?.local_id)continue;
+      const local=localMap.get(e.local_id)||'Local da auditoria';
+      const existing=actionCounts.get(e.local_id);actionCounts.set(e.local_id,{count:(existing?.count??0)+1,execution:a.execution_id});
+      if(a.prazo&&a.prazo<hoje)alertas.push({id:`crivo-acao-${a.id}`,modulo:'CRIVO',unidade:unitMap.get(e.unit_id)||local,severidade:'critico',titulo:'Ação corretiva vencida',descricao:`${local}: ${a.descricao}. Responsável: ${a.responsavel_nome||'a definir'}; prazo ${fmtData(a.prazo)}.`,data:a.prazo,href:`/crivo/relatorios/${a.execution_id}`});
+    }
+    if(result.data.length<500)break;
+  }
+  for(const [local,entry] of actionCounts)if(entry.count>=5)alertas.push({id:`crivo-acumulado-${local}`,modulo:'CRIVO',unidade:localMap.get(local)||'Local da auditoria',severidade:'atencao',titulo:'Cinco ou mais ações corretivas abertas',descricao:`${entry.count} correções aguardam resolução neste local.`,data:hoje,href:`/crivo/plano-acao?local=${local}`});
+
   // ── TURNO: Relatório vencido (últimos 3 dias, excluindo hoje) ──
   for (const r of relatorios) {
     if (r.data >= hoje || r.data < data3) continue
@@ -183,6 +200,13 @@ export default async function AlertasPage() {
       data: r.data,
       href: `/relatorio-diario/${r.data}?unit_id=${r.unit_id}`,
     })
+  }
+
+  const schedules=await supabase.from('op_horario_padrao').select('unit_id,dia_semana,periodo');
+  if(schedules.error)extrasWarnings.push('Não foi possível conferir os dias nunca preenchidos.');
+  for(const u of units) for(const day of expectedDays(data14,addDias(hoje,-1),(schedules.data??[]).filter(h=>h.unit_id===u.id))) {
+    if(relatorios.some(r=>r.unit_id===u.id&&r.data===day))continue;
+    alertas.push({id:`turno-ausente-${u.id}-${day}`,modulo:'TURNO',unidade:u.name,severidade:'critico',titulo:`Resumo de ${fmtData(day)} não preenchido`,descricao:'A casa tinha operação prevista no horário padrão e ninguém abriu o resumo do dia.',data:day,href:`/relatorio-diario/${day}?unit_id=${u.id}`});
   }
 
   // ── TURNO: Nota Geral < 3 ──

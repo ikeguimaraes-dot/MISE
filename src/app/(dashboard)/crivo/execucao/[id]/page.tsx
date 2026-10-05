@@ -48,11 +48,11 @@ export default async function CrivoExecucaoPage({
   const [{ data: template }, { data: itemsRaw }, { data: respostas }, notaAnteriorResult] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('nome').eq('id', execucao.template_id).single(),
     supabase.schema('mise').from('checklist_template_items')
-      .select('id, ordem, titulo, descricao, tipo_resposta, opcoes, peso, requer_comentario, criterio_regramento, requer_foto, topico_ordem, topico_nome, critico')
+      .select('id, ordem, titulo, descricao, tipo_resposta, opcoes, peso, requer_comentario, criterio_regramento, requer_foto, topico_ordem, topico_nome, critico').eq('ativo',true)
       .eq('template_id', execucao.template_id)
       .order('ordem'),
     supabase.schema('mise').from('checklist_responses')
-      .select('item_id, resposta, comentario, nao_aplicavel, foto_url')
+      .select('id,item_id, resposta, comentario, nao_aplicavel, foto_url,orientacao_corretiva,responsavel_orientado')
       .eq('execution_id', id),
     execucao.local_id
       ? supabase.schema('mise').from('checklist_executions')
@@ -81,6 +81,9 @@ export default async function CrivoExecucaoPage({
     critico: item.critico ?? false,
   }))
 
+  const photoRows=(respostas?.length ? await supabase.schema('mise').from('crivo_response_fotos').select('id,response_id,url,legenda,ordem').in('response_id',respostas.map(r=>r.id)).order('ordem') : {data:[],error:null});
+  if(photoRows.error)throw new Error('Fotos indisponíveis.');
+  const initialPhotos=(photoRows.data??[]).map(p=>({...p,item_id:respostas!.find(r=>r.id===p.response_id)!.item_id}));
   const notaAnteriorData = notaAnteriorResult.data
   const notaAnterior = notaAnteriorData?.percentual != null
     ? {
@@ -103,6 +106,7 @@ export default async function CrivoExecucaoPage({
         nao_aplicavel: r.nao_aplicavel,
         foto_url: r.foto_url,
       }))}
+      initialPhotos={initialPhotos}
       notaAnterior={notaAnterior}
     />
   )

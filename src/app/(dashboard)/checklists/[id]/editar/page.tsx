@@ -13,10 +13,10 @@ export default async function EditarChecklistPage({ params }: { params: Promise<
   const supabase = createServiceClient()
 
   const [{ data: template }, { data: items }, { data: topicosRaw }] = await Promise.all([
-    supabase.schema('mise').from('checklist_templates').select('id, nome, modulo, scoring_model, ativo').eq('id', id).single(),
-    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', id).order('ordem'),
+    supabase.schema('mise').from('checklist_templates').select('id, nome, modulo, scoring_model, ativo, source_status').eq('id', id).single(),
+    supabase.schema('mise').from('checklist_template_items').select('*').eq('ativo',true).eq('template_id', id).order('ordem'),
     supabase.schema('mise').from('checklist_template_topicos')
-      .select('topico_ordem, topico_nome, peso')
+      .select('topico_ordem, topico_nome, peso').eq('ativo',true)
       .eq('template_id', id)
       .order('topico_ordem'),
   ])
@@ -34,7 +34,8 @@ export default async function EditarChecklistPage({ params }: { params: Promise<
         <p className="text-sm text-ink-muted mt-1">{template.nome}</p>
       </div>
 
-      {template.modulo==='CRIVO'&&<ScoringModelSelector id={id} model={template.scoring_model} active={template.ativo}/>}
+      {template.source_status==='awaiting_questionnaire'&&<p className="rounded border border-ember p-4 mb-4">Referência incompleta da HeadChef. Aguarda questionário completo da consultoria; não disponível para auditorias.</p>}
+      {template.modulo==='CRIVO'&&template.source_status!=='awaiting_questionnaire'&&<ScoringModelSelector id={id} model={template.scoring_model} active={template.ativo}/>}
       <EditarClient
         templateId={id}
         modulo={template.modulo ?? ''}

@@ -18,6 +18,7 @@ export const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     { href: '/extras', label: 'Controle de Extras', description: 'Solicitação, aprovação, reserva e conferência de pagamentos', icon: Users },
     { href: '/relatorio-diario/painel-geral', label: 'Painel geral', description: 'Resumo executivo por unidade', icon: LayoutDashboard, parent: '/relatorio-diario', access: 'admin' },
     { href: '/crivo', label: 'Auditorias', description: 'CRIVO · padrões e conformidade', icon: ShieldCheck, access: 'admin' },
+    { href: '/crivo/plano-acao', label: 'Plano de ação', description: 'Correções, responsáveis e prazos', icon: ClipboardCheck, access: 'gestor' },
     { href: '/crivo/templates', label: 'Templates de auditoria', description: 'Modelos de avaliação CRIVO', icon: ClipboardCheck, parent: '/crivo', access: 'admin' },
     { href: '/crivo/relatorios', label: 'Relatórios de auditoria', description: 'Resultados e comparativos CRIVO', icon: FileChartColumn, parent: '/crivo', access: 'admin' },
   ] },

@@ -1,3 +1,4 @@
+import {crivoContext,crivoError} from '@/lib/crivo/access'
 import { getMiseSession } from '@/lib/session'
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
@@ -7,7 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = createServiceClient()
+  let ctx;try{ctx=await crivoContext()}catch(e){return crivoError(e)}
+  const supabase=ctx.db
 
   const { data: template, error } = await supabase
     .schema('mise')
@@ -18,12 +20,12 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
 
+  if(ctx.session.role!=='admin' && ((!template.ativo)||template.unit_id && template.unit_id!==ctx.unitId || template.modulo==='CRIVO' && ctx.session.role!=='gerente')) return NextResponse.json({error:'Sem acesso ao template.'},{status:403});
   const { data: items } = await supabase
     .schema('mise')
     .from('checklist_template_items')
-    .select('*')
+    .select('*').eq('ativo',true)
     .eq('template_id', id)
-    .eq('ativo', true)
     .order('ordem')
 
   return NextResponse.json({ template, items: items ?? [] })
@@ -40,7 +42,7 @@ export async function PATCH(
   const { error } = await supabase
     .schema('mise')
     .from('checklist_templates')
-    .update(body)
+    .update(Object.fromEntries(Object.entries(body).filter(([k])=>['nome','tipo','descricao','ativo','categoria'].includes(k))))
     .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ ok: true })

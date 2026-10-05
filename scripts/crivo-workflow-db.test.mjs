@@ -21,3 +21,37 @@ save(0,data);assert.throws(()=>save(0,data));assert.throws(()=>save(1,{...data,s
 const asset=randomUUID();sql(`insert into mise.crivo_assets(id,execution_id,uploaded_by,kind,object_path,content_type,size_bytes) values(${q(asset)},${q(execution)},${q(admin)},'evidencia',${q(asset)},'image/png',100)`)
 save(1,{...data,status:'resolvido',asset_id:asset});assert.equal(sql(`select status from mise.crivo_plano_acao where id=${q(action)}`),'resolvido');assert.equal(sql(`select count(*) from mise.crivo_action_events where action_id=${q(action)}`),'2')
 console.log('PASS frozen methodology, atomic completion, stale-response protection, immutable completed responses, action owner/deadline/evidence and audit')
+const t2=randomUUID(),i2=randomUUID(),x2=randomUUID(),r2=randomUUID();
+sql(`insert into mise.checklist_templates(id,nome,modulo,scoring_model) values(${q(t2)},'Automatic actions','CRIVO','headchef_conformidade');insert into mise.checklist_template_items(id,template_id,ordem,titulo,tipo_resposta) values(${q(i2)},${q(t2)},1,'Synthetic nonconformity','sim_nao');insert into mise.checklist_executions(id,template_id,unit_id) values(${q(x2)},${q(t2)},${q(unit)});insert into mise.checklist_responses(id,execution_id,item_id,resposta) values(${q(r2)},${q(x2)},${q(i2)},'{"valor":"nao"}');`)
+const hash2=sql(`select mise.crivo_response_hash(${q(x2)})`);
+sql(`select mise.crivo_finish(${q(x2)},${q(admin)},${q(JSON.stringify({...result,model:'headchef_conformidade',percentual:0,pontuacao_total:1,pontuacao_obtida:0}))},${q(hash2)},'{}')`);
+assert.equal(sql(`select count(*) from mise.crivo_plano_acao where execution_id=${q(x2)} and revisao_pendente and responsavel_employee_id is null and prazo is null`),'1');
+const generated=sql(`select id from mise.crivo_plano_acao where execution_id=${q(x2)}`);
+assert.throws(()=>sql(`select mise.crivo_review_plan(${q(admin)},${q(x2)})`));
+sql(`insert into mise.sessions(id,employee_id,role,expires_at) values(gen_random_uuid(),${q(owner)},'gerente',now()+interval '1 hour')`);
+assert.throws(()=>sql(`select mise.crivo_action_save(${q(owner)},${q(generated)},${q(x2)},0,'{"status":"em_andamento"}')`));
+sql(`select mise.crivo_action_save(${q(admin)},${q(generated)},${q(x2)},0,${q(JSON.stringify({...data,response_id:r2}))})`);
+sql(`select mise.crivo_review_plan(${q(admin)},${q(x2)})`);
+sql(`select mise.crivo_action_save(${q(owner)},${q(generated)},${q(x2)},1,'{"status":"em_andamento"}')`);
+const pdfAsset=randomUUID(),photoAsset=randomUUID(),photo2=randomUUID();
+for(const [id,type,kind] of [[pdfAsset,'application/pdf','evidencia'],[photoAsset,'image/png','evidencia'],[photo2,'image/jpeg','foto']])sql(`insert into mise.crivo_assets(id,execution_id,uploaded_by,kind,object_path,content_type,size_bytes) values(${q(id)},${q(x2)},${q(owner)},${q(kind)},${q(id)},${q(type)},100)`);
+assert.throws(()=>sql(`select mise.crivo_action_save(${q(owner)},${q(generated)},${q(x2)},2,${q(JSON.stringify({status:'resolvido',asset_id:pdfAsset}))})`));
+sql(`select mise.crivo_action_save(${q(owner)},${q(generated)},${q(x2)},2,${q(JSON.stringify({status:'resolvido',asset_id:photoAsset}))})`);
+const mediaData={asset_id:photo2,legenda:'Evidence caption',orientacao_corretiva:'Corrective instruction',responsavel_orientado:'Synthetic leader'};
+const media=()=>JSON.parse(sql(`select mise.crivo_response_media(${q(admin)},${q(x2)},${q(r2)},${q(JSON.stringify(mediaData))})`));
+assert.equal(media().foto_url,photo2);assert.equal(media().photos.length,1);
+assert.equal(sql(`select resposta->>'valor' from mise.checklist_responses where id=${q(r2)}`),'nao');
+assert.throws(()=>sql(`update mise.checklist_responses set resposta='{"valor":"sim"}' where id=${q(r2)}`));
+assert.equal(sql(`select count(*) from mise.crivo_plano_acao where execution_id=${q(x2)}`),'1');
+console.log('PASS auto-generated action, review gate, PIN manager, photographic evidence, first-photo compatibility, duplicate-media retry and immutable result')
+const pendingTemplate=randomUUID();
+sql(`insert into mise.checklist_templates(id,nome,modulo,ativo,source_status) values(${q(pendingTemplate)},'Incomplete source','CRIVO',false,'awaiting_questionnaire')`);
+assert.throws(()=>sql(`update mise.checklist_templates set ativo=true where id=${q(pendingTemplate)}`));
+const topics=[{topico_ordem:1,topico_nome:'Original',peso:1}];
+sql(`select mise.checklist_reorder(${q(admin)},${q(t2)},${q(JSON.stringify(topics))},${q(JSON.stringify([{id:i2,ordem:1,topico_ordem:1,topico_nome:'Original'}]))})`);
+assert.throws(()=>sql(`select mise.checklist_reorder(${q(admin)},${q(t2)},'[]',${q(JSON.stringify([{id:item,ordem:1,topico_ordem:1,topico_nome:'Wrong'}]))})`));
+assert.equal(sql(`select ativo from mise.checklist_template_topicos where template_id=${q(t2)} and topico_ordem=1`),'t');
+sql(`select mise.checklist_reorder(${q(admin)},${q(t2)},'[]','[]')`);
+assert.equal(sql(`select count(*) from mise.checklist_template_topicos where template_id=${q(t2)} and not ativo`),'1');
+assert.equal(sql(`select count(*) from mise.checklist_responses where execution_id=${q(x2)}`),'1');
+console.log('PASS incomplete questionnaire cannot activate, atomic scoped reorder, soft retirement preserves responses')

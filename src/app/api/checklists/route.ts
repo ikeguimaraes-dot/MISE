@@ -1,3 +1,4 @@
+import {crivoContext,crivoError} from '@/lib/crivo/access'
 import { getMiseSession } from '@/lib/session'
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
@@ -6,9 +7,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const unit_id = searchParams.get('unit_id')
 
-  const supabase = createServiceClient()
+  let ctx; try {ctx=await crivoContext()} catch(e) {return crivoError(e)}
+  if(ctx.session.role!=="admin" && unit_id && unit_id!==ctx.unitId) return NextResponse.json({error:"Sem acesso à unidade."},{status:403})
+  const supabase = ctx.db
   let query = supabase.schema('mise').from('checklist_templates').select('*').eq('ativo', true)
-  if (unit_id) query = query.eq('unit_id', unit_id)
+  if (ctx.session.role !== 'admin') {
+    if(!ctx.unitId)return NextResponse.json({error:'Unidade indisponível.'},{status:403});
+    query=query.or(`unit_id.eq.${ctx.unitId},unit_id.is.null`);
+    if(ctx.session.role==='cozinheiro')query=query.eq('modulo','RITMO');
+  } else if (unit_id) query = query.eq('unit_id', unit_id)
 
   const { data, error } = await query.order('nome')
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })

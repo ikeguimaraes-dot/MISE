@@ -53,7 +53,7 @@ export async function POST(
       .eq('id', execucao.template_id)
       .single(),
     supabase.schema('mise').from('checklist_template_items')
-      .select('id, topico_ordem, topico_nome, tipo_resposta, opcoes, peso')
+      .select('id, topico_ordem, topico_nome, tipo_resposta, opcoes, peso').eq('ativo',true)
       .eq('template_id', execucao.template_id),
     supabase.schema('mise').from('checklist_responses')
       .select('item_id, resposta, nao_aplicavel')

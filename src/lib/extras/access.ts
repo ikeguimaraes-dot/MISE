@@ -23,7 +23,7 @@ export async function extrasContext() {
   if (!session)
     throw new ExtraError("Entre na plataforma para continuar.", 401);
   const db = createServiceClient();
-  const [employee, grants] = await Promise.all([
+  const [employee, grants, operational] = await Promise.all([
     db
       .from("employees")
       .select("ativo,unit_id")
@@ -34,6 +34,7 @@ export async function extrasContext() {
       .from("extra_access")
       .select("unit_id,role")
       .eq("employee_id", session.employeeId),
+    db.from("op_extra_alcada").select("unit_id"),
   ]);
   if (employee.error || !employee.data?.ativo)
     throw new ExtraError("Acesso do colaborador indisponível.", 403);
@@ -42,12 +43,15 @@ export async function extrasContext() {
       "O fluxo real de Extras ainda não está configurado.",
       503,
     );
+  if (operational.error) throw new ExtraError("Unidades operacionais indisponíveis.", 503);
+  const operationalIds = new Set((operational.data ?? []).map(u => u.unit_id));
+  const roles = ((grants.data ?? []) as ExtraAccess[]).filter(g => operationalIds.has(g.unit_id) && (g.role !== "lider" || g.unit_id === employee.data.unit_id));
+  if (session.role === "admin") for (const unit_id of operationalIds) roles.push({ unit_id, role: "diretor" });
+  if (session.role === "gerente" && operationalIds.has(employee.data.unit_id)) roles.push({ unit_id: employee.data.unit_id, role: "lider" });
   return {
     session,
     db,
-    grants: ((grants.data ?? []) as ExtraAccess[]).filter(
-      (g) => g.role !== "lider" || g.unit_id === employee.data.unit_id,
-    ),
+    grants: roles.filter((g, i) => roles.findIndex(r => r.unit_id === g.unit_id && r.role === g.role) === i),
   };
 }
 export function requireExtraAccess(
@@ -85,4 +89,10 @@ export function extraResponseError(error: unknown) {
 }
 // Explicit projection: CPF and internal command payload never enter a list response.
 export const EXTRA_SELECT =
-  "id,unit_id,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,comissao,total,pagadora,status,emergencial,periodo,sequencia,pago_em,mise_requested_by,mise_stage_at,mise_version,mise_rh_complete,mise_approved_total,mise_receipt_id,mise_allowance_snapshot,mise_managed";
+  "id,unit_id,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,comissao,total,pagadora,status,emergencial,periodo,sequencia,pago_em,mise_requested_by,mise_stage_at,mise_version,mise_rh_complete,mise_approved_total,mise_receipt_id,mise_allowance_snapshot,mise_managed,mise_emergency_decision";
+
+export function requireExtraRead(grants: ExtraAccess[], unit: string, requester: string | null, employee: string) {
+  requireExtraAccess(grants, unit);
+  if (!grants.some(g => g.unit_id === unit && g.role !== "lider") && requester !== employee)
+    throw new ExtraError("Sem acesso a esta solicitação.", 403);
+}

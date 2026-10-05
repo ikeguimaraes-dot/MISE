@@ -100,7 +100,7 @@ export async function GET(
       !grants.some(
         (g) =>
           g.unit_id === item.data.unit_id &&
-          ["rh", "diretor", "financeiro", "caixa"].includes(g.role),
+          ["rh", "financeiro", "caixa"].includes(g.role),
       )
     )
       throw new ExtraError("Sem acesso ao recibo.", 403);

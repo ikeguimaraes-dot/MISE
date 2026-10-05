@@ -1,3 +1,4 @@
+import {checklistPageContext} from '@/lib/checklist-page-access'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -20,15 +21,15 @@ const TIPO_RESPOSTA_LABEL: Record<string, string> = {
 
 export default async function ChecklistTemplatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createServiceClient()
+  const ctx=await checklistPageContext();const supabase=ctx.db;
 
   const [{ data: template }, { data: items }, { data: units }] = await Promise.all([
     supabase.schema('mise').from('checklist_templates').select('*').eq('id', id).single(),
-    supabase.schema('mise').from('checklist_template_items').select('*').eq('template_id', id).order('ordem'),
+    supabase.schema('mise').from('checklist_template_items').select('*').eq('ativo',true).eq('template_id', id).order('ordem'),
     supabase.from('units').select('id, name').eq('active', true),
   ])
 
-  if (!template) notFound()
+  if (!template || ctx.session.role!=='admin' && (!template.ativo || template.unit_id && template.unit_id!==ctx.unitId || template.modulo==='CRIVO' && ctx.session.role!=='gerente')) notFound()
 
   const unitsMap = Object.fromEntries((units ?? []).map(u => [u.id, u.name]))
 

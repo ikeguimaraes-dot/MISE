@@ -45,10 +45,12 @@ export default async function ExtrasEvaluationPage({
       );
     ownUnit = employee.data.unit_id;
   }
+  const operational=await db.from("op_extra_alcada").select("unit_id");
+  if(operational.error)throw new Error("Unidades operacionais indisponíveis.");
   let query = db
     .from("units")
     .select("id, name")
-    .eq("active", true)
+    .eq("active", true).in("id",[...new Set(operational.data.map(c=>c.unit_id))])
     .order("name");
   if (ownUnit) query = query.eq("id", ownUnit);
   const units = await query;

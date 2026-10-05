@@ -31,6 +31,8 @@ export type TopicScore = {
   zerado_por_critico: boolean;
   conformes: number;
   avaliados: number;
+  possivel?: number;
+  obtido?: number;
 };
 const round = (n: number) => Math.round(n * 100) / 100;
 function answered(item: ScoreItem, r: ScoreResponse | undefined) {
@@ -77,6 +79,7 @@ export function scoreCrivo(
   items: ScoreItem[],
   responses: ScoreResponse[],
   weights: { topico_ordem: number; peso: number }[] = [],
+  options: { validateEvidence?: boolean } = {},
 ) {
   const map = new Map(responses.map((r) => [r.item_id, r]));
   const missing = items
@@ -87,7 +90,7 @@ export function scoreCrivo(
       `Responda os ${missing.length} itens pendentes antes de concluir.`,
     );
   if (!items.length) throw new Error("O template não tem itens para avaliar.");
-  for (const i of items) {
+  for (const i of options.validateEvidence === false ? [] : items) {
     const r = map.get(i.id);
     if (r?.nao_aplicavel) continue;
     const no = r?.resposta?.valor === "nao";
@@ -124,17 +127,19 @@ export function scoreCrivo(
     ).length;
     const critical =
       model === "ff_ponderado" &&
-      eligible.some(
+      group.filter(i => !map.get(i.id)?.nao_aplicavel).some(
         (i) => i.critico && map.get(i.id)?.resposta?.valor === "nao",
       );
     const weight =
       model === "ff_ponderado"
         ? Number(weights.find((t) => t.topico_ordem === ordem)?.peso ?? 1)
         : eligible.length;
+    const applicablePoints = eligible.reduce((sum,i)=>sum+Number(i.peso??1),0);
+    const conformingPoints = eligible.filter(i=>conforming(i,map.get(i.id))).reduce((sum,i)=>sum+Number(i.peso??1),0);
     const fraction = eligible.length
       ? critical
         ? 0
-        : conformes / eligible.length
+        : model === "ff_ponderado" ? conformingPoints / applicablePoints : conformes / eligible.length
       : null;
     topics.push({
       topico_ordem: ordem,
@@ -147,6 +152,8 @@ export function scoreCrivo(
       zerado_por_critico: critical,
       conformes,
       avaliados: eligible.length,
+      possivel: model === "headchef_narrativo" || fraction === null ? 0 : weight,
+      obtido: model === "headchef_narrativo" || fraction === null ? 0 : round(fraction * weight),
     });
     if (fraction !== null && model !== "headchef_narrativo") {
       total += weight;
@@ -177,6 +184,5 @@ export function classify(pct: number | null, model: ScoringModel): string {
   if (pct >= 90) return "Excelente";
   if (pct >= 75) return "Bom";
   if (pct >= 60) return "Regular";
-  if (model !== "ff_ponderado") return "Inadequado";
   return pct < 50 ? "Crítico" : "Ruim";
 }

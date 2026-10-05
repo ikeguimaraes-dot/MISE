@@ -70,6 +70,9 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
         setEditing(null);
         setResponse("");
       }
+      if (target === "guidance") {
+        await api(`${base}/report`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+      }
       if (target === "photo") {
         const file = form.get("file");
         if (!(file instanceof File) || !file.size)
@@ -114,11 +117,11 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
         </div>
         <a
           className="cr-button"
-          href={`${base}/pdf`}
+          href={`/crivo/execucao/${r.execution.id}/laudo`}
           target="_blank"
           rel="noreferrer"
         >
-          Baixar laudo PDF
+          Abrir laudo para impressão
         </a>
       </header>
       {r.legacy && (
@@ -132,6 +135,11 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
           Laudo em elaboração · visita ainda não concluída.
         </p>
       )}
+      <div className="cr-notice"><Link href="/crivo/plano-acao">Plano de ação de todos os locais →</Link>
+      {!r.execution.plano_revisado_em && <p>Plano em revisão. Complete orientação, responsável e prazo antes de liberar para a unidade.</p>}
+      {r.canEdit && r.execution.status === "concluido" && !r.execution.plano_revisado_em && <button disabled={busy} onClick={async()=>{setBusy(true);setError("");try{await api(`${base}/review`,{method:"POST"});router.refresh()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}}>Concluir revisão e liberar plano</button>}
+      {r.execution.plano_revisado_em && <p>Plano revisado e disponível para a unidade.</p>}
+      </div>
       <nav className="cr-tabs" aria-label="Conteúdo da visita">
         <button aria-pressed={tab === "laudo"} onClick={() => setTab("laudo")}>
           Laudo
@@ -155,7 +163,7 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
         <>
           <div className="cr-overview">
             <section className="cr-card">
-              <p>Resultado da visita</p>
+              <p>{r.execution.status === "concluido" ? "Resultado da visita" : "Nota provisória · respostas atuais"}</p>
               <strong className="cr-score">
                 {r.execution.percentual === null
                   ? "Descritivo"
@@ -206,6 +214,7 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
                     required
                   />
                 </label>
+                <label>Cargo do avaliador<input name="avaliador_cargo" defaultValue={r.execution.avaliador_cargo || ""}/></label>
                 <label>
                   Registro profissional
                   <input
@@ -300,6 +309,9 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
                       >
                         Criar ação para este item
                       </button>
+                      <details><summary>Orientação corretiva e pessoa orientada</summary><form className="cr-form" onSubmit={e=>save(e,"guidance")}>
+                        <input type="hidden" name="response_id" value={answer.id}/><label className="cr-wide">Como corrigir<textarea name="orientacao_corretiva" defaultValue={answer.orientacao_corretiva||""}/></label><label>Pessoa orientada<input name="responsavel_orientado" defaultValue={answer.responsavel_orientado||""}/></label><button disabled={busy}>Salvar orientação</button>
+                      </form></details>
                       <details>
                         <summary>Anexar foto com legenda</summary>
                         <form
@@ -439,11 +451,11 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
                 </select>
               </label>
               <label>
-                Evidência (PDF, PNG ou JPEG)
+                Evidência fotográfica (PNG ou JPEG)
                 <input
                   name="file"
                   type="file"
-                  accept="application/pdf,image/jpeg,image/png"
+                  accept="image/jpeg,image/png"
                 />
               </label>
               <label className="cr-wide">
@@ -473,7 +485,7 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
           {r.actions.map((a) => (
             <article key={a.id} className="cr-finding">
               <p className="cr-kicker">
-                {a.status.replaceAll("_", " ")}
+                {a.revisao_pendente ? "REVISÃO PENDENTE" : a.status.replaceAll("_", " ")}
                 {!["resolvido", "cancelado"].includes(a.status) &&
                 a.prazo &&
                 a.prazo < new Date().toISOString().slice(0, 10)
@@ -487,7 +499,7 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
                 {a.prazo?.split("-").reverse().join("/") || "não definido"}
               </p>
               <div className="cr-buttons">
-                <button onClick={() => setEditing(a.id)}>Atualizar ação</button>
+                <button onClick={() => setEditing(a.id)}>{a.revisao_pendente ? "Revisar e definir responsável" : "Atualizar ação"}</button>
                 {a.evidencia_url && (
                   <button onClick={() => openAsset(a.evidencia_url)}>
                     Abrir evidência

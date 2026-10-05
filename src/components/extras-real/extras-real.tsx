@@ -22,7 +22,7 @@ type Event = {
   note: string | null;
   created_at: string;
 };
-const money = (n: number) =>
+const money = (n: number | null) => n === null ? "A definir" :
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     n,
   );
@@ -74,7 +74,9 @@ export function ExtrasReal({
     [amount, setAmount] = useState(0),
     [commission, setCommission] = useState(0),
     [urgent, setUrgent] = useState(false);
+  const [queue, setQueue] = useState(!initialExtra);
   const [hasMore, setHasMore] = useState(false);
+  const nextPayment = useRef<string | null>(null);
   const uploadedReceipt = useRef<{ key: string; id: string } | null>(null);
   const pending = useRef<{ payload: string; key: string; id: string } | null>(
     null,
@@ -92,7 +94,7 @@ export function ExtrasReal({
     const controller = new AbortController();
     setLoading(true);
     setItems([]);
-    api(`/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}`, {
+    api(`/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}&role=${role}&queue=${queue ? 1 : 0}`, {
       signal: controller.signal,
     })
       .then((d) => {
@@ -106,7 +108,7 @@ export function ExtrasReal({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [unit, from, to, revision]);
+  }, [unit, from, to, role, queue, revision]);
   useEffect(() => {
     setDetail(null);
     setAction("");
@@ -114,7 +116,7 @@ export function ExtrasReal({
     const controller = new AbortController();
     api(`/api/extras/requests/${selected}`, { signal: controller.signal })
       .then((d) => {
-        if (d.item.unit_id === unit) setDetail(d);
+        if (d.item.unit_id === unit) {setDetail(d); if(nextPayment.current===d.item.id){setAction("informar_pagamento");nextPayment.current=null;}}
       })
       .catch((e) => {
         if (!controller.signal.aborted) setError(e.message);
@@ -140,7 +142,7 @@ export function ExtrasReal({
         Object.assign(data, {
           unit_id: unit,
           data_trabalho: day,
-          valor: Number(data.valor),
+          valor: data.valor === "" ? null : Number(data.valor),
           comissao: Number(data.comissao || 0),
           sequencia: Number(data.sequencia),
           emergencial: urgent || role === "caixa",
@@ -194,6 +196,7 @@ export function ExtrasReal({
         }),
       });
       pending.current = null;
+      if(creating && role === "caixa") nextPayment.current=result.id;
       setSelected(result.id);
       setCreating(false);
       setAction("");
@@ -217,6 +220,8 @@ export function ExtrasReal({
         </div>
         <nav>
           {admin && <Link href="/extras/acessos">Gerenciar acessos</Link>}
+          <Link href={`/extras/relatorios?unit_id=${unit}`}>Relatórios</Link>
+          {["rh", "financeiro", "caixa"].includes(role) && <Link href={`/extras/envio-caixa?unit_id=${unit}&data=${day}`}>Envio Caixa</Link>}
           <Link href="/extras/avaliacao">Ambiente de avaliação</Link>
         </nav>
       </header>
@@ -284,6 +289,7 @@ export function ExtrasReal({
           </button>
         )}
       </div>
+      <label className="er-check"><input type="checkbox" checked={queue} onChange={e => setQueue(e.target.checked)} /> Minha fila pendente · inclui outras semanas</label>
       <section className="er-budget" aria-label="Alçada semanal">
         <strong>
           Semana {from.split("-").reverse().slice(0, 2).join("/")}–
@@ -346,10 +352,11 @@ export function ExtrasReal({
           <h2>
             {role === "caixa" ? "Registrar emergência" : "Nova solicitação"}
           </h2>
+          {role === "caixa" && <p>1. Identifique a emergência. 2. Anexe o recibo assinado e registre o pagamento. A diretoria revisa depois.</p>}
           <form onSubmit={submit} className="er-form">
             <label>
               Setor
-              <input name="setor" required maxLength={150} />
+              <select name="setor" required><option value="">Selecione</option>{["Bar", "Caixa", "Cozinha Meet", "Cozinha Produção", "Parrilla", "Portaria", "Salão", "Limpeza"].map(s => <option key={s}>{s}</option>)}</select>
             </label>
             <label>
               Função
@@ -386,16 +393,17 @@ export function ExtrasReal({
               />
             </label>
             <label>
-              Diária estimada
+              Diária estimada (se conhecida)
               <input
                 name="valor"
                 type="number"
                 step="0.01"
                 min="0.01"
-                required
+                required={urgent}
                 onChange={(e) => setAmount(Number(e.target.value))}
               />
             </label>
+            {!urgent && <p>Sem estimativa, o RH define o valor e a alçada é verificada antes da liberação.</p>}
             <label>
               Comissão
               <input
@@ -436,7 +444,7 @@ export function ExtrasReal({
               )}
             <div className="er-wide er-buttons">
               <button disabled={busy}>
-                {busy ? "Registrando…" : "Registrar solicitação"}
+                {busy ? "Registrando…" : role === "caixa" ? "Continuar para recibo e pagamento" : "Registrar solicitação"}
               </button>
               <button
                 type="button"
@@ -455,7 +463,7 @@ export function ExtrasReal({
             <p>
               {loading
                 ? "Carregando…"
-                : `${items.length} registros nesta semana`}
+                : `${items.length} registros ${queue ? "na sua fila" : "nesta semana"}`}
             </p>
             {!loading && !items.length && (
               <p>Nenhuma solicitação neste período.</p>
@@ -485,7 +493,7 @@ export function ExtrasReal({
                   setBusy(true);
                   try {
                     const d = await api(
-                      `/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}&offset=${items.length}`,
+                      `/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}&role=${role}&queue=${queue ? 1 : 0}&offset=${items.length}`,
                     );
                     setItems((prev) => [...prev, ...d.items]);
                     setHasMore(d.hasMore);
@@ -534,13 +542,13 @@ export function ExtrasReal({
                     origem.
                   </p>
                 )}
+                {detail?.cpf && ["rh", "financeiro", "caixa"].includes(role) && <p>CPF: {detail.cpf}</p>}
                 {item.emergencial && (
                   <p>
-                    Emergência registrada. A conferência do RH e do Financeiro
-                    continua obrigatória.
+                    Emergência registrada. Diretoria: {item.mise_emergency_decision === "aprovado" ? "aprovada" : item.mise_emergency_decision === "nao_ratificado" ? "não aprovada; pagamento preservado no histórico" : "aprovação posterior pendente"}.
                   </p>
                 )}
-                {item.mise_receipt_id && role !== "lider" && (
+                {item.mise_receipt_id && ["rh", "financeiro", "caixa"].includes(role) && (
                   <button
                     onClick={async () => {
                       try {
@@ -608,7 +616,7 @@ export function ExtrasReal({
                             type="number"
                             min="0.01"
                             step="0.01"
-                            defaultValue={item.valor}
+                            defaultValue={item.valor ?? ""}
                             readOnly={item.status === "pagamento_informado"}
                             required
                           />
@@ -666,12 +674,12 @@ export function ExtrasReal({
                       </>
                     )}
                     <label className="er-wide">
-                      {["aprovar", "recusar", "cancelar"].includes(action)
+                      {["aprovar", "recusar", "cancelar", "ratificar_emergencia", "nao_ratificar_emergencia"].includes(action)
                         ? "Justificativa obrigatória"
                         : "Observação"}
                       <textarea
                         name="note"
-                        required={["aprovar", "recusar", "cancelar"].includes(
+                        required={["aprovar", "recusar", "cancelar", "ratificar_emergencia", "nao_ratificar_emergencia"].includes(
                           action,
                         )}
                         maxLength={2000}

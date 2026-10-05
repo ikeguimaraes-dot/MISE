@@ -15,3 +15,7 @@ CREATE TABLE public.metas_dia_semana(id uuid DEFAULT gen_random_uuid(),unit_id u
 CREATE TABLE public.metas_dia_override(id uuid DEFAULT gen_random_uuid(),unit_id uuid,data date,meta numeric,UNIQUE(unit_id,data));
 CREATE TABLE public.notifications(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid NOT NULL,tipo text NOT NULL,titulo text NOT NULL,mensagem text,link text,lida boolean NOT NULL DEFAULT false,criado_em timestamptz NOT NULL DEFAULT now());
 CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+
+CREATE TABLE mise.sessions(id uuid PRIMARY KEY,employee_id uuid,role text,expires_at timestamptz);
+CREATE TABLE public.dre_faturamento_historico(unit_id uuid,categoria text,mes_num int,rec_2022 numeric,rec_2023 numeric,rec_2024 numeric,rec_2025 numeric);
+CREATE TABLE public.dre_receita_detalhada(unit_id uuid,mes_ano text,grupo text,valor numeric);

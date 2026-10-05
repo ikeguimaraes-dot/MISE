@@ -15,7 +15,7 @@ export async function PATCH(
       const items = await db
         .schema("mise")
         .from("checklist_template_items")
-        .select("id,tipo_resposta")
+        .select("id,tipo_resposta").eq('ativo',true)
         .eq("template_id", id);
       if (items.error || !items.data?.length)
         throw new CrivoError(

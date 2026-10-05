@@ -31,6 +31,8 @@ type StoredResponse = {
   foto_url: string | null
 }
 
+type VisitPhoto = {id:string;item_id:string;url:string;legenda:string|null;ordem:number};
+
 type LocalAnswer = {
   resposta: Record<string, unknown> | null
   comentario: string
@@ -108,12 +110,14 @@ export function CrivoExecucaoClient({
   items,
   existingRespostas,
   notaAnterior,
+  initialPhotos = [],
 }: {
   executionId: string
   localId: string
   templateNome: string
   items: Item[]
   existingRespostas: StoredResponse[]
+  initialPhotos?: VisitPhoto[]
   notaAnterior?: { percentual: number; classificacao: string; data: string }
 }) {
   const router = useRouter()
@@ -131,6 +135,8 @@ export function CrivoExecucaoClient({
     }
     return init
   })
+  const [photos,setPhotos]=useState<VisitPhoto[]>(initialPhotos);
+  const [caption,setCaption]=useState("");
   const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -184,27 +190,17 @@ export function CrivoExecucaoClient({
   async function handlePhotoSelect(itemId: string, file: File) {
     setUploadingPhoto(itemId)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('execution_id', executionId)
-      fd.append('item_id', itemId)
-      const res = await fetch('/api/checklists/upload-foto', { method: 'POST', body: fd })
-      if (!res.ok) { const body=await res.json();alert(body.error||'Não foi possível anexar a foto.');return }
-      const { url } = await res.json()
-      const current = answers[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
-      const updated = { ...current, foto_url: url }
-      setAnswers(prev => ({ ...prev, [itemId]: updated }))
-      await saveToServer(itemId, updated)
-    } finally {
-      setUploadingPhoto(null)
-    }
-  }
-
-  async function handleRemovePhoto(itemId: string) {
-    const current = answers[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
-    const updated = { ...current, foto_url: null }
-    setAnswers(prev => ({ ...prev, [itemId]: updated }))
-    await saveToServer(itemId, updated)
+      if(!caption.trim())throw new Error('Escreva uma legenda para a foto.');
+      const current=answers[itemId]??{resposta:null,comentario:'',nao_aplicavel:false};
+      if(!await saveToServer(itemId,current))return;
+      const fd=new FormData();fd.set('file',file);fd.set('kind','foto');
+      const upload=await fetch(`/api/crivo/execucoes/${executionId}/assets`,{method:'POST',body:fd});
+      const asset=await upload.json();if(!upload.ok)throw new Error(asset.error);
+      const saved=await fetch(`/api/crivo/execucoes/${executionId}/report`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:itemId,asset_id:asset.id,legenda:caption})});
+      const result=await saved.json();if(!saved.ok)throw new Error(result.error);
+      setPhotos(prev=>[...prev.filter(p=>p.item_id!==itemId),...result.photos.map((p:Omit<VisitPhoto,'item_id'>)=>({...p,item_id:itemId}))]);
+      setAnswers(prev=>({...prev,[itemId]:{...current,foto_url:result.foto_url}}));setCaption('');
+    } catch(error) {alert((error as Error).message)} finally {setUploadingPhoto(null)}
   }
 
   function updateAnswer(itemId: string, patch: Partial<LocalAnswer>) {
@@ -711,28 +707,11 @@ export function CrivoExecucaoClient({
                 </div>
               )}
 
-              {/* Foto */}
-              <div className="flex items-center gap-3 pt-1">
-                {currentAnswer?.foto_url ? (
-                  <div className="relative shrink-0">
-                    <img src={currentAnswer.foto_url} alt="Foto" className="h-20 w-20 object-cover rounded-lg border border-edge" />
-                    <button
-                      onClick={() => handleRemovePhoto(currentItem.id)}
-                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-surface-raised border border-edge-strong flex items-center justify-center hover:bg-alert-soft"
-                    >
-                      <X className="h-3 w-3 text-ink-muted" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => { photoTargetItemId.current = currentItem.id; photoInputRef.current?.click() }}
-                    disabled={uploadingPhoto === currentItem.id}
-                    className="flex items-center gap-1.5 text-xs border border-edge rounded-lg px-3 py-2 text-ink-subtle hover:text-ember hover:border-ember transition-colors disabled:opacity-40"
-                  >
-                    {uploadingPhoto === currentItem.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-                    Foto{currentItem.requer_foto === 'sim' ? ' (recomendada)' : ''}
-                  </button>
-                )}
+              <div className="space-y-3 pt-3">
+                <label className="block text-xs">Legenda da próxima foto<input value={caption} onChange={e=>setCaption(e.target.value)} maxLength={1000} className="w-full rounded border border-edge p-2" placeholder="Descreva o que a imagem evidencia"/></label>
+                <div className="flex flex-wrap gap-3">{photos.filter(p=>p.item_id===currentItem.id).map(p=><figure key={p.id}><img src={/^https?:/.test(p.url)?p.url:`/api/crivo/execucoes/${executionId}/assets?redirect=1&path=${encodeURIComponent(p.url)}`} alt={p.legenda||'Evidência'} className="h-24 w-32 object-cover rounded border border-edge"/><figcaption className="text-xs max-w-32">{p.legenda||'Sem legenda'}</figcaption></figure>)}</div>
+                {currentAnswer?.foto_url&&!photos.some(p=>p.item_id===currentItem.id)&&<p className="text-xs">Foto anterior preservada. Ao adicionar outra foto, ela permanece no histórico.</p>}
+                <button onClick={()=>{photoTargetItemId.current=currentItem.id;photoInputRef.current?.click()}} disabled={!!uploadingPhoto||!caption.trim()} className="rounded border border-edge p-2 disabled:opacity-40">{uploadingPhoto?'Anexando…':'Adicionar foto com legenda'}</button>
               </div>
             </>
           )}

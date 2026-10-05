@@ -8,9 +8,17 @@ export async function GET(request: Request) {
   const status = searchParams.get('status')
   const template_id = searchParams.get('template_id')
 
-  const supabase = createServiceClient()
-  let query = supabase.schema('mise').from('checklist_executions').select('*')
-  if (unit_id) query = query.eq('unit_id', unit_id)
+  let ctx;try{ctx=await crivoContext()}catch(e){return crivoError(e)}
+  if(ctx.session.role!=="admin" && (!ctx.unitId || unit_id && unit_id!==ctx.unitId))return NextResponse.json({error:"Sem acesso à unidade."},{status:403});
+  const supabase=ctx.db
+  let query = supabase.schema('mise').from('checklist_executions').select('id,template_id,unit_id,turno,status,iniciado_em,concluido_em,percentual,local_id')
+  if(ctx.session.role!=='admin')query=query.eq('unit_id',ctx.unitId);
+  else if (unit_id) query = query.eq('unit_id', unit_id)
+  if(ctx.session.role==='cozinheiro'){
+    const allowed=await supabase.schema('mise').from('checklist_templates').select('id').eq('modulo','RITMO');
+    if(allowed.error)return NextResponse.json({error:'Templates indisponíveis.'},{status:503});
+    query=query.in('template_id',allowed.data.map(t=>t.id));
+  }
   if (status) query = query.eq('status', status)
   if (template_id) query = query.eq('template_id', template_id)
 

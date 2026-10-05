@@ -1,3 +1,6 @@
+export const maxDuration=60;
+import { after } from "next/server";
+import { dispatchExtraNotifications } from "@/lib/extras/notifications";
 import {
   extrasContext,
   requireExtraAccess,
@@ -21,6 +24,8 @@ export async function POST(
       !EXTRA_ROLES.includes(role) ||
       ![
         "aprovar",
+        "ratificar_emergencia",
+        "nao_ratificar_emergencia",
         "recusar",
         "cancelar",
         "preparar_rh",
@@ -57,6 +62,7 @@ export async function POST(
           : "Etapa não concluída. Recarregue a solicitação.",
         409,
       );
+    after(async () => { try { await dispatchExtraNotifications(); } catch { console.error("Extras: fila externa pendente; nova tentativa necessária."); } });
     return Response.json(data);
   } catch (error) {
     return extraResponseError(error);

@@ -1,5 +1,6 @@
 import {
   extrasContext,
+  requireExtraRead,
   requireExtraAccess,
   requireUuid,
   ExtraError,
@@ -11,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { db, grants } = await extrasContext();
+    const { db, grants, session } = await extrasContext();
     const { id } = await params;
     requireUuid(id);
     const item = await db
@@ -21,7 +22,7 @@ export async function GET(
       .single();
     if (item.error || !item.data)
       throw new ExtraError("Solicitação não encontrada.", 404);
-    requireExtraAccess(grants, item.data.unit_id);
+    requireExtraRead(grants, item.data.unit_id, item.data.mise_requested_by, session.employeeId);
     const events = await db
       .schema("mise")
       .from("extra_events")
@@ -36,7 +37,7 @@ export async function GET(
       grants.some(
         (g) =>
           g.unit_id === item.data.unit_id &&
-          ["rh", "financeiro"].includes(g.role),
+          ["rh", "financeiro", "caixa"].includes(g.role),
       )
     ) {
       const identity = await db

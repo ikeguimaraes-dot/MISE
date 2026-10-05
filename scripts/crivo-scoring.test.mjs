@@ -11,3 +11,11 @@ test('NA excluded; FF zero-weight findings do not reduce score',()=>{const r=sco
 test('incomplete answers cannot become silent zeroes',()=>assert.throws(()=>scoreCrivo('headchef_conformidade',[item('a')],[]),/pendentes/))
 test('all NA has no denominator, not zero conformity',()=>assert.equal(scoreCrivo('headchef_conformidade',[item('a')],[response('a','nao',{nao_aplicavel:true})]).percentual,null))
 test('required photos and comments validated on server',()=>{assert.throws(()=>scoreCrivo('ff_ponderado',[item('a',1,{requer_foto:'sim'})],[response('a')]),/foto/);assert.throws(()=>scoreCrivo('ff_ponderado',[item('a',1,{requer_comentario:'se_nao'})],[response('a','nao')]),/comentário/)})
+
+test('FF preserves unequal item weights: refectory 3.33 / 4.99 = 66.73%, total 55.85%',()=>{
+ const weights=[12.50,12.47,12.49,12.50,12.51,12.51,4.99,4.99,5.04,5,5];
+ const items=weights.flatMap((w,i)=>i===6?[1.66,.5,1.16,1.67].map((p,j)=>item(`7-${j}`,7,{peso:p})):[item(`${i+1}`,i+1,{peso:w,critico:[1,4,5].includes(i)})]);
+ const responses=items.map(i=>response(i.id,['2','5','6','10','7-0'].includes(i.id)?'nao':'sim'));
+ const r=scoreCrivo('ff_ponderado',items,responses,weights.map((peso,i)=>({topico_ordem:i+1,peso})));
+ assert.equal(r.percentual,55.85);assert.equal(r.topicos[6].percentual,66.73);assert.equal(r.topicos[6].obtido,3.33);
+});

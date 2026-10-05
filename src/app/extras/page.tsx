@@ -59,6 +59,8 @@ export default async function Page({
     );
   const params = await searchParams;
   return (
+    <>
+    {session.role === "admin" && !process.env.EXTRAS_NOTIFICATION_WEBHOOK && <p className="p-4 border border-orange-400 m-4" role="status">Alertas externos aguardam configuração do canal. Emergências e aprovações ficam na Central de Alertas e na fila de entrega.</p>}
     <ExtrasReal
       units={units.data}
       grants={grants}
@@ -74,5 +76,6 @@ export default async function Page({
         params.data && validDate(params.data) ? params.data : undefined
       }
     />
+    </>
   );
 }

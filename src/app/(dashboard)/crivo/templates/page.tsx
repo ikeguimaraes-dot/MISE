@@ -19,7 +19,7 @@ export default async function CrivoTemplatesPage() {
 
   const [{ data: templates }, { data: units }] = await Promise.all([
     supabase.schema('mise').from('checklist_templates')
-      .select('id, nome, categoria, unit_id, ativo, scoring_model')
+      .select('id, nome, categoria, unit_id, ativo, scoring_model, source_status')
       .eq('modulo', 'CRIVO')
       .order('categoria')
       .order('nome'),
@@ -75,7 +75,7 @@ export default async function CrivoTemplatesPage() {
                   {items.map(t => (
                     <div key={t.id} className="flex items-center justify-between px-4 py-3 gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-ink truncate">{t.nome}</p><p className="text-xs text-ink-muted">{t.ativo?'Disponível':'Rascunho · validar antes de usar'} · {t.scoring_model==='headchef_narrativo'?'Descritivo':t.scoring_model==='headchef_conformidade'?'Conformidade simples':'Ponderado'}</p>
+                        <p className="text-sm font-medium text-ink truncate">{t.nome}</p><p className="text-xs text-ink-muted">{t.source_status==='awaiting_questionnaire'?'Aguarda questionário completo · referência inativa':t.ativo?'Disponível':'Rascunho · validar antes de usar'} · {t.scoring_model==='headchef_narrativo'?'Descritivo':t.scoring_model==='headchef_conformidade'?'Conformidade simples':'Ponderado'}</p>
                         {t.unit_id && (
                           <p className="text-xs text-ink-muted">{unitsMap[t.unit_id] ?? t.unit_id}</p>
                         )}

@@ -1,3 +1,5 @@
+> Atualização: o complemento operacional de 05/10/2026 em [ENTREGA-OPX-20261005.md](./ENTREGA-OPX-20261005.md) substitui as regras de fluxo e pendências abaixo quando divergirem.
+
 # Extras real e CRIVO — implementação
 
 Escopo solicitado em 05/10/2026: Extras real (papéis, alçada, recibos), CRIVO laudo/PDF e plano de ação, formatos HeadChef preservando FF Nutri.

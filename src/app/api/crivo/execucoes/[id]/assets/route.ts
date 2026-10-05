@@ -15,7 +15,7 @@ export async function POST(
       !file.size ||
       file.size > 4194304
     )
-      throw new CrivoError("Envie PDF, JPEG ou PNG até 4 MB.");
+      throw new CrivoError("Envie foto JPEG ou PNG até 4 MB.");
     if (kind !== "evidencia" && session.role !== "admin")
       throw new CrivoError("Somente o auditor pode alterar o laudo.", 403);
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -30,9 +30,7 @@ export async function POST(
       ? "image/png"
       : jpg
         ? "image/jpeg"
-        : pdf && kind === "evidencia"
-          ? "application/pdf"
-          : null;
+        : null;
     if (!type || type !== file.type)
       throw new CrivoError("Formato de arquivo inválido.");
     const assetId = crypto.randomUUID(),
@@ -82,6 +80,7 @@ export async function GET(
       .from("mise-crivo-evidence")
       .createSignedUrl(asset.data.object_path, 60);
     if (signed.error) throw new CrivoError("Arquivo indisponível.", 503);
+    if(new URL(request.url).searchParams.get("redirect")==="1")return new Response(null,{status:302,headers:{Location:signed.data.signedUrl,"Cache-Control":"private, no-store"}});
     return Response.json(
       { url: signed.data.signedUrl },
       { headers: { "Cache-Control": "private, no-store" } },

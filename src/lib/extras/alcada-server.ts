@@ -35,11 +35,14 @@ export async function loadWeeklyBudget(db: SupabaseClient, unitId: string, refer
   return budget
 }
 export async function loadExtraAlerts(db: SupabaseClient, units: { id: string; name: string }[], reference: string, now = new Date()) {
+  const configured = await db.from('op_extra_alcada').select('unit_id');
+  if(configured.error) throw new Error('Configuração de Extras indisponível.');
+  units = units.filter(u => configured.data.some(c => c.unit_id === u.id));
   const budgets = await Promise.all(units.map(async unit => ({ ...unit, budget: await loadWeeklyBudget(db, unit.id, reference) })))
   const requests: PendingExtra[] = []
   if (units.length) for (let offset = 0; ; offset += 500) {
     // Not limited to the selected/current week: old approvals must remain visible.
-    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial').in('unit_id', units.map(unit => unit.id)).or('status.eq.aguardando_diretoria,emergencial.eq.true').not('status', 'in', '(recusado,cancelado,pago)').order('id').range(offset, offset + 499)
+    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision').in('unit_id', units.map(unit => unit.id)).or('status.not.in.(recusado,cancelado,pago),and(emergencial.eq.true,mise_emergency_decision.is.null,status.eq.pago)').order('id').range(offset, offset + 499)
     if (result.error) throw new Error('Não foi possível consultar as solicitações pendentes de Extras.')
     requests.push(...(result.data ?? []).map(item=>({...item,created_at:item.mise_stage_at??item.created_at})))
     if ((result.data?.length ?? 0) < 500) break

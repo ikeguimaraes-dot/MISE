@@ -17,11 +17,13 @@ export const STATUS_LABELS: Record<string, string> = {
   aprovado_rh: "Financeiro · reserva",
   reservado_financeiro: "Liberado para pagamento",
   pagamento_informado: "Pagamento informado · conferência",
-  pago: "Pago e conferido",
+  pago: "Pago",
   recusado: "Recusado",
   cancelado: "Cancelado",
 };
 export const ACTION_LABELS: Record<string, string> = {
+  ratificar_emergencia: "Aprovar emergência",
+  nao_ratificar_emergencia: "Registrar emergência não aprovada",
   aprovar: "Aprovar solicitação",
   recusar: "Recusar solicitação",
   cancelar: "Cancelar solicitação",
@@ -40,9 +42,9 @@ export type RealExtra = {
   motivo: string;
   motivo_detalhe: string;
   nome: string | null;
-  valor: number;
+  valor: number | null;
   comissao: number;
-  total: number;
+  total: number | null;
   pagadora: string;
   status: string;
   emergencial: boolean;
@@ -55,6 +57,7 @@ export type RealExtra = {
   mise_receipt_id: string | null;
   mise_stage_at: string | null;
   mise_managed: boolean;
+  mise_emergency_decision: string | null;
   mise_allowance_snapshot: Record<string, unknown> | null;
 };
 export function realActions(
@@ -62,12 +65,13 @@ export function realActions(
   role: OperationalRole,
   employeeId: string,
 ): string[] {
+  const emergencyActions = item.mise_managed && role === "diretor" && item.emergencial && !item.mise_emergency_decision && !["recusado", "cancelado"].includes(item.status) ? ["ratificar_emergencia", "nao_ratificar_emergencia"] : [];
   if (
     !item.mise_managed ||
     ["pago", "recusado", "cancelado"].includes(item.status)
   )
-    return [];
-  const actions: string[] = [];
+    return emergencyActions;
+  const actions: string[] = [...emergencyActions];
   if (
     role === "lider" &&
     item.mise_requested_by === employeeId &&
