@@ -63,6 +63,8 @@ export async function POST(request: Request) {
       role = body.role as ExtraRole;
     if (!EXTRA_ROLES.includes(role)) throw new ExtraError("Papel inválido.");
     requireExtraAccess(grants, unit, role);
+    if (!body.data?.solicitante_cadastro_id) throw new ExtraError("Selecione o solicitante.");
+    requireUuid(body.data.solicitante_cadastro_id);
     if (!validDate(body.data?.data_trabalho ?? ""))
       throw new ExtraError("Data inválida.");
     const { data, error } = await db

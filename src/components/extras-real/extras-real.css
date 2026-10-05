@@ -116,3 +116,19 @@
   .er-detail-empty { min-height: 210px; }
 }
 @media (max-width: 390px) { .er-values b { font-size: 16px; } .er-values { gap: 6px; } .er-values > span + span { padding-left: 8px; } }
+.er .er-field-help { font-size: 11px; color: var(--color-ink-subtle); margin: 6px 0 0; }
+.er-list .er-request .er-requester { grid-column: 1 / -1; grid-row: 4; color: var(--color-ink-muted); }
+.er-declared-requester { display: flex; flex-direction: column; gap: 5px; margin-top: 18px; font-size: 12px; }
+.er-declared-requester > span { color: var(--color-ink-subtle); font-size: 11px; }
+.er-declared-requester strong { font-weight: 500; }
+.er-requester-management { margin-top: 20px; }
+.er-add-requester { border: 0; padding: 0; margin: 16px 0 0; }
+.er-requester-management .er-list-heading { padding: 0 0 16px; }
+.er-requester-directory li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--er-line); }
+.er-requester-directory li:last-child { border-bottom: 0; padding-bottom: 0; }
+.er-requester-directory strong { font-size: 13px; font-weight: 500; }
+.er-requester-directory small { display: block; margin-top: 4px; }
+.er-requester-directory .er-buttons { margin: 0; }
+.er-requester-directory form { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; width: 100%; }
+.er-requester-directory form label { flex: 1; min-width: 180px; }
+@media(max-width: 600px) { .er-requester-directory li { align-items: flex-start; flex-direction: column; } }

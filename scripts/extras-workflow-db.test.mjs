@@ -9,10 +9,13 @@ const unit=randomUUID(),other=randomUUID(),roleId=randomUUID(),actors=Object.fro
 sql(`INSERT INTO units(id,name) VALUES(${quote(unit)},'Synthetic A'),(${quote(other)},'Synthetic B'); INSERT INTO roles VALUES(${quote(roleId)},'Founder','["*"]');`)
 for(const [role,id] of Object.entries(actors))sql(`INSERT INTO auth.users VALUES(${quote(id)});INSERT INTO employees(id,unit_id,user_id,role_id) VALUES(${quote(id)},${quote(unit)},${quote(id)},${quote(roleId)});INSERT INTO mise.extra_access(employee_id,unit_id,role,granted_by) VALUES(${quote(id)},${quote(unit)},${quote(role)},${quote(actors.lider)});`)
 sql(`INSERT INTO op_extra_alcada VALUES(${quote(unit)},1,'2026-01-01');INSERT INTO metas_dia_semana(unit_id,dia_semana,meta,competencia) SELECT ${quote(unit)},d,10000,'2026-10' FROM generate_series(0,6)d;`)
-const createData=(value=100,extra={})=>({unit_id:unit,data_trabalho:'2026-10-05',setor:'Teste',funcao:'Teste',motivo:'evento',motivo_detalhe:'Synthetic',valor:value,comissao:0,periodo:'almoco',sequencia:1,...extra})
+const requester=randomUUID();sql(`INSERT INTO op_extra_solicitante(id,unit_id,nome) VALUES(${quote(requester)},${quote(unit)},'Synthetic Requester')`);
+const createData=(value=100,extra={})=>({solicitante_cadastro_id:requester,unit_id:unit,data_trabalho:'2026-10-05',setor:'Teste',funcao:'Teste',motivo:'evento',motivo_detalhe:'Synthetic',valor:value,comissao:0,periodo:'almoco',sequencia:1,...extra})
 const commandSql=(role,action,id,version,data={},key=randomUUID())=>`select mise.extra_command(${quote(actors[role])},${quote(role)},${quote(key)},${quote(action)},${quote(id)},${version===null?'NULL':version},${quote(JSON.stringify(data))}::jsonb)`
 const call=(...a)=>JSON.parse(sql(commandSql(...a)))
 const id=randomUUID(),key=randomUUID(),data=createData()
+fail(()=>call('lider','solicitar',randomUUID(),0,createData(100,{solicitante_cadastro_id:null})),'requester required');
+fail(()=>call('lider','solicitar',randomUUID(),0,createData(100,{solicitante_cadastro_id:randomUUID()})),'unknown requester denied');
 assert.equal(call('lider','solicitar',id,0,data,key).status,'solicitado');assert.equal(call('lider','solicitar',id,0,data,key).replayed,true)
 assert.equal(sql(`select count(*) from mise.extra_events where extra_id=${quote(id)}`),'1')
 fail(()=>call('lider','solicitar',id,0,createData(120),key),'idempotency rejects changed payload')
@@ -56,3 +59,20 @@ function asyncSql(q){return new Promise((resolve,reject)=>{const p=spawn('psql',
 const concurrent=await Promise.all([1,2].map(()=>asyncSql(commandSql('lider','solicitar',randomUUID(),0,createData(400,{data_trabalho:'2026-10-12'})))))
 assert.deepEqual(concurrent.map(x=>x.status).sort(),['aguardando_diretoria','solicitado'])
 console.log('PASS concurrent allowance reservation, complete payment, emergency regularization, generated total, audit and notifications')
+
+assert.equal(sql(`select solicitante_nome from op_extra where id=${quote(id)}`),'Synthetic Requester');
+const outsider=randomUUID();sql(`insert into op_extra_solicitante(id,unit_id,nome) values(${quote(outsider)},${quote(other)},'Other house')`);
+fail(()=>call('lider','solicitar',randomUUID(),0,createData(100,{solicitante_cadastro_id:outsider})),'requester from another unit denied');
+sql(`update op_extra_solicitante set nome='Renamed Requester' where id=${quote(requester)}`);
+assert.equal(sql(`select solicitante_nome from op_extra where id=${quote(id)}`),'Synthetic Requester');
+const newer=randomUUID();call('lider','solicitar',newer,0,createData(10,{solicitante_nome:'Forged client name'}));
+assert.equal(sql(`select solicitante_nome from op_extra where id=${quote(newer)}`),'Renamed Requester');
+const report=JSON.parse(sql(`select mise.extra_monthly_report(${quote(unit)},2026)`));
+assert.ok(report.solicitantes.some(r=>r.solicitante_nome==='Synthetic Requester'));assert.ok(report.solicitantes.some(r=>r.solicitante_nome==='Renamed Requester'));
+sql(`update op_extra_solicitante set ativo=false where id=${quote(requester)}`);
+fail(()=>call('lider','solicitar',randomUUID(),0,createData(100)),'inactive requester denied');
+assert.equal(call('lider','solicitar',id,0,data,key).replayed,true);
+assert.equal(sql(`select solicitante_nome from op_extra where id=${quote(id)}`),'Synthetic Requester');
+fail(()=>sql(`set role anon;select * from op_extra_solicitante`),'public key cannot read directory');
+fail(()=>sql(`set role authenticated;update op_extra_solicitante set ativo=true`),'authenticated clients cannot mutate directory directly');
+console.log('PASS requester snapshots, active/unit validation, server-authoritative name, historical report and retry after deactivation');

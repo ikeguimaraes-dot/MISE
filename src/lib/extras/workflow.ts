@@ -42,6 +42,7 @@ export type RealExtra = {
   motivo: string;
   motivo_detalhe: string;
   nome: string | null;
+  solicitante_nome: string | null;
   valor: number | null;
   comissao: number;
   total: number | null;

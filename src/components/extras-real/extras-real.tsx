@@ -77,6 +77,11 @@ export function ExtrasReal({
     [amount, setAmount] = useState(0),
     [commission, setCommission] = useState(0),
     [urgent, setUrgent] = useState(false);
+  const [requesters, setRequesters] = useState<{id: string; nome: string}[]>([]);
+  const [requesterId, setRequesterId] = useState("");
+  const [requesterLoading, setRequesterLoading] = useState(false);
+  const [requesterError, setRequesterError] = useState("");
+  const [requesterRevision, setRequesterRevision] = useState(0);
   const [queue, setQueue] = useState(!initialExtra);
   const [hasMore, setHasMore] = useState(false);
   const nextPayment = useRef<string | null>(null);
@@ -126,7 +131,21 @@ export function ExtrasReal({
       });
     return () => controller.abort();
   }, [selected, unit, revision]);
+  useEffect(() => {
+    setRequesterId("");
+    setRequesters([]);
+    setRequesterError("");
+    if (!creating) return;
+    const controller = new AbortController();
+    setRequesterLoading(true);
+    api(`/api/extras/solicitantes?unit_id=${unit}`, {signal: controller.signal})
+      .then(d => { if (!controller.signal.aborted) setRequesters(d.items); })
+      .catch(e => { if (!controller.signal.aborted) setRequesterError(e.message); })
+      .finally(() => { if (!controller.signal.aborted) setRequesterLoading(false); });
+    return () => controller.abort();
+  }, [unit, creating, requesterRevision]);
   function refresh() {
+    if (creating) setRequesterRevision(v => v + 1);
     setRevision((v) => v + 1);
     budgetState.retry();
   }
@@ -142,6 +161,7 @@ export function ExtrasReal({
       let url = "/api/extras/requests",
         body: Record<string, unknown>;
       if (creating) {
+        if (!requesterId || !requesters.some(r => r.id === requesterId)) throw new Error("Selecione o solicitante desta casa.");
         Object.assign(data, {
           unit_id: unit,
           data_trabalho: day,
@@ -221,7 +241,7 @@ export function ExtrasReal({
           <p>Solicitações, aprovações e pagamentos da casa.</p>
         </div>
         <nav aria-label="Ferramentas de Extras">
-          {admin && <Link href="/extras/acessos"><SlidersHorizontal size={14} aria-hidden="true" />Acessos</Link>}
+          {admin && <><Link href="/extras/acessos"><SlidersHorizontal size={14} aria-hidden="true" />Gerenciar acessos</Link><Link href={`/extras/solicitantes?unit_id=${unit}`}><Users size={14} aria-hidden="true" />Solicitantes</Link></>}
           <Link href={`/extras/relatorios?unit_id=${unit}`}><BarChart3 size={14} aria-hidden="true" />Relatórios</Link>
           {["rh", "financeiro", "caixa"].includes(role) && <Link href={`/extras/envio-caixa?unit_id=${unit}&data=${day}`}><ClipboardList size={14} aria-hidden="true" />Envio Caixa</Link>}
           <Link href="/extras/avaliacao" className="er-link-quiet"><FlaskConical size={14} aria-hidden="true" />Avaliação</Link>
@@ -367,6 +387,16 @@ export function ExtrasReal({
           </h2>
           {role === "caixa" && <p>1. Identifique a emergência. 2. Anexe o recibo assinado e registre o pagamento. A diretoria revisa depois.</p>}
           <form onSubmit={submit} className="er-form">
+            <div className="er-wide">
+              <label htmlFor="extra-requester">Solicitante <span className="sr-only">(obrigatório)</span></label>
+              <select id="extra-requester" name="solicitante_cadastro_id" required value={requesterId} disabled={requesterLoading || busy} onChange={e => setRequesterId(e.target.value)} aria-describedby="requester-help">
+                <option value="">{requesterLoading ? "Carregando solicitantes…" : "Selecione quem está solicitando"}</option>
+                {requesters.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
+              </select>
+              <p id="requester-help" className="er-field-help">Nome declarado por quem preenche. Não comprova identidade nem substitui um login individual.</p>
+              {requesterError && <p role="alert">{requesterError} <button type="button" onClick={() => setRequesterRevision(v => v + 1)}>Tentar novamente</button></p>}
+              {!requesterLoading && !requesterError && !requesters.length && <p role="status">Esta casa não tem solicitantes ativos. Peça à administração para cadastrar antes de enviar.</p>}
+            </div>
             <label>
               Setor
               <select name="setor" required><option value="">Selecione</option>{["Bar", "Caixa", "Cozinha Meet", "Cozinha Produção", "Parrilla", "Portaria", "Salão", "Limpeza"].map(s => <option key={s}>{s}</option>)}</select>
@@ -456,7 +486,7 @@ export function ExtrasReal({
                 </p>
               )}
             <div className="er-wide er-buttons">
-              <button disabled={busy}>
+              <button disabled={busy || requesterLoading || !requesterId}>
                 {busy ? "Registrando…" : role === "caixa" ? "Continuar para recibo e pagamento" : "Registrar solicitação"}
               </button>
               <button
@@ -501,6 +531,7 @@ export function ExtrasReal({
                 <span>
                   {e.setor} · {e.data_trabalho.split("-").reverse().join("/")}
                 </span>
+                <span className="er-requester">Solicitante: {e.solicitante_nome || "Não informado"}</span>
                 <b>{money(e.total)}</b>
               </button>
             ))}
@@ -540,6 +571,7 @@ export function ExtrasReal({
                   {item.data_trabalho.split("-").reverse().join("/")} ·{" "}
                   {item.periodo} · sequência {item.sequencia ?? "—"}
                 </p>
+                <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome || "Não informado no registro"}</strong><small>Nome autodeclarado · não é identificação autenticada</small></div>
                 <blockquote>{item.motivo_detalhe}</blockquote>
                 <div className="er-values">
                   <span>

@@ -91,3 +91,14 @@ Nenhum novo template foi semeado. As duas referências incompletas criadas anter
 3. Obter questionários completos da HeadChef.
 4. Confirmar a regra da Confeitaria do IM e a versão comparável do IPH Meet com o tópico adicional.
 5. Histórico de 709 extras continua aguardando autorização específica de importação e conciliação financeira; alinhamento KPH-OS já concluído.
+
+## Solicitantes por casa — complemento
+
+- Cadastro existente `public.op_extra_solicitante` reutilizado; os nove nomes existentes não foram alterados nem duplicados.
+- Formulário de solicitação/emergência exige seleção explícita entre os nomes ativos da casa, ordenados por nome. Não seleciona automaticamente o primeiro nome.
+- O comando transacional confere cadastro ativo e unidade e copia o nome para `op_extra.solicitante_nome`. Não confia em um nome enviado pelo navegador. O bloqueio de leitura mantém a cópia consistente com uma renomeação/desativação concorrente.
+- `mise_requested_by`, `solicitante_id` e eventos continuam identificando a conta executora. O novo campo é **autodeclarado** e não autentica a identidade de quem usou um login compartilhado.
+- `/extras/solicitantes`: apenas administradores; adicionar, renomear, desativar e reativar. Não há exclusão física. A API limita mudanças a nome e situação, sem alterar vínculo de colaborador ou unidade.
+- Leitura direta do cadastro pela chave pública bloqueada; o aplicativo usa rotas autenticadas com verificação de unidade/papel.
+- Filas e detalhes exibem solicitante, assim como Envio Caixa e o resumo mensal por solicitante nos relatórios. Registros anteriores sem nome permanecem como não informados.
+- Testes PostgreSQL isolados: seleção obrigatória, unidade, ativo, cópia do nome, renomeação/desativação sem mudar histórico, rejeição de nome forjado e reenvio após desativação. Testes da API: permissões, ordenação, filtro de ativos, cadastro, edição e desativação.
