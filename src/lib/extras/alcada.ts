@@ -68,7 +68,7 @@ export function extraAlerts(units: { id: string; name: string; budget: WeeklyBud
   for (const item of requests) {
     const unit = units.find(row => row.id === item.unit_id)
     if (!unit || ['recusado', 'cancelado', 'pago'].includes(item.status)) continue
-    const base = { modulo: 'EXTRAS' as const, unidade: unit.name, data: item.data_trabalho, href: `/extras?unit_id=${item.unit_id}&data=${item.data_trabalho}` }
+    const base = { modulo: 'EXTRAS' as const, unidade: unit.name, data: item.data_trabalho, href: `/extras?unit_id=${item.unit_id}&data=${item.data_trabalho}&extra_id=${item.id}` }
     if (item.status === 'aguardando_diretoria' && now.getTime() - Date.parse(item.created_at) > 86400000) alerts.push({ ...base, id: `extras-diretoria-${item.id}`, severidade: 'critico', titulo: 'Solicitação aguardando diretoria há mais de 24h', descricao: `Solicitação ${item.id}: decisão pendente desde ${new Date(item.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.` })
     if (item.emergencial) alerts.push({ ...base, id: `extras-emergencia-${item.id}`, severidade: 'critico', titulo: 'Extra emergencial registrado', descricao: `Solicitação ${item.id}: exceção ao fluxo normal; requer acompanhamento da diretoria.` })
   }

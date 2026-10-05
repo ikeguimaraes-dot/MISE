@@ -1,3 +1,4 @@
+import {crivoContext,crivoError} from '@/lib/crivo/access'
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -23,13 +24,19 @@ export async function POST(request: Request) {
   if (!body.template_id) {
     return NextResponse.json({ error: 'template_id é obrigatório' }, { status: 400 })
   }
-  const supabase = createServiceClient()
+  let ctx
+  try{ctx=await crivoContext()}catch(error){return crivoError(error)}
+  const supabase=ctx.db
+  const {data: template}=await supabase.schema('mise').from('checklist_templates').select('unit_id,ativo,modulo').eq('id',body.template_id).single()
+  if(!template?.ativo || template.modulo==='CRIVO'&&ctx.session.role!=='admin')return NextResponse.json({error:'Template indisponível.'},{status:403})
+  const unitId=body.unit_id??ctx.unitId
+  if(!unitId || ctx.session.role!=='admin'&&(unitId!==ctx.unitId || template.unit_id&&template.unit_id!==ctx.unitId))return NextResponse.json({error:'Sem acesso à unidade.'},{status:403})
   const { data, error } = await supabase
     .schema('mise')
     .from('checklist_executions')
     .insert({
       template_id: body.template_id,
-      unit_id: body.unit_id ?? null,
+      unit_id: unitId,
       turno: body.turno ?? null,
       status: 'em_andamento',
     })

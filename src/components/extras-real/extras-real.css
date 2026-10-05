@@ -1,0 +1,255 @@
+.er {
+  --er-panel: #25221d;
+  --er-line: #ffffff20;
+  --er-accent: #ff7447;
+  max-width: 1320px;
+  margin: auto;
+  padding: 36px 24px;
+  color: #f5f0e8;
+}
+.er-heading,
+.er-filters,
+.er-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.er-heading nav {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+}
+.er h1 {
+  font-size: 36px;
+  letter-spacing: -1px;
+}
+.er h2 {
+  font-size: 23px;
+  margin-bottom: 12px;
+}
+.er h3 {
+  font-size: 16px;
+  margin: 22px 0 12px;
+}
+.er p {
+  line-height: 1.6;
+  color: #bbb4a8;
+  margin: 8px 0;
+}
+.er-eyebrow {
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.er-filters {
+  justify-content: flex-start;
+  margin: 30px 0 20px;
+  align-items: end;
+}
+.er label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+  color: #c8beae;
+}
+.er input,
+.er select,
+.er textarea {
+  border: 1px solid var(--er-line);
+  border-radius: 5px;
+  background: #1b1916;
+  color: #f5f0e8;
+  padding: 11px;
+  min-height: 44px;
+  width: 100%;
+}
+.er textarea {
+  min-height: 85px;
+}
+.er button {
+  border: 1px solid #ffffff30;
+  border-radius: 5px;
+  padding: 11px 16px;
+  min-height: 44px;
+  background: #302820;
+  text-align: left;
+}
+.er button:hover {
+  border-color: var(--er-accent);
+}
+.er button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.er :focus-visible {
+  outline: 2px solid var(--er-accent);
+  outline-offset: 3px;
+}
+.er-budget {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #24211c;
+  border: 1px solid var(--er-line);
+  padding: 20px;
+  margin: 0 0 24px;
+  border-radius: 7px;
+}
+.er-values {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+  font-size: 13px;
+  color: #bdb5a8;
+}
+.er-values b {
+  display: block;
+  color: #fff;
+  font-size: 20px;
+  margin-top: 5px;
+}
+.er progress {
+  appearance: none;
+  width: 82%;
+  height: 6px;
+  margin-right: 12px;
+  accent-color: var(--er-accent);
+}
+.er progress::-webkit-progress-bar {
+  background: #ffffff15;
+  border-radius: 4px;
+}
+.er progress::-webkit-progress-value {
+  background: var(--er-accent);
+  border-radius: 4px;
+}
+.er progress.is-warning::-webkit-progress-value {
+  background: #e8b75d;
+}
+.er progress.is-critical::-webkit-progress-value {
+  background: #ea6e64;
+}
+.er small {
+  font-size: 11px;
+  color: #bfb29d;
+}
+.er-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 20px;
+  align-items: start;
+}
+.er-panel {
+  background: var(--er-panel);
+  padding: 25px;
+  border: 1px solid var(--er-line);
+  border-radius: 7px;
+}
+.er-list {
+  padding: 22px 0;
+}
+.er-list > h2,
+.er-list > p {
+  margin-left: 22px;
+  margin-right: 22px;
+}
+.er-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: none;
+  border-top: 1px solid var(--er-line);
+  border-radius: 0;
+  background: #191816;
+  width: 100%;
+  padding: 22px;
+  border-left: 2px solid transparent;
+}
+.er-list button.selected {
+  background: var(--er-panel);
+  border-left-color: var(--er-accent);
+}
+.er-list button span {
+  font-size: 12px;
+  color: #bdb5a8;
+}
+.er-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 24px;
+}
+.er-wide {
+  grid-column: 1/-1;
+}
+.er-check {
+  flex-direction: row !important;
+  align-items: center;
+}
+.er-check input {
+  width: 18px;
+  min-height: 18px;
+}
+.er-buttons {
+  justify-content: flex-start;
+  margin: 20px 0;
+}
+.er blockquote {
+  border-left: 2px solid #ffffff30;
+  padding-left: 14px;
+  margin: 24px 0;
+  color: #c6bcab;
+}
+.er-history {
+  border-top: 1px solid var(--er-line);
+  padding-top: 15px;
+}
+.er-history li {
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+.er-history p {
+  font-size: 11px;
+  margin: 3px 0;
+}
+.er-error {
+  border: 1px solid #d7795e;
+  padding: 15px;
+}
+.er a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@media (max-width: 750px) {
+  .er {
+    padding: 24px 16px;
+  }
+  .er-grid {
+    grid-template-columns: 1fr;
+  }
+  .er-form {
+    grid-template-columns: 1fr;
+  }
+  .er-heading h1 {
+    font-size: 29px;
+  }
+  .er-budget {
+    position: static;
+  }
+  .er-values {
+    gap: 20px;
+  }
+  .er-values b {
+    font-size: 17px;
+  }
+  .er-filters label {
+    flex: 1;
+    min-width: 140px;
+  }
+  .er progress {
+    width: 65%;
+  }
+}

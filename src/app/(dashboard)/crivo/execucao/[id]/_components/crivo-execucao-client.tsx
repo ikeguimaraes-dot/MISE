@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw,
-  Loader2, Camera, X, Info, ImageOff,
+  Loader2, Camera, X, Info, ImageOff, AlertTriangle,
 } from 'lucide-react'
 
 type Item = {
@@ -20,6 +20,7 @@ type Item = {
   requer_foto: string
   topico_ordem: number | null
   topico_nome: string | null
+  critico: boolean
 }
 
 type StoredResponse = {
@@ -38,11 +39,11 @@ type LocalAnswer = {
 }
 
 type ResultState = {
-  percentual: number
+  percentual: number | null
   pontuacao_total: number
   pontuacao_obtida: number
   classificacao?: string
-  topicos?: { topico_ordem: number; topico_nome: string; percentual: number }[]
+  topicos?: { topico_ordem: number; topico_nome: string; percentual: number | null; zerado_por_critico?: boolean }[]
 }
 
 function getOpcoes(item: Item): string[] {
@@ -161,24 +162,24 @@ export function CrivoExecucaoClient({
   const answeredCount = items.filter(it => isAnswered(answers[it.id], it)).length
   const progress = items.length > 0 ? (answeredCount / items.length) * 100 : 0
 
+  const saveQueue=useRef<Promise<boolean>>(Promise.resolve(true))
   const saveToServer = useCallback(async (itemId: string, answer: LocalAnswer) => {
     setSaving(true)
-    try {
-      await fetch(`/api/checklists/execucoes/${executionId}/responder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_id: itemId,
-          resposta: answer.resposta,
-          comentario: answer.comentario || null,
-          nao_aplicavel: answer.nao_aplicavel,
-          foto_url: answer.foto_url ?? null,
-        }),
-      })
-    } finally {
-      setSaving(false)
-    }
-  }, [executionId])
+    const attempt=saveQueue.current.then(async()=>{
+      try {
+        const response=await fetch(`/api/checklists/execucoes/${executionId}/responder`, {
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({item_id:itemId,resposta:answer.resposta,comentario:answer.comentario||null,nao_aplicavel:answer.nao_aplicavel,foto_url:answer.foto_url??null}),
+        })
+        if(!response.ok){const body=await response.json();throw new Error(body.error||'Resposta não salva.')}
+        return true
+      }catch(error){alert(error instanceof Error?error.message:'Não foi possível salvar. Tente novamente.');return false}
+    })
+    saveQueue.current=attempt
+    const saved=await attempt
+    if(saveQueue.current===attempt)setSaving(false)
+    return saved
+  },[executionId])
 
   async function handlePhotoSelect(itemId: string, file: File) {
     setUploadingPhoto(itemId)
@@ -188,7 +189,7 @@ export function CrivoExecucaoClient({
       fd.append('execution_id', executionId)
       fd.append('item_id', itemId)
       const res = await fetch('/api/checklists/upload-foto', { method: 'POST', body: fd })
-      if (!res.ok) return
+      if (!res.ok) { const body=await res.json();alert(body.error||'Não foi possível anexar a foto.');return }
       const { url } = await res.json()
       const current = answers[itemId] ?? { resposta: null, comentario: '', nao_aplicavel: false }
       const updated = { ...current, foto_url: url }
@@ -239,7 +240,7 @@ export function CrivoExecucaoClient({
     }
     const requiresComment = currentItem.requer_comentario === 'inconformidade' && valor === 'nao'
     updateAnswer(currentItem.id, answer)
-    await saveToServer(currentItem.id, answer)
+    if(!(await saveToServer(currentItem.id, answer)))return
     if (requiresComment) {
       setNeedsComment(true)
     } else {
@@ -251,7 +252,7 @@ export function CrivoExecucaoClient({
     if (!currentItem) return
     const answer: LocalAnswer = { resposta: { valor }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
     updateAnswer(currentItem.id, answer)
-    await saveToServer(currentItem.id, answer)
+    if(!(await saveToServer(currentItem.id, answer)))return
     setTimeout(goNext, 300)
   }
 
@@ -261,7 +262,7 @@ export function CrivoExecucaoClient({
     const updated = checked ? [...current, opcao] : current.filter(o => o !== opcao)
     const answer: LocalAnswer = { resposta: { selecionados: updated }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
     updateAnswer(currentItem.id, answer)
-    await saveToServer(currentItem.id, answer)
+    if(!(await saveToServer(currentItem.id, answer)))return
   }
 
   function getCanvasPos(e: React.TouchEvent | React.MouseEvent): { x: number; y: number } {
@@ -300,6 +301,7 @@ export function CrivoExecucaoClient({
 
   async function handleConcluir() {
     setSubmitting(true)
+    if(!(await saveQueue.current)){setSubmitting(false);return}
     try {
       const geo = await getGeo()
       const res = await fetch(`/api/checklists/execucoes/${executionId}/concluir`, {
@@ -327,9 +329,9 @@ export function CrivoExecucaoClient({
         <div className="flex flex-col items-center gap-3 pt-4">
           <CheckCircle2 className="h-12 w-12 text-fresh-bright" />
           <h2 className="text-2xl font-bold text-ink">Auditoria concluída!</h2>
-          <div className={`text-5xl font-black ${classificarCor(pct)}`}>{pct.toFixed(2)}%</div>
+          <div className={`text-5xl font-black ${classificarCor(pct??0)}`}>{pct===null?'Relatório descritivo':`${pct.toFixed(2)}%`}</div>
           {result.classificacao && (
-            <span className={`rounded-full px-4 py-1 text-sm font-bold ${classificarBg(pct)} ${classificarCor(pct)}`}>
+            <span className={`rounded-full px-4 py-1 text-sm font-bold ${classificarBg(pct??0)} ${classificarCor(pct??0)}`}>
               {result.classificacao}
             </span>
           )}
@@ -344,16 +346,21 @@ export function CrivoExecucaoClient({
             <div className="divide-y divide-edge/40">
               {(result.topicos ?? []).map(t => (
                 <div key={t.topico_ordem} className="flex items-center justify-between px-4 py-2.5 gap-3">
-                  <p className="text-xs text-ink flex-1 min-w-0 leading-snug">{t.topico_nome}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-ink leading-snug">{t.topico_nome}</p>
+                    {t.zerado_por_critico && (
+                      <p className="text-[10px] text-alert-bright font-semibold mt-0.5">✱ zerado por item crítico</p>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="h-1.5 w-16 bg-surface-raised rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${t.percentual >= 75 ? 'bg-fresh' : t.percentual >= 50 ? 'bg-warn' : 'bg-alert'}`}
+                        className={`h-full rounded-full ${(t.percentual??0) >= 75 ? 'bg-fresh' : (t.percentual??0) >= 50 ? 'bg-warn' : 'bg-alert'}`}
                         style={{ width: `${t.percentual}%` }}
                       />
                     </div>
-                    <span className={`text-xs font-bold w-9 text-right tabular-nums ${classificarCor(t.percentual)}`}>
-                      {t.percentual.toFixed(0)}%
+                    <span className={`text-xs font-bold w-9 text-right tabular-nums ${classificarCor(t.percentual??0)}`}>
+                      {t.percentual===null?'—':`${t.percentual.toFixed(0)}%`}
                     </span>
                   </div>
                 </div>
@@ -363,10 +370,10 @@ export function CrivoExecucaoClient({
         )}
 
         <button
-          onClick={() => router.push(localId ? `/crivo/${localId}` : '/crivo')}
+          onClick={() => router.push(`/crivo/relatorios/${executionId}`)}
           className="w-full rounded-lg bg-ember py-3 font-bold text-white hover:opacity-90"
         >
-          Voltar ao local
+          Abrir laudo e plano de ação
         </button>
       </div>
     )
@@ -474,12 +481,19 @@ export function CrivoExecucaoClient({
         </div>
       </div>
 
-      {/* Badge de tópico */}
-      {currentItem.topico_nome && (
-        <div className="px-4 pt-4">
-          <span className="inline-block rounded bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-ink-subtle uppercase tracking-wide">
-            {currentItem.topico_nome}
-          </span>
+      {/* Badge de tópico + badge crítico */}
+      {(currentItem.topico_nome || currentItem.critico) && (
+        <div className="px-4 pt-4 flex items-center gap-2 flex-wrap">
+          {currentItem.topico_nome && (
+            <span className="inline-block rounded bg-surface-raised px-2 py-0.5 text-[10px] font-semibold text-ink-subtle uppercase tracking-wide">
+              {currentItem.topico_nome}
+            </span>
+          )}
+          {currentItem.critico && (
+            <span className="inline-flex items-center gap-1 rounded bg-alert/15 border border-alert/30 px-2 py-0.5 text-[10px] font-bold text-alert-bright uppercase tracking-wide">
+              ✱ Crítico
+            </span>
+          )}
         </div>
       )}
 
@@ -538,6 +552,16 @@ export function CrivoExecucaoClient({
                     <XCircle className="h-8 w-8" />
                     Não conforme
                   </button>
+                </div>
+              )}
+
+              {/* Aviso de item crítico */}
+              {currentItem.critico && currentAnswer?.resposta?.valor === 'nao' && (
+                <div className="flex items-start gap-2 rounded-lg border border-alert/40 bg-alert/10 px-3 py-2.5">
+                  <AlertTriangle className="h-4 w-4 text-alert-bright shrink-0 mt-0.5" />
+                  <p className="text-xs font-semibold text-alert-bright leading-snug">
+                    Item crítico — o tópico <span className="font-bold">{currentItem.topico_nome}</span> será zerado na nota final.
+                  </p>
                 </div>
               )}
 
@@ -638,7 +662,7 @@ export function CrivoExecucaoClient({
                     onChange={async e => {
                       const answer: LocalAnswer = { resposta: { texto: e.target.value }, comentario: currentAnswer?.comentario ?? '', nao_aplicavel: false, foto_url: currentAnswer?.foto_url ?? null }
                       updateAnswer(currentItem.id, answer)
-                      await saveToServer(currentItem.id, answer)
+                      if(!(await saveToServer(currentItem.id, answer)))return
                     }}
                   />
                 </div>

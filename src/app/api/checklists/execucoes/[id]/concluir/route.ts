@@ -1,3 +1,5 @@
+import {crivoExecution,crivoError,CrivoError} from '@/lib/crivo/access'
+import {scoreCrivo} from '@/lib/crivo/scoring'
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -14,10 +16,26 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: execution_id } = await params
+  let context
+  try { context=await crivoExecution(execution_id, true);if(context.execution.status==='concluido')throw new CrivoError('Visita já concluída.',409) } catch(error) {return crivoError(error)}
   const body = await request.json().catch(() => ({}))
   const geo_fim_lat = body?.geo_fim_lat ?? null
   const geo_fim_lng = body?.geo_fim_lng ?? null
 
+  if(context.execution.crivo_snapshot){
+    try {
+      const db=context.db.schema('mise')
+      const fingerprint=await db.rpc('crivo_response_hash',{p_execution:execution_id})
+      const responses=await db.from('checklist_responses').select('item_id,resposta,nao_aplicavel,comentario,foto_url').eq('execution_id',execution_id)
+      if(fingerprint.error||responses.error)throw new CrivoError('Não foi possível carregar as respostas.',503)
+      const snap=context.execution.crivo_snapshot
+      let result
+      try{result=scoreCrivo(snap.model,snap.items,responses.data,snap.weights)}catch(error){throw new CrivoError((error as Error).message,422)}
+      const finish=await db.rpc('crivo_finish',{p_execution:execution_id,p_actor:context.session.employeeId,p_result:result,p_response_hash:fingerprint.data,p_geo:{lat:geo_fim_lat,lng:geo_fim_lng}})
+      if(finish.error)throw new CrivoError('A visita não foi concluída. Atualize as respostas e tente novamente.',409)
+      return NextResponse.json({ok:true,...result})
+    }catch(error){return crivoError(error)}
+  }
   const supabase = createServiceClient()
 
   const { data: execucao, error: execError } = await supabase

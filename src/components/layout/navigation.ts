@@ -15,7 +15,7 @@ export const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     { href: '/checklists', label: 'Checklists', description: 'RITMO · rotinas e conferências', icon: ClipboardCheck },
     { href: '/checklists/historico', label: 'Histórico de checklists', description: 'Execuções e resultados anteriores', icon: Clock3, parent: '/checklists', access: 'gestor' },
     { href: '/relatorio-diario', label: 'Resumo operacional', description: 'TURNO · fechamento do dia', icon: BookOpen, access: 'gestor' },
-    { href: '/extras', label: 'Extras · avaliação', description: 'Teste o fluxo de solicitação, aprovação e pagamento com dados fictícios', icon: Users, access: 'gestor' },
+    { href: '/extras', label: 'Controle de Extras', description: 'Solicitação, aprovação, reserva e conferência de pagamentos', icon: Users },
     { href: '/relatorio-diario/painel-geral', label: 'Painel geral', description: 'Resumo executivo por unidade', icon: LayoutDashboard, parent: '/relatorio-diario', access: 'admin' },
     { href: '/crivo', label: 'Auditorias', description: 'CRIVO · padrões e conformidade', icon: ShieldCheck, access: 'admin' },
     { href: '/crivo/templates', label: 'Templates de auditoria', description: 'Modelos de avaliação CRIVO', icon: ClipboardCheck, parent: '/crivo', access: 'admin' },

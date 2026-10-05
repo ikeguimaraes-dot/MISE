@@ -39,9 +39,9 @@ export async function loadExtraAlerts(db: SupabaseClient, units: { id: string; n
   const requests: PendingExtra[] = []
   if (units.length) for (let offset = 0; ; offset += 500) {
     // Not limited to the selected/current week: old approvals must remain visible.
-    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, status, created_at, emergencial').in('unit_id', units.map(unit => unit.id)).or('status.eq.aguardando_diretoria,emergencial.eq.true').not('status', 'in', '(recusado,cancelado,pago)').order('id').range(offset, offset + 499)
+    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial').in('unit_id', units.map(unit => unit.id)).or('status.eq.aguardando_diretoria,emergencial.eq.true').not('status', 'in', '(recusado,cancelado,pago)').order('id').range(offset, offset + 499)
     if (result.error) throw new Error('Não foi possível consultar as solicitações pendentes de Extras.')
-    requests.push(...(result.data ?? []))
+    requests.push(...(result.data ?? []).map(item=>({...item,created_at:item.mise_stage_at??item.created_at})))
     if ((result.data?.length ?? 0) < 500) break
   }
   return { alerts: extraAlerts(budgets, requests, now), warnings: budgets.flatMap(unit => unit.budget.avisos.map(warning => `${unit.name}: ${warning}`)) }

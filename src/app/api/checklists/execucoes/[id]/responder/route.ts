@@ -1,3 +1,4 @@
+import {crivoExecution,crivoError} from '@/lib/crivo/access'
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -6,6 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: execution_id } = await params
+  try{const ctx=await crivoExecution(execution_id,true);if(ctx.execution.status==='concluido')return NextResponse.json({error:'Visita concluída.'},{status:409})}catch(error){return crivoError(error)}
   const body = await request.json()
   const { item_id, resposta, comentario, foto_url, nao_aplicavel } = body
 
