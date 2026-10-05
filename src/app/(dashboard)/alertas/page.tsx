@@ -2,10 +2,11 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { loadExtraAlerts } from '@/lib/extras/alcada-server'
 
 type Alerta = {
   id: string
-  modulo: 'TURNO' | 'RITMO' | 'CRIVO'
+  modulo: 'TURNO' | 'RITMO' | 'CRIVO' | 'EXTRAS'
   unidade: string
   severidade: 'critico' | 'atencao'
   titulo: string
@@ -156,6 +157,16 @@ export default async function AlertasPage() {
   // ─── Build Alerts ────────────────────────────────────────────
 
   const alertas: Alerta[] = []
+  let extrasWarnings: string[] = []
+  try {
+    // Alçada follows the calendar (Monday–Sunday), not the 5am operational cutoff.
+    const calendarToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+    const extras = await loadExtraAlerts(supabase, units, calendarToday)
+    alertas.push(...extras.alerts)
+    extrasWarnings = extras.warnings
+  } catch {
+    extrasWarnings = ['Alertas de Extras indisponíveis. Não foi possível consultar a alçada e as solicitações; tente novamente.']
+  }
 
   // ── TURNO: Relatório vencido (últimos 3 dias, excluindo hoje) ──
   for (const r of relatorios) {
@@ -379,12 +390,16 @@ export default async function AlertasPage() {
         <h1 className="text-xl font-bold text-ink">Central de Alertas</h1>
         <p className="text-sm text-ink-muted">
           {alertas.length === 0
-            ? 'Nenhuma anomalia nos últimos 14 dias.'
-            : `${alertas.length} alerta${alertas.length !== 1 ? 's' : ''} nos últimos 14 dias${criticos > 0 ? ` · ${criticos} crítico${criticos !== 1 ? 's' : ''}` : ''}`
+            ? (extrasWarnings.length ? 'Consulte os avisos de Extras abaixo.' : 'Nenhuma anomalia nos últimos 14 dias; sem pendências de Extras.')
+            : `${alertas.length} alerta${alertas.length !== 1 ? 's' : ''} · operação dos últimos 14 dias e pendências de Extras${criticos > 0 ? ` · ${criticos} crítico${criticos !== 1 ? 's' : ''}` : ''}`
           }
         </p>
       </div>
 
+      {extrasWarnings.length > 0 && <aside role="status" className="rounded-xl border border-warn/40 bg-warn/5 p-4 text-sm text-ink">
+        <p className="font-semibold">Configuração e consulta de Extras</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5">{extrasWarnings.map(message => <li key={message}>{message}</li>)}</ul>
+      </aside>}
       {alertas.length > 0 && (
         <div className="space-y-2">
           {alertas.map(a => (
