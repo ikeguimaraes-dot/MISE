@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { Users, SlidersHorizontal, BarChart3, FlaskConical, ClipboardList, Plus, Bell, Inbox, MousePointer2, CalendarDays, Wallet } from "lucide-react";
 import {
   ROLE_LABELS,
   STATUS_LABELS,
@@ -44,6 +45,7 @@ export function ExtrasReal({
   initialUnit,
   initialExtra,
   initialDay,
+  notificationsPending = false,
 }: {
   units: Unit[];
   grants: Grant[];
@@ -52,6 +54,7 @@ export function ExtrasReal({
   initialUnit?: string;
   initialExtra?: string;
   initialDay?: string;
+  notificationsPending?: boolean;
 }) {
   const [unit, setUnit] = useState(initialUnit || units[0].id),
     [day, setDay] = useState(initialDay || today()),
@@ -211,20 +214,23 @@ export function ExtrasReal({
     actions = item ? realActions(item, role, employeeId) : [],
     level = budget ? usageLevel(budget) : null;
   return (
-    <main className="er">
+    <div className="er">
       <header className="er-heading">
         <div>
-          <p className="er-eyebrow">OPERAÇÃO · PESSOAS</p>
-          <h1>Controle de Extras</h1>
-          <p>Da necessidade da casa ao pagamento conferido.</p>
+          <h1><Users size={21} aria-hidden="true" />Controle de Extras</h1>
+          <p>Solicitações, aprovações e pagamentos da casa.</p>
         </div>
-        <nav>
-          {admin && <Link href="/extras/acessos">Gerenciar acessos</Link>}
-          <Link href={`/extras/relatorios?unit_id=${unit}`}>Relatórios</Link>
-          {["rh", "financeiro", "caixa"].includes(role) && <Link href={`/extras/envio-caixa?unit_id=${unit}&data=${day}`}>Envio Caixa</Link>}
-          <Link href="/extras/avaliacao">Ambiente de avaliação</Link>
+        <nav aria-label="Ferramentas de Extras">
+          {admin && <Link href="/extras/acessos"><SlidersHorizontal size={14} aria-hidden="true" />Acessos</Link>}
+          <Link href={`/extras/relatorios?unit_id=${unit}`}><BarChart3 size={14} aria-hidden="true" />Relatórios</Link>
+          {["rh", "financeiro", "caixa"].includes(role) && <Link href={`/extras/envio-caixa?unit_id=${unit}&data=${day}`}><ClipboardList size={14} aria-hidden="true" />Envio Caixa</Link>}
+          <Link href="/extras/avaliacao" className="er-link-quiet"><FlaskConical size={14} aria-hidden="true" />Avaliação</Link>
         </nav>
       </header>
+      {notificationsPending && <details className="er-notice">
+        <summary><Bell size={14} aria-hidden="true" /><span>Notificações externas pendentes de configuração</span><span className="er-notice-more">Detalhes</span></summary>
+        <p>Emergências e aprovações continuam disponíveis na Central de Alertas. Configure o canal para receber esses avisos também fora do MISE.</p>
+      </details>}
       <div className="er-filters">
         <label>
           Casa
@@ -276,6 +282,7 @@ export function ExtrasReal({
         </label>
         {["lider", "caixa"].includes(role) && (
           <button
+            className="er-primary"
             disabled={busy}
             onClick={() => {
               setCreating(true);
@@ -285,16 +292,15 @@ export function ExtrasReal({
               setError("");
             }}
           >
-            Solicitar extra
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar extra"}
           </button>
         )}
       </div>
-      <label className="er-check"><input type="checkbox" checked={queue} onChange={e => setQueue(e.target.checked)} /> Minha fila pendente · inclui outras semanas</label>
       <section className="er-budget" aria-label="Alçada semanal">
-        <strong>
-          Semana {from.split("-").reverse().slice(0, 2).join("/")}–
+        <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
+           {from.split("-").reverse().slice(0, 2).join("/")}–
           {to.split("-").reverse().slice(0, 2).join("/")}
-        </strong>
+        </strong></div>
         {budget ? (
           <>
             <div className="er-values">
@@ -304,11 +310,11 @@ export function ExtrasReal({
               <span>
                 Usado <b>{money(budget.gasto / 100)}</b>
               </span>
-              <span>
-                Saldo <b>{money(budget.saldo / 100)}</b>
+              <span className="er-balance">
+                Saldo disponível <b>{money(budget.saldo / 100)}</b>
               </span>
             </div>
-            <progress
+            <div className="er-budget-meter"><progress
               aria-label="Consumo da alçada"
               className={`is-${level?.tone}`}
               max={100}
@@ -317,8 +323,8 @@ export function ExtrasReal({
             <small>
               {level?.percentage ?? "Sem teto"}
               {level?.percentage !== null ? "%" : ""} ·{" "}
-              {budget.percentual ?? "Sem configuração"}% · saldo não acumula
-            </small>
+              {budget.percentual == null ? "Sem configuração" : `${budget.percentual}% da meta`} · saldo não acumula
+            </small></div>
             {budget.avisos.map((a) => (
               <p key={a} role="status">
                 {a}
@@ -334,6 +340,13 @@ export function ExtrasReal({
           </p>
         )}
       </section>
+      <div className="er-queue-toolbar">
+        <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
+          <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
+          <button type="button" aria-pressed={!queue} onClick={() => setQueue(false)}>Histórico da semana</button>
+        </div>
+        <span>{queue ? "Pendências de todas as semanas" : "Solicitações da semana selecionada"}</span>
+      </div>
       {error && (
         <p className="er-error" role="alert">
           {error}{" "}
@@ -459,20 +472,25 @@ export function ExtrasReal({
       ) : (
         <div className="er-grid">
           <section className="er-panel er-list">
-            <h2>Acompanhar solicitações</h2>
-            <p>
+            <div className="er-list-heading"><h2>Solicitações</h2>
+            <span className="er-count">
               {loading
                 ? "Carregando…"
                 : `${items.length} registros ${queue ? "na sua fila" : "nesta semana"}`}
-            </p>
+            </span></div>
             {!loading && !items.length && (
-              <p>Nenhuma solicitação neste período.</p>
+              <div className="er-empty"><span className="er-empty-icon"><Inbox size={22} aria-hidden="true" /></span>
+                <h3>{queue ? "Nenhuma solicitação pendente" : "Nenhuma solicitação nesta semana"}</h3>
+                <p>{queue ? "As solicitações que precisam da sua ação aparecerão aqui." : "Os registros da casa aparecerão neste histórico."}</p>
+                {queue && <button type="button" className="er-empty-action" onClick={() => setQueue(false)}>Consultar histórico</button>}
+              </div>
             )}
             {items.map((e) => (
               <button
                 key={e.id}
                 disabled={busy}
-                className={selected === e.id ? "selected" : ""}
+                className={`er-request ${selected === e.id ? "selected" : ""}`}
+                aria-pressed={selected === e.id}
                 onClick={() => setSelected(e.id)}
               >
                 <small>
@@ -508,7 +526,7 @@ export function ExtrasReal({
               </button>
             )}
           </section>
-          <section className="er-panel">
+          <section className={`er-panel er-detail ${!item ? "er-detail-empty" : ""}`} aria-label="Detalhes da solicitação">
             {item ? (
               <>
                 <p className="er-eyebrow">
@@ -716,15 +734,14 @@ export function ExtrasReal({
                 </ol>
               </>
             ) : (
-              <p>
-                {selected
-                  ? "Carregando detalhes…"
-                  : "Selecione uma solicitação para ver os detalhes e as próximas etapas."}
-              </p>
+              <div className="er-empty"><span className="er-empty-icon"><MousePointer2 size={22} aria-hidden="true" /></span>
+                <h3>{selected ? "Carregando detalhes…" : "Tudo sobre a solicitação, aqui"}</h3>
+                <p>Selecione um registro ao lado para consultar os dados, acompanhar o histórico e realizar a próxima etapa.</p>
+              </div>
             )}
           </section>
         </div>
       )}
-    </main>
+    </div>
   );
 }

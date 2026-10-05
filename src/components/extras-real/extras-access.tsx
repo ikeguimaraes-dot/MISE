@@ -59,7 +59,7 @@ export function ExtrasAccess({
     );
   }
   return (
-    <main className="max-w-4xl mx-auto p-8 space-y-6">
+    <section className="max-w-4xl mx-auto p-8 space-y-6">
       <Link href="/extras">← Extras</Link>
       <h1 className="text-2xl">Acessos de Extras</h1>
       <p>
@@ -122,6 +122,6 @@ export function ExtrasAccess({
           </li>
         ))}
       </ul>
-    </main>
+    </section>
   );
 }

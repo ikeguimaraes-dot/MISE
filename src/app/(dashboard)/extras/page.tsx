@@ -3,7 +3,6 @@ import { validDate } from "@/lib/extras/alcada";
 import { redirect } from "next/navigation";
 import { extrasContext, ExtraError } from "@/lib/extras/access";
 import { ExtrasReal } from "@/components/extras-real/extras-real";
-import "@/components/extras-evaluation/extras.css";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Controle de Extras",
@@ -20,20 +19,20 @@ export default async function Page({
   } catch (error) {
     if (error instanceof ExtraError && error.status === 401) redirect("/login");
     return (
-      <main className="p-8 space-y-4">
+      <div className="p-6 space-y-4">
         <h1>Controle de Extras</h1>
         <p>
           O fluxo real está aguardando configuração. A avaliação permanece
           disponível.
         </p>
         <Link href="/extras/avaliacao">Abrir avaliação</Link>
-      </main>
+      </div>
     );
   }
   const { db, session, grants } = context;
   if (!grants.length)
     return (
-      <main className="p-8 space-y-4">
+      <div className="p-6 space-y-4">
         <h1>Controle de Extras</h1>
         <p>
           Seu usuário ainda não tem papel operacional atribuído neste módulo.
@@ -43,7 +42,7 @@ export default async function Page({
         )}
         <br />
         <Link href="/extras/avaliacao">Abrir avaliação</Link>
-      </main>
+      </div>
     );
   const units = await db
     .from("units")
@@ -59,13 +58,12 @@ export default async function Page({
     );
   const params = await searchParams;
   return (
-    <>
-    {session.role === "admin" && !process.env.EXTRAS_NOTIFICATION_WEBHOOK && <p className="p-4 border border-orange-400 m-4" role="status">Alertas externos aguardam configuração do canal. Emergências e aprovações ficam na Central de Alertas e na fila de entrega.</p>}
     <ExtrasReal
       units={units.data}
       grants={grants}
       employeeId={session.employeeId}
       admin={session.role === "admin"}
+      notificationsPending={session.role === "admin" && !process.env.EXTRAS_NOTIFICATION_WEBHOOK}
       initialUnit={
         units.data.some((u) => u.id === params.unit_id)
           ? params.unit_id
@@ -76,6 +74,5 @@ export default async function Page({
         params.data && validDate(params.data) ? params.data : undefined
       }
     />
-    </>
   );
 }
