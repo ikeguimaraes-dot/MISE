@@ -12,13 +12,13 @@ export async function dispatchExtraNotifications() {
   const batch = await db.rpc('extra_notification_claim');
   if (batch.error) throw new Error('Fila de notificações indisponível.');
   let delivered = 0;
-  const deliveries=await Promise.allSettled((batch.data ?? []).map(async (item: {id:string;event_id:string;payload:Record<string,unknown>;lease_token:string;attempts:number}) => {
+  const deliveries=await Promise.allSettled((batch.data ?? []).map(async (item: {id:string;event_id:string|null;request_event_id?:string;payload:Record<string,unknown>;lease_token:string;attempts:number}) => {
     let success = false;
     let failure = '';
     try {
       const response = await fetch(url, {
         method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': item.event_id,
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': item.event_id ?? item.request_event_id ?? item.id,
           ...(process.env.EXTRAS_NOTIFICATION_TOKEN ? { Authorization: `Bearer ${process.env.EXTRAS_NOTIFICATION_TOKEN}` } : {}) },
         body: JSON.stringify({ ...item.payload, link: `${process.env.APP_URL || 'https://mise-backoffice-nine.vercel.app'}${item.payload.link}` }),
       });

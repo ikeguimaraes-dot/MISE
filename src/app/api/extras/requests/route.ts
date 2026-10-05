@@ -1,6 +1,4 @@
 export const maxDuration=60;
-import { after } from "next/server";
-import { dispatchExtraNotifications } from "@/lib/extras/notifications";
 import {
   extrasContext,
   requireExtraAccess,
@@ -8,7 +6,6 @@ import {
   ExtraError,
   extraResponseError,
   EXTRA_SELECT,
-  EXTRA_ROLES,
   type ExtraRole,
 } from "@/lib/extras/access";
 import { validDate } from "@/lib/extras/alcada";
@@ -55,39 +52,6 @@ export async function GET(request: Request) {
     return extraResponseError(error);
   }
 }
-export async function POST(request: Request) {
-  try {
-    const { db, grants, session } = await extrasContext();
-    const body = await request.json();
-    const unit = requireUuid(body.data?.unit_id),
-      role = body.role as ExtraRole;
-    if (!EXTRA_ROLES.includes(role)) throw new ExtraError("Papel inválido.");
-    requireExtraAccess(grants, unit, role);
-    if (!body.data?.solicitante_cadastro_id) throw new ExtraError("Selecione o solicitante.");
-    requireUuid(body.data.solicitante_cadastro_id);
-    if (!validDate(body.data?.data_trabalho ?? ""))
-      throw new ExtraError("Data inválida.");
-    const { data, error } = await db
-      .schema("mise")
-      .rpc("extra_command", {
-        p_actor: session.employeeId,
-        p_role: role,
-        p_command: requireUuid(body.command_id),
-        p_action: "solicitar",
-        p_extra: requireUuid(body.id),
-        p_version: 0,
-        p_data: body.data,
-      });
-    if (error)
-      throw new ExtraError(
-        error.code === "P0001"
-          ? error.message
-          : "Não foi possível registrar. Confira os dados.",
-        409,
-      );
-    after(async () => { try { await dispatchExtraNotifications(); } catch { console.error("Extras: fila externa pendente; nova tentativa necessária."); } });
-    return Response.json(data, { status: 201 });
-  } catch (error) {
-    return extraResponseError(error);
-  }
+export async function POST() {
+  return Response.json({ error: "O formulário foi atualizado para pedidos de posições. Recarregue a página antes de solicitar." }, { status: 409 });
 }

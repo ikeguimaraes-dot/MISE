@@ -110,3 +110,13 @@ Nenhum novo template foi semeado. As duas referências incompletas criadas anter
 - Migração `20261005_extras_value_only.sql` substitui somente a função de comando. A coluna de sequência já foi removida do banco pelo responsável.
 - Histórico privado: 709 lançamentos, R$ 113.535,00. Por decisão explícita do usuário, foram descartados R$ 1.723,50 de comissão (78 registros). INSERT corrigido e validado sem execução; arquivo com dados pessoais permanece fora do Git. Nenhuma importação realizada.
 - Validação: testes da alçada e avaliação, fluxo completo em PostgreSQL isolado sem a coluna removida, payload antigo de comissão ignorado na criação e no RH.
+
+### Pedidos de posições e nomeação pelo RH
+
+- Novo pedido grava somente em `op_extra_solicitacao`. Setor/função vêm do catálogo existente; a diária sugerida é editável. Quantidade × diária é calculada no banco, sem enviar `valor_total`.
+- Pedidos de posições e Pessoas / pagamentos têm visualizações próprias. RH preenche N blocos e pode salvar parcialmente; cada pessoa gera um extra vinculado, com diária própria e recibo individual. Posições já nomeadas ficam somente para consulta neste formulário, evitando regravar pagamentos.
+- A alçada consome o pedido inteiro antes da primeira nomeação e o custo das pessoas nomeadas depois, preservando a quantidade e a estimativa originais. Uma posição preenchida posteriormente recalcula a aprovação. Pessoas vinculadas não são somadas novamente; extras anteriores sem solicitação continuam contando uma única vez.
+- Diretoria aprova o pedido. Pessoas ainda não liberadas aguardam aprovação se a nomeação superar o saldo e a autorização anterior. Recursos já liberados/pagos não são reescritos nem podem desaparecer por cancelamento do pedido.
+- Emergências geram notificação e alerta já no pedido, antes de existir pessoa. RH nomeia; Caixa ou Financeiro paga por pessoa. O canal externo permanece dependente da configuração já documentada.
+- Segurança: comandos transacionais com trava por semana, versão e reenvio idempotente; catálogo e solicitante validados no banco; CPF restrito às permissões existentes. Os testes usam somente PostgreSQL isolado e dados sintéticos.
+- Migração `20261005_extras_positions.sql` pressupõe as tabelas públicas de catálogo/solicitação e o vínculo criados pelo responsável do banco. Não importa histórico nem converte registros existentes.

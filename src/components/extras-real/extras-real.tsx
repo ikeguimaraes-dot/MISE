@@ -14,6 +14,7 @@ import {
 import { useWeeklyBudget } from "@/components/extras-evaluation/weekly-budget";
 import { usageLevel, weekDays } from "@/lib/extras/alcada";
 import "./extras-real.css";
+import { ExtraPositions } from "./extras-positions";
 type Unit = { id: string; name: string };
 type Grant = { unit_id: string; role: OperationalRole };
 type Event = {
@@ -44,6 +45,7 @@ export function ExtrasReal({
   admin,
   initialUnit,
   initialExtra,
+  initialRequest,
   initialDay,
   notificationsPending = false,
 }: {
@@ -53,6 +55,7 @@ export function ExtrasReal({
   admin: boolean;
   initialUnit?: string;
   initialExtra?: string;
+  initialRequest?: string;
   initialDay?: string;
   notificationsPending?: boolean;
 }) {
@@ -62,6 +65,8 @@ export function ExtrasReal({
   const roles = grants.filter((g) => g.unit_id === unit).map((g) => g.role);
   const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
   const role = roles.includes(chosenRole) ? chosenRole : roles[0];
+  const [chosenView, setView] = useState<"positions" | "people" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
+  const view = chosenView ?? (["financeiro", "caixa"].includes(role) ? "people" : "positions");
   const [items, setItems] = useState<RealExtra[]>([]),
     [selected, setSelected] = useState<string | null>(initialExtra || null),
     [detail, setDetail] = useState<{
@@ -73,17 +78,9 @@ export function ExtrasReal({
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(false),
     [creating, setCreating] = useState(false),
-    [action, setAction] = useState(""),
-    [amount, setAmount] = useState(0),
-    [urgent, setUrgent] = useState(false);
-  const [requesters, setRequesters] = useState<{id: string; nome: string}[]>([]);
-  const [requesterId, setRequesterId] = useState("");
-  const [requesterLoading, setRequesterLoading] = useState(false);
-  const [requesterError, setRequesterError] = useState("");
-  const [requesterRevision, setRequesterRevision] = useState(0);
-  const [queue, setQueue] = useState(!initialExtra);
+    [action, setAction] = useState("");
+  const [queue, setQueue] = useState(!initialExtra && !initialRequest);
   const [hasMore, setHasMore] = useState(false);
-  const nextPayment = useRef<string | null>(null);
   const uploadedReceipt = useRef<{ key: string; id: string } | null>(null);
   const pending = useRef<{ payload: string; key: string; id: string } | null>(
     null,
@@ -101,6 +98,7 @@ export function ExtrasReal({
     const controller = new AbortController();
     setLoading(true);
     setItems([]);
+    if (view !== "people") return () => controller.abort();
     api(`/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}&role=${role}&queue=${queue ? 1 : 0}`, {
       signal: controller.signal,
     })
@@ -115,7 +113,7 @@ export function ExtrasReal({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [unit, from, to, role, queue, revision]);
+  }, [unit, from, to, role, queue, revision, view]);
   useEffect(() => {
     setDetail(null);
     setAction("");
@@ -123,28 +121,14 @@ export function ExtrasReal({
     const controller = new AbortController();
     api(`/api/extras/requests/${selected}`, { signal: controller.signal })
       .then((d) => {
-        if (d.item.unit_id === unit) {setDetail(d); if(nextPayment.current===d.item.id){setAction("informar_pagamento");nextPayment.current=null;}}
+        if (d.item.unit_id === unit) {setDetail(d); }
       })
       .catch((e) => {
         if (!controller.signal.aborted) setError(e.message);
       });
     return () => controller.abort();
   }, [selected, unit, revision]);
-  useEffect(() => {
-    setRequesterId("");
-    setRequesters([]);
-    setRequesterError("");
-    if (!creating) return;
-    const controller = new AbortController();
-    setRequesterLoading(true);
-    api(`/api/extras/solicitantes?unit_id=${unit}`, {signal: controller.signal})
-      .then(d => { if (!controller.signal.aborted) setRequesters(d.items); })
-      .catch(e => { if (!controller.signal.aborted) setRequesterError(e.message); })
-      .finally(() => { if (!controller.signal.aborted) setRequesterLoading(false); });
-    return () => controller.abort();
-  }, [unit, creating, requesterRevision]);
   function refresh() {
-    if (creating) setRequesterRevision(v => v + 1);
     setRevision((v) => v + 1);
     budgetState.retry();
   }
@@ -159,16 +143,6 @@ export function ExtrasReal({
       delete data.file;
       let url = "/api/extras/requests",
         body: Record<string, unknown>;
-      if (creating) {
-        if (!requesterId || !requesters.some(r => r.id === requesterId)) throw new Error("Selecione o solicitante desta casa.");
-        Object.assign(data, {
-          unit_id: unit,
-          data_trabalho: day,
-          valor: data.valor === "" ? null : Number(data.valor),
-          emergencial: urgent || role === "caixa",
-        });
-        body = { role, data };
-      } else {
         if (!detail) throw new Error("Selecione uma solicitação.");
         url += `/${detail.item.id}/actions`;
         if (action === "preparar_rh") {
@@ -197,7 +171,6 @@ export function ExtrasReal({
           data.receipt_id = uploadedReceipt.current.id;
         }
         body = { role, action, version: detail.item.mise_version, data };
-      }
       const signature = JSON.stringify({ url, body });
       if (pending.current?.payload !== signature)
         pending.current = {
@@ -211,11 +184,9 @@ export function ExtrasReal({
         body: JSON.stringify({
           ...body,
           command_id: pending.current.key,
-          ...(creating ? { id: pending.current.id } : {}),
         }),
       });
       pending.current = null;
-      if(creating && role === "caixa") nextPayment.current=result.id;
       setSelected(result.id);
       setCreating(false);
       setAction("");
@@ -285,6 +256,8 @@ export function ExtrasReal({
             disabled={busy}
             onChange={(e) => {
               setRole(e.target.value as OperationalRole);
+              setView(null);
+              setSelected(null);
               setCreating(false);
               setAction("");
             }}
@@ -302,12 +275,11 @@ export function ExtrasReal({
             disabled={busy}
             onClick={() => {
               setCreating(true);
-              setAmount(0);
-              setUrgent(role === "caixa");
+              setView("positions");
               setError("");
             }}
           >
-            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar extra"}
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar posições"}
           </button>
         )}
       </div>
@@ -375,107 +347,11 @@ export function ExtrasReal({
           </button>
         </p>
       )}
-      {creating ? (
-        <section className="er-panel">
-          <h2>
-            {role === "caixa" ? "Registrar emergência" : "Nova solicitação"}
-          </h2>
-          {role === "caixa" && <p>1. Identifique a emergência. 2. Anexe o recibo assinado e registre o pagamento. A diretoria revisa depois.</p>}
-          <form onSubmit={submit} className="er-form">
-            <div className="er-wide">
-              <label htmlFor="extra-requester">Solicitante <span className="sr-only">(obrigatório)</span></label>
-              <select id="extra-requester" name="solicitante_cadastro_id" required value={requesterId} disabled={requesterLoading || busy} onChange={e => setRequesterId(e.target.value)} aria-describedby="requester-help">
-                <option value="">{requesterLoading ? "Carregando solicitantes…" : "Selecione quem está solicitando"}</option>
-                {requesters.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
-              </select>
-              <p id="requester-help" className="er-field-help">Nome declarado por quem preenche. Não comprova identidade nem substitui um login individual.</p>
-              {requesterError && <p role="alert">{requesterError} <button type="button" onClick={() => setRequesterRevision(v => v + 1)}>Tentar novamente</button></p>}
-              {!requesterLoading && !requesterError && !requesters.length && <p role="status">Esta casa não tem solicitantes ativos. Peça à administração para cadastrar antes de enviar.</p>}
-            </div>
-            <label>
-              Setor
-              <select name="setor" required><option value="">Selecione</option>{["Bar", "Caixa", "Cozinha Meet", "Cozinha Produção", "Parrilla", "Portaria", "Salão", "Limpeza"].map(s => <option key={s}>{s}</option>)}</select>
-            </label>
-            <label>
-              Função
-              <input name="funcao" required maxLength={150} />
-            </label>
-            <label>
-              Motivo
-              <select name="motivo">
-                <option value="falta_atestado">Falta / atestado</option>
-                <option value="vaga_aberta">Vaga aberta</option>
-                <option value="teste_vaga">Teste de vaga</option>
-                <option value="evento">Evento</option>
-                <option value="folga">Folga</option>
-              </select>
-            </label>
-            <label>
-              Período
-              <select name="periodo">
-                <option value="almoco">Almoço</option>
-                <option value="jantar">Jantar</option>
-                <option value="manha">Manhã</option>
-                <option value="eventos">Eventos</option>
-              </select>
-            </label>
-            <label>
-              Diária estimada (se conhecida)
-              <input
-                name="valor"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required={urgent}
-                onChange={(e) => setAmount(Number(e.target.value))}
-              />
-            </label>
-            {!urgent && <p>Sem estimativa, o RH define o valor e a alçada é verificada antes da liberação.</p>}
-            <label>
-              Pessoa {urgent ? "(obrigatório)" : "(se já definida)"}
-              <input name="nome" required={urgent} maxLength={200} />
-            </label>
-            <label className="er-wide">
-              Contexto da necessidade
-              <textarea name="motivo_detalhe" required maxLength={2000} />
-            </label>
-            <label className="er-wide er-check">
-              <input
-                type="checkbox"
-                checked={urgent}
-                disabled={role === "caixa"}
-                onChange={(e) => setUrgent(e.target.checked)}
-              />{" "}
-              Emergencial · alerta imediato à diretoria
-            </label>
-            {budget &&
-              Math.round(amount * 100) > budget.saldo && (
-                <p className="er-wide" role="status">
-                  Esta solicitação excede a alçada da semana em{" "}
-                  {money(amount - budget.saldo / 100)}.{" "}
-                  {urgent
-                    ? "A exceção ficará registrada e a diretoria será alertada."
-                    : "Será enviada para aprovação do Diretor de Operação."}
-                </p>
-              )}
-            <div className="er-wide er-buttons">
-              <button disabled={busy || requesterLoading || !requesterId}>
-                {busy ? "Registrando…" : role === "caixa" ? "Continuar para recibo e pagamento" : "Registrar solicitação"}
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setCreating(false)}
-              >
-                Voltar
-              </button>
-            </div>
-          </form>
-        </section>
-      ) : (
+      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
+      {view === "positions" ? <ExtraPositions key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
         <div className="er-grid">
           <section className="er-panel er-list">
-            <div className="er-list-heading"><h2>Solicitações</h2>
+            <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>
             <span className="er-count">
               {loading
                 ? "Carregando…"
@@ -559,6 +435,7 @@ export function ExtrasReal({
                     Total <b>{money(item.total)}</b>
                   </span>
                 </div>
+                {item.solicitacao_id && <Link href={`/extras?unit_id=${unit}&solicitacao_id=${item.solicitacao_id}&data=${item.data_trabalho}`}>Abrir pedido de posições</Link>}
                 {!item.mise_managed && (
                   <p>
                     Registro de outro fluxo. Alterações são feitas no sistema de

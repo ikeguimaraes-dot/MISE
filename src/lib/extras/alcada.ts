@@ -59,7 +59,7 @@ export function usageLevel(budget: Pick<WeeklyBudget, 'gasto' | 'teto'>) {
   return { percentage: Number.isFinite(ratio) ? Math.round(ratio * 100) : null, width: Math.min(100, ratio * 100), tone: ratio > 1 ? 'critical' : ratio > .8 ? 'warning' : 'normal' }
 }
 export type ExtraAlert = { id: string; modulo: 'EXTRAS'; unidade: string; severidade: 'atencao' | 'critico'; titulo: string; descricao: string; data: string; href: string }
-export type PendingExtra = { id: string; unit_id: string; data_trabalho: string; status: string; created_at: string; emergencial: boolean; mise_emergency_decision?: string | null }
+export type PendingExtra = { request_kind?: 'positions' | 'person'; id: string; unit_id: string; data_trabalho: string; status: string; created_at: string; emergencial: boolean; mise_emergency_decision?: string | null }
 const brl = (value: number) => (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 export function extraAlerts(units: { id: string; name: string; budget: WeeklyBudget }[], requests: PendingExtra[], now: Date): ExtraAlert[] {
   const alerts: ExtraAlert[] = []
@@ -70,7 +70,7 @@ export function extraAlerts(units: { id: string; name: string; budget: WeeklyBud
   for (const item of requests) {
     const unit = units.find(row => row.id === item.unit_id)
     if (!unit || ['recusado', 'cancelado'].includes(item.status) || (item.status === 'pago' && (!item.emergencial || item.mise_emergency_decision))) continue
-    const base = { modulo: 'EXTRAS' as const, unidade: unit.name, data: item.data_trabalho, href: `/extras?unit_id=${item.unit_id}&data=${item.data_trabalho}&extra_id=${item.id}` }
+    const base = { modulo: 'EXTRAS' as const, unidade: unit.name, data: item.data_trabalho, href: `/extras?unit_id=${item.unit_id}&data=${item.data_trabalho}&${item.request_kind === 'positions' ? 'solicitacao_id' : 'extra_id'}=${item.id}` }
     if (item.status !== 'pago' && now.getTime() - Date.parse(item.created_at) > 86400000) alerts.push({ ...base, id: `extras-diretoria-${item.id}`, severidade: 'critico', titulo: item.status === 'aguardando_diretoria' ? 'Solicitação aguardando diretoria há mais de 24h' : 'Solicitação parada há mais de 24h', descricao: `Solicitação ${item.id}: decisão pendente desde ${new Date(item.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.` })
     if (item.emergencial && !item.mise_emergency_decision) alerts.push({ ...base, id: `extras-emergencia-${item.id}`, severidade: 'critico', titulo: 'Extra emergencial registrado', descricao: `Solicitação ${item.id}: exceção ao fluxo normal; requer acompanhamento da diretoria.` })
   }

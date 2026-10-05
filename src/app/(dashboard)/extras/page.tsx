@@ -11,7 +11,7 @@ export const metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ unit_id?: string; extra_id?: string; data?: string }>;
+  searchParams: Promise<{ unit_id?: string; extra_id?: string; solicitacao_id?: string; data?: string }>;
 }) {
   let context;
   try {
@@ -70,6 +70,7 @@ export default async function Page({
           : undefined
       }
       initialExtra={params.extra_id}
+      initialRequest={params.solicitacao_id}
       initialDay={
         params.data && validDate(params.data) ? params.data : undefined
       }
