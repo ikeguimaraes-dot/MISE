@@ -16,6 +16,7 @@ export function TopNav({ role = 'cozinheiro', isPinUser = false, employeeName, p
   const path = preview ? previewPath : pathname
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const [menuOpen,setMenuOpen]=useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
   const searchDialog = useRef<HTMLDialogElement>(null)
@@ -118,22 +119,22 @@ export function TopNav({ role = 'cozinheiro', isPinUser = false, employeeName, p
     <aside className="workspace-sidebar" data-no-print><Navigation /></aside>
     <header className="workspace-topbar" data-no-print>
       <div className="flex min-w-0 items-center gap-3">
-        <button type="button" className="workspace-icon-button workspace-menu-trigger" onClick={() => menuDialog.current?.showModal()} aria-label="Abrir menu"><Menu size={21} /></button>
+        <button type="button" className="workspace-icon-button workspace-menu-trigger" onClick={() => {menuDialog.current?.showModal();setMenuOpen(true)}} aria-label="Abrir menu" aria-haspopup="dialog" aria-controls="workspace-menu" aria-expanded={menuOpen}><Menu size={21} /></button>
         <span className="hidden text-xs text-ink-faint sm:inline">Workspace</span><ChevronRight className="hidden text-ink-faint sm:block" size={13} />
         <span className="truncate text-xs font-medium text-ink-muted">{active?.label ?? 'Operação'}</span>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
-        <button type="button" onClick={openSearch} className="workspace-search-trigger" aria-label="Buscar módulo"><Search size={15} /><span className="hidden sm:inline">Buscar módulo...</span><kbd className="hidden items-center gap-0.5 rounded border border-edge-strong px-1 py-0.5 text-[10px] md:flex"><Command size={10} /> K</kbd></button>
+        <button type="button" onClick={openSearch} className="workspace-search-trigger" aria-label="Buscar módulo" aria-haspopup="dialog" aria-controls="workspace-search-dialog"><Search size={15} /><span className="hidden sm:inline">Buscar módulo...</span><kbd className="hidden items-center gap-0.5 rounded border border-edge-strong px-1 py-0.5 text-[10px] md:flex"><Command size={10} /> K</kbd></button>
         {role === 'admin' && <Link href={workspaceHref('/alertas', preview)} className="workspace-icon-button" aria-label="Central de alertas"><Bell size={18} /></Link>}
         <span className="hidden h-5 w-px bg-edge sm:block" />
         <span className="hidden items-center gap-2 text-[10px] text-ink-subtle sm:flex"><span className={cn('size-1.5 rounded-full', preview ? 'bg-warn' : 'bg-ink-muted')} />{preview ? 'Prévia local' : roleLabel}</span>
       </div>
     </header>
-    <dialog ref={menuDialog} className="workspace-menu-dialog" aria-label="Menu de navegação" onClick={event => { if (event.target === event.currentTarget) menuDialog.current?.close() }}>
+    <dialog id="workspace-menu" ref={menuDialog} onClose={()=>setMenuOpen(false)} className="workspace-menu-dialog" aria-label="Menu de navegação" onClick={event => { if (event.target === event.currentTarget) menuDialog.current?.close() }}>
       <button type="button" className="workspace-icon-button absolute right-3 top-3" onClick={() => menuDialog.current?.close()} aria-label="Fechar menu"><X size={18} /></button>
       <div className="flex h-full flex-col pt-7"><Navigation /></div>
     </dialog>
-    <dialog ref={searchDialog} className="workspace-search-dialog" aria-labelledby="search-title" onClick={event => { if (event.target === event.currentTarget) searchDialog.current?.close() }}>
+    <dialog id="workspace-search-dialog" ref={searchDialog} className="workspace-search-dialog" aria-labelledby="search-title" onClick={event => { if (event.target === event.currentTarget) searchDialog.current?.close() }}>
       <div className="flex items-center gap-3 border-b border-edge px-5 py-4">
         <Search size={20} className="text-ember" /><label htmlFor="workspace-search" id="search-title" className="sr-only">Buscar módulos da plataforma</label>
         <input id="workspace-search" ref={searchInput} value={query} onChange={event => setQuery(event.target.value)} placeholder="O que você precisa fazer?" className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none" autoComplete="off" />

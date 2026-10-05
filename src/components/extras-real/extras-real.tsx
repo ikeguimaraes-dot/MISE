@@ -14,6 +14,7 @@ import {
 import { useWeeklyBudget } from "@/components/extras-evaluation/weekly-budget";
 import { usageLevel, weekDays } from "@/lib/extras/alcada";
 import "./extras-real.css";
+import { useDetailNavigation } from "./use-detail-navigation";
 import { ExtraPositions } from "./extras-positions";
 type Unit = { id: string; name: string };
 type Grant = { unit_id: string; role: OperationalRole };
@@ -74,6 +75,9 @@ export function ExtrasReal({
       events: Event[];
       cpf: string | null;
     } | null>(null);
+  const {detailRef,listRef,returnToList}=useDetailNavigation(selected,!!detail);
+  const [query,setQuery]=useState("");
+  const [filtersOpen,setFiltersOpen]=useState(false);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(false),
@@ -207,25 +211,42 @@ export function ExtrasReal({
           <h1><Users size={21} aria-hidden="true" />Controle de Extras</h1>
           <p>Solicitações, aprovações e pagamentos da casa.</p>
         </div>
-        <nav aria-label="Ferramentas de Extras">
+        <details className="er-tools"><summary><SlidersHorizontal size={16} aria-hidden="true" />Ferramentas</summary><nav aria-label="Ferramentas de Extras">
           {admin && <><Link href="/extras/acessos"><SlidersHorizontal size={14} aria-hidden="true" />Gerenciar acessos</Link><Link href={`/extras/solicitantes?unit_id=${unit}`}><Users size={14} aria-hidden="true" />Solicitantes</Link></>}
           <Link href={`/extras/relatorios?unit_id=${unit}`}><BarChart3 size={14} aria-hidden="true" />Relatórios</Link>
           {["rh", "financeiro", "caixa"].includes(role) && <Link href={`/extras/envio-caixa?unit_id=${unit}&data=${day}`}><ClipboardList size={14} aria-hidden="true" />Envio Caixa</Link>}
           <Link href="/extras/avaliacao" className="er-link-quiet"><FlaskConical size={14} aria-hidden="true" />Avaliação</Link>
-        </nav>
+        </nav></details>
       </header>
       {notificationsPending && <details className="er-notice">
         <summary><Bell size={14} aria-hidden="true" /><span>Notificações externas pendentes de configuração</span><span className="er-notice-more">Detalhes</span></summary>
         <p>Emergências e aprovações continuam disponíveis na Central de Alertas. Configure o canal para receber esses avisos também fora do MISE.</p>
       </details>}
-      <div className="er-filters">
+      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa, data ou papel</span></button>
+        {["lider", "caixa"].includes(role) && (
+          <button
+            className="er-primary"
+            disabled={busy}
+            onClick={() => {
+              setCreating(true);
+              setView("positions");
+              setError("");
+            }}
+          >
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar posições"}
+          </button>
+        )}
+      </div>
+      <div id="extras-filters" className="er-filters er-context-filters" data-expanded={filtersOpen}>
         <label>
           Casa
           <select
+            aria-label="Casa"
             value={unit}
             disabled={busy}
             onChange={(e) => {
               setUnit(e.target.value);
+              setQuery("");
               setSelected(null);
               setCreating(false);
             }}
@@ -252,11 +273,13 @@ export function ExtrasReal({
         <label>
           Seu papel
           <select
+            aria-label="Seu papel"
             value={role}
             disabled={busy}
             onChange={(e) => {
               setRole(e.target.value as OperationalRole);
               setView(null);
+              setQuery("");
               setSelected(null);
               setCreating(false);
               setAction("");
@@ -269,19 +292,7 @@ export function ExtrasReal({
             ))}
           </select>
         </label>
-        {["lider", "caixa"].includes(role) && (
-          <button
-            className="er-primary"
-            disabled={busy}
-            onClick={() => {
-              setCreating(true);
-              setView("positions");
-              setError("");
-            }}
-          >
-            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar posições"}
-          </button>
-        )}
+
       </div>
       <section className="er-budget" aria-label="Alçada semanal">
         <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
@@ -292,13 +303,13 @@ export function ExtrasReal({
           <>
             <div className="er-values">
               <span>
-                Alçada <b>{money(budget.teto / 100)}</b>
+                Alçada <b><span className="er-currency">R$</span> {money(budget.teto / 100)?.replace(/R\$\s*/, "")}</b>
               </span>
               <span>
-                Usado <b>{money(budget.gasto / 100)}</b>
+                Usado <b><span className="er-currency">R$</span> {money(budget.gasto / 100)?.replace(/R\$\s*/, "")}</b>
               </span>
               <span className="er-balance">
-                Saldo disponível <b>{money(budget.saldo / 100)}</b>
+                Saldo disponível <b><span className="er-currency">R$</span> {money(budget.saldo / 100)?.replace(/R\$\s*/, "")}</b>
               </span>
             </div>
             <div className="er-budget-meter"><progress
@@ -327,13 +338,6 @@ export function ExtrasReal({
           </p>
         )}
       </section>
-      <div className="er-queue-toolbar">
-        <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
-          <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
-          <button type="button" aria-pressed={!queue} onClick={() => setQueue(false)}>Histórico da semana</button>
-        </div>
-        <span>{queue ? "Pendências de todas as semanas" : "Solicitações da semana selecionada"}</span>
-      </div>
       {error && (
         <p className="er-error" role="alert">
           {error}{" "}
@@ -347,16 +351,27 @@ export function ExtrasReal({
           </button>
         </p>
       )}
+<div className="er-controls">
       <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
+      <div className="er-queue-toolbar">
+        <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
+          <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
+          <button type="button" aria-pressed={!queue} onClick={() => setQueue(false)}>Histórico da semana</button>
+        </div>
+        <span>{queue ? "Pendências de todas as semanas" : "Solicitações da semana selecionada"}</span>
+      </div>
+</div>
+
       {view === "positions" ? <ExtraPositions key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
-        <div className="er-grid">
-          <section className="er-panel er-list">
+        <div className="er-grid" data-detail-open={!!selected}>
+          <section ref={listRef} tabIndex={-1} className="er-panel er-list" aria-label="Lista de pessoas">
             <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>
             <span className="er-count">
               {loading
                 ? "Carregando…"
                 : `${items.length} registros ${queue ? "na sua fila" : "nesta semana"}`}
             </span></div>
+            <label className="er-list-search">Buscar nesta lista<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Pessoa, solicitante ou setor" /></label>
             {!loading && !items.length && (
               <div className="er-empty"><span className="er-empty-icon"><Inbox size={22} aria-hidden="true" /></span>
                 <h3>{queue ? "Nenhuma solicitação pendente" : "Nenhuma solicitação nesta semana"}</h3>
@@ -364,7 +379,8 @@ export function ExtrasReal({
                 {queue && <button type="button" className="er-empty-action" onClick={() => setQueue(false)}>Consultar histórico</button>}
               </div>
             )}
-            {items.map((e) => (
+            {!loading && !!items.length && !items.some(e => `${e.nome||e.funcao} ${e.setor} ${e.solicitante_nome||""}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) && <p className="er-search-empty" role="status">Nenhuma pessoa encontrada nesta lista.</p>}
+            {items.filter(e => `${e.nome||e.funcao} ${e.setor} ${e.solicitante_nome||""}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))).map((e) => (
               <button
                 key={e.id}
                 disabled={busy}
@@ -406,7 +422,8 @@ export function ExtrasReal({
               </button>
             )}
           </section>
-          <section className={`er-panel er-detail ${!item ? "er-detail-empty" : ""}`} aria-label="Detalhes da solicitação">
+          <section ref={detailRef} tabIndex={-1} className={`er-panel er-detail ${!item ? "er-detail-empty" : ""}`} aria-label="Detalhes da solicitação">
+            <button type="button" className="er-mobile-back" onClick={()=>returnToList(()=>{setSelected(null);setAction("");})}>← Voltar à lista de pessoas</button>
             {item ? (
               <>
                 <p className="er-eyebrow">
@@ -469,6 +486,7 @@ export function ExtrasReal({
                     {actions.map((a) => (
                       <button
                         key={a}
+                        className={["preparar_rh","reservar","informar_pagamento","aprovar","conferir"].includes(a)?"er-primary":""}
                         disabled={busy}
                         onClick={() => setAction(a)}
                       >
@@ -587,7 +605,7 @@ export function ExtrasReal({
                     </div>
                   </form>
                 )}
-                <h3>Histórico do processo</h3>
+                <details className="er-history-details"><summary>Histórico do processo</summary>
                 <ol className="er-history">
                   {detail.events.map((e) => (
                     <li key={e.id}>
@@ -601,7 +619,7 @@ export function ExtrasReal({
                       {e.note && <p>{e.note}</p>}
                     </li>
                   ))}
-                </ol>
+                </ol></details>
               </>
             ) : (
               <div className="er-empty"><span className="er-empty-icon"><MousePointer2 size={22} aria-hidden="true" /></span>
