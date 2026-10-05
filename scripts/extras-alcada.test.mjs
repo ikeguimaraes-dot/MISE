@@ -88,7 +88,7 @@ test('alerts: exhausted weekly allowance, strictly over 24h, old work date, imme
   assert.equal(alerts[3].id, 'extras-emergencia-paid')
   assert.equal(extraAlerts(units,[{...base,status:'aprovado_rh'}],now)[1].titulo,'Solicitação parada há mais de 24h')
 })
-const rh = item => ({ name: 'Exemplo', value: item.value, commission: item.commission, payer: 'Casa', identityChecked: true })
+const rh = item => ({ name: 'Exemplo', value: item.value, payer: 'Casa', identityChecked: true })
 test('within allowance RH goes to Finance, no director step', () => {
   let item = samples('2026-09-09', true)[0]
   item = transition(item, 'RH', 'preparar_rh', rh(item), '', undefined, budget())

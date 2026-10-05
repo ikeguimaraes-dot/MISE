@@ -1,21 +1,9 @@
--- Additive follow-up to the real workflow. No historical import or role assignment.
-ALTER TABLE public.op_extra ALTER COLUMN valor DROP NOT NULL;
-ALTER TABLE public.op_extra ADD COLUMN IF NOT EXISTS mise_emergency_decision text CHECK(mise_emergency_decision IN ('aprovado','nao_ratificado'));
-CREATE OR REPLACE FUNCTION mise.extra_has_role(actor uuid, unit uuid, required_role text)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public,mise AS $$
- SELECT EXISTS(SELECT 1 FROM public.employees e LEFT JOIN public.roles r ON r.id=e.role_id
- WHERE e.id=actor AND e.ativo AND EXISTS(SELECT 1 FROM public.op_extra_alcada WHERE unit_id=unit)
- AND (
- EXISTS(SELECT 1 FROM mise.extra_access a WHERE a.employee_id=actor AND a.unit_id=unit AND a.role=required_role AND (required_role<>'lider' OR e.unit_id=unit))
- OR (required_role='diretor' AND (r.name='founder' OR r.permissions @> '["*"]'::jsonb))
- OR (required_role='lider' AND e.unit_id=unit AND (e.user_id IS NOT NULL OR EXISTS(SELECT 1 FROM mise.sessions s WHERE s.employee_id=actor AND s.role='gerente' AND s.expires_at>now())))
- ));
-$$;
+-- Align Extras with the real process. Keep the shared commission column/default and generated total unchanged.
 CREATE OR REPLACE FUNCTION mise.extra_command(p_actor uuid,p_role text,p_command uuid,p_action text,p_extra uuid,p_version integer,p_data jsonb DEFAULT '{}')
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,mise AS $$
 DECLARE e public.op_extra%ROWTYPE; prior mise.extra_events%ROWTYPE; unit uuid; day date; mon date;
  budget jsonb; amount numeric; new_status text; old_status text; note text:=nullif(trim(p_data->>'note'),'');
- urgent boolean; command_payload jsonb; receipt mise.extra_receipts%ROWTYPE; employee_user uuid;
+ urgent boolean; command_payload jsonb; receipt mise.extra_receipts%ROWTYPE; employee_user uuid; declared_requester text;
 BEGIN
  IF p_actor IS NULL OR p_command IS NULL OR p_extra IS NULL THEN RAISE EXCEPTION 'Identificadores obrigatórios'; END IF;
  command_payload:=jsonb_build_object('action',p_action,'extra_id',p_extra,'version',p_version,'role',p_role,'data_sha256',encode(sha256(convert_to(p_data::text,'UTF8')),'hex'));
@@ -39,6 +27,10 @@ BEGIN
  PERFORM set_config('mise.extra_command','on',true);
  IF p_action='solicitar' THEN
   IF p_role NOT IN ('lider','caixa') THEN RAISE EXCEPTION 'Papel não pode solicitar'; END IF;
+  IF nullif(p_data->>'solicitante_cadastro_id','') IS NULL THEN RAISE EXCEPTION 'Selecione o solicitante'; END IF;
+  SELECT nome INTO declared_requester FROM public.op_extra_solicitante
+   WHERE id=(p_data->>'solicitante_cadastro_id')::uuid AND unit_id=unit AND ativo FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Solicitante indisponível nesta casa. Recarregue a lista'; END IF;
   urgent:=coalesce((p_data->>'emergencial')::boolean,false);
   IF p_role='caixa' AND NOT urgent THEN RAISE EXCEPTION 'Caixa registra somente emergências'; END IF;
   amount:=(p_data->>'valor')::numeric;
@@ -50,8 +42,8 @@ BEGIN
   new_status:=CASE WHEN NOT urgent AND amount>(budget->>'saldo')::numeric THEN 'aguardando_diretoria' ELSE 'solicitado' END;
   SELECT user_id INTO employee_user FROM public.employees WHERE id=p_actor;
   e:=jsonb_populate_record(NULL::public.op_extra,jsonb_build_object('id',p_extra,'unit_id',unit,'data_solicitacao',(now() AT TIME ZONE 'America/Sao_Paulo')::date,'data_trabalho',day,'setor',trim(p_data->>'setor'),'funcao',trim(p_data->>'funcao'),'motivo',p_data->>'motivo','motivo_detalhe',trim(p_data->>'motivo_detalhe'),'nome',nullif(trim(p_data->>'nome'),''),'valor',amount,'status',new_status,'emergencial',urgent,'pagadora','casa','periodo',p_data->>'periodo'));
-  INSERT INTO public.op_extra(id,unit_id,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,status,emergencial,pagadora,periodo,solicitante_id,mise_managed,mise_requested_by,mise_stage_at,mise_version,mise_allowance_snapshot)
-   VALUES(e.id,e.unit_id,e.data_solicitacao,e.data_trabalho,e.setor,e.funcao,e.motivo,e.motivo_detalhe,e.nome,e.valor,e.status,e.emergencial,e.pagadora,e.periodo,employee_user,true,p_actor,now(),1,budget);
+  INSERT INTO public.op_extra(id,unit_id,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,status,emergencial,pagadora,periodo,solicitante_nome,solicitante_id,mise_managed,mise_requested_by,mise_stage_at,mise_version,mise_allowance_snapshot)
+   VALUES(e.id,e.unit_id,e.data_solicitacao,e.data_trabalho,e.setor,e.funcao,e.motivo,e.motivo_detalhe,e.nome,e.valor,e.status,e.emergencial,e.pagadora,e.periodo,declared_requester,employee_user,true,p_actor,now(),1,budget);
  ELSE
   SELECT * INTO e FROM public.op_extra WHERE id=p_extra AND mise_managed FOR UPDATE;
   IF NOT FOUND OR (p_version IS NULL OR e.mise_version<>p_version) THEN RAISE EXCEPTION 'Solicitação atualizada. Recarregue antes de agir'; END IF;
@@ -117,57 +109,3 @@ BEGIN
  RETURN jsonb_build_object('id',p_extra,'status',new_status,'replayed',false);
 END;
 $$;
-REVOKE ALL ON FUNCTION mise.extra_command(uuid,text,uuid,text,uuid,integer,jsonb) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION mise.extra_command(uuid,text,uuid,text,uuid,integer,jsonb) TO service_role;
-
-
-CREATE TABLE IF NOT EXISTS mise.extra_notification_outbox (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(), event_id uuid NOT NULL UNIQUE REFERENCES mise.extra_events(id),
- extra_id uuid NOT NULL REFERENCES public.op_extra(id), payload jsonb NOT NULL,
- created_at timestamptz NOT NULL DEFAULT now(), delivered_at timestamptz,
- attempts integer NOT NULL DEFAULT 0, next_attempt_at timestamptz NOT NULL DEFAULT now(),
- lease_until timestamptz, lease_token uuid, last_error text
-);
-ALTER TABLE mise.extra_notification_outbox ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON mise.extra_notification_outbox FROM anon,authenticated;
-GRANT ALL ON mise.extra_notification_outbox TO service_role;
-CREATE OR REPLACE FUNCTION mise.extra_enqueue_notification() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,mise AS $$
-DECLARE e public.op_extra%ROWTYPE;
-BEGIN
- SELECT * INTO e FROM public.op_extra WHERE id=NEW.extra_id;
- IF (NEW.action='solicitar' AND e.emergencial) OR (NEW.to_status='aguardando_diretoria' AND coalesce(NEW.from_status,'')<>NEW.to_status) THEN
- INSERT INTO mise.extra_notification_outbox(event_id,extra_id,payload)
- VALUES(NEW.id,e.id,jsonb_build_object('event_id',NEW.id,'tipo',CASE WHEN e.emergencial THEN 'extra_emergencial' ELSE 'aguardando_diretoria' END,'unit_id',e.unit_id,'data_trabalho',e.data_trabalho,'total',e.total,'link','/extras?unit_id='||e.unit_id::text||'&extra_id='||e.id::text||'&data='||e.data_trabalho::text));
- END IF;
- RETURN NEW;
-END;
-$$;
-CREATE TRIGGER extra_notification_enqueue AFTER INSERT ON mise.extra_events FOR EACH ROW EXECUTE FUNCTION mise.extra_enqueue_notification();
-CREATE OR REPLACE FUNCTION mise.extra_notification_claim() RETURNS SETOF mise.extra_notification_outbox
-LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,mise AS $$
- UPDATE mise.extra_notification_outbox SET lease_until=now()+interval '2 minutes',lease_token=gen_random_uuid(),attempts=attempts+1
- WHERE id IN (SELECT id FROM mise.extra_notification_outbox WHERE delivered_at IS NULL AND next_attempt_at<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY created_at LIMIT 10 FOR UPDATE SKIP LOCKED) RETURNING *;
-$$;
-REVOKE ALL ON FUNCTION mise.extra_notification_claim() FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION mise.extra_notification_claim() TO service_role;
-CREATE OR REPLACE FUNCTION mise.extra_daily_cost(p_day date)
-RETURNS TABLE(unit_id uuid,custo numeric,sem_valor bigint) LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
- SELECT e.unit_id,coalesce(sum(e.total),0),count(*) FILTER(WHERE e.total IS NULL) FROM public.op_extra e
- WHERE e.data_trabalho=p_day AND e.status::text NOT IN ('recusado','cancelado') GROUP BY e.unit_id;
-$$;
-CREATE OR REPLACE FUNCTION mise.extra_monthly_report(p_unit uuid,p_year integer)
-RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
- SELECT jsonb_build_object('custos',coalesce((SELECT jsonb_agg(c) FROM (
- SELECT extract(month from data_trabalho)::int mes,setor,sum(total) custo,count(*) quantidade,count(*) FILTER(WHERE total IS NULL) sem_valor
- FROM public.op_extra WHERE unit_id=p_unit AND data_trabalho>=make_date(p_year,1,1) AND data_trabalho<make_date(p_year+1,1,1)
- AND status::text NOT IN ('recusado','cancelado') GROUP BY 1,2) c),'[]'::jsonb),
- 'receitas',coalesce((SELECT jsonb_agg(r) FROM (
- SELECT mes_num::int mes,CASE p_year WHEN 2022 THEN sum(rec_2022) WHEN 2023 THEN sum(rec_2023) WHEN 2024 THEN sum(rec_2024) WHEN 2025 THEN sum(rec_2025) END faturamento,'DRE histórico · restaurante' fonte
- FROM public.dre_faturamento_historico WHERE unit_id=p_unit AND categoria='restaurante' AND p_year BETWEEN 2022 AND 2025 GROUP BY mes_num
- UNION ALL
- SELECT split_part(mes_ano,'-',2)::int mes,sum(valor) faturamento,'DRE · faturamento realizado' fonte
- FROM public.dre_receita_detalhada WHERE unit_id=p_unit AND grupo='FATURAMENTO' AND mes_ano ~ ('^'||p_year::text||'-(0?[1-9]|1[0-2])$') AND p_year>=2026 GROUP BY 1
- ) r),'[]'::jsonb));
-$$;
-REVOKE ALL ON FUNCTION mise.extra_daily_cost(date),mise.extra_monthly_report(uuid,integer) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION mise.extra_daily_cost(date),mise.extra_monthly_report(uuid,integer) TO service_role;

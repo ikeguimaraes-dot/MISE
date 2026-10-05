@@ -44,13 +44,11 @@ export type RealExtra = {
   nome: string | null;
   solicitante_nome: string | null;
   valor: number | null;
-  comissao: number;
   total: number | null;
   pagadora: string;
   status: string;
   emergencial: boolean;
   periodo: string | null;
-  sequencia: number | null;
   pago_em: string | null;
   mise_requested_by: string | null;
   mise_version: number;

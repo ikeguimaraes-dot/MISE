@@ -10,21 +10,23 @@ sql(`INSERT INTO units(id,name) VALUES(${quote(unit)},'Synthetic A'),(${quote(ot
 for(const [role,id] of Object.entries(actors))sql(`INSERT INTO auth.users VALUES(${quote(id)});INSERT INTO employees(id,unit_id,user_id,role_id) VALUES(${quote(id)},${quote(unit)},${quote(id)},${quote(roleId)});INSERT INTO mise.extra_access(employee_id,unit_id,role,granted_by) VALUES(${quote(id)},${quote(unit)},${quote(role)},${quote(actors.lider)});`)
 sql(`INSERT INTO op_extra_alcada VALUES(${quote(unit)},1,'2026-01-01');INSERT INTO metas_dia_semana(unit_id,dia_semana,meta,competencia) SELECT ${quote(unit)},d,10000,'2026-10' FROM generate_series(0,6)d;`)
 const requester=randomUUID();sql(`INSERT INTO op_extra_solicitante(id,unit_id,nome) VALUES(${quote(requester)},${quote(unit)},'Synthetic Requester')`);
-const createData=(value=100,extra={})=>({solicitante_cadastro_id:requester,unit_id:unit,data_trabalho:'2026-10-05',setor:'Teste',funcao:'Teste',motivo:'evento',motivo_detalhe:'Synthetic',valor:value,comissao:0,periodo:'almoco',sequencia:1,...extra})
+const createData=(value=100,extra={})=>({solicitante_cadastro_id:requester,unit_id:unit,data_trabalho:'2026-10-05',setor:'Teste',funcao:'Teste',motivo:'evento',motivo_detalhe:'Synthetic',valor:value,periodo:'almoco',...extra})
 const commandSql=(role,action,id,version,data={},key=randomUUID())=>`select mise.extra_command(${quote(actors[role])},${quote(role)},${quote(key)},${quote(action)},${quote(id)},${version===null?'NULL':version},${quote(JSON.stringify(data))}::jsonb)`
 const call=(...a)=>JSON.parse(sql(commandSql(...a)))
-const id=randomUUID(),key=randomUUID(),data=createData()
+const id=randomUUID(),key=randomUUID(),data=createData(100,{comissao:999})
 fail(()=>call('lider','solicitar',randomUUID(),0,createData(100,{solicitante_cadastro_id:null})),'requester required');
 fail(()=>call('lider','solicitar',randomUUID(),0,createData(100,{solicitante_cadastro_id:randomUUID()})),'unknown requester denied');
 assert.equal(call('lider','solicitar',id,0,data,key).status,'solicitado');assert.equal(call('lider','solicitar',id,0,data,key).replayed,true)
 assert.equal(sql(`select count(*) from mise.extra_events where extra_id=${quote(id)}`),'1')
+assert.equal(sql(`select comissao=0 AND total=valor AND valor=100 from public.op_extra where id=${quote(id)}`),'t');console.log('PASS commission payload ignored; database default and generated total preserved')
 fail(()=>call('lider','solicitar',id,0,createData(120),key),'idempotency rejects changed payload')
 fail(()=>call('lider','solicitar',randomUUID(),0,createData(10,{unit_id:other})),'cross-unit denied')
 fail(()=>call('financeiro','reservar',id,1),'finance cannot skip RH')
-const rh={nome:'Synthetic Person',cpf:'52998224725',valor:100,comissao:0,pagadora:'casa'}
+const rh={nome:'Synthetic Person',cpf:'52998224725',valor:100,pagadora:'casa'}
 fail(()=>call('rh','preparar_rh',id,null,rh),'null version denied')
 fail(()=>call('rh','preparar_rh',id,1,{...rh,cpf:'11111111111'}),'invalid CPF denied')
-assert.equal(call('rh','preparar_rh',id,1,rh).status,'aprovado_rh')
+assert.equal(call('rh','preparar_rh',id,1,{...rh,comissao:999}).status,'aprovado_rh')
+assert.equal(sql(`select comissao=0 AND total=valor AND valor=100 from public.op_extra where id=${quote(id)}`),'t');console.log('PASS RH cannot introduce commission')
 assert.equal(call('financeiro','reservar',id,2).status,'reservado_financeiro')
 fail(()=>call('caixa','informar_pagamento',id,3,{receipt_id:randomUUID(),pago_em:'2026-10-05'}),'foreign or absent receipt denied')
 function receipt(extra){const r=randomUUID();sql(`INSERT INTO mise.extra_receipts(id,extra_id,uploaded_by,object_path,content_type,size_bytes) VALUES(${quote(r)},${quote(extra)},${quote(actors.caixa)},${quote(r)},'application/pdf',100)`);return r}

@@ -121,7 +121,7 @@ GRANT EXECUTE ON FUNCTION mise.extra_valid_cpf(text) TO service_role;
 CREATE OR REPLACE FUNCTION mise.extra_command(p_actor uuid,p_role text,p_command uuid,p_action text,p_extra uuid,p_version integer,p_data jsonb DEFAULT '{}')
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,mise AS $$
 DECLARE e public.op_extra%ROWTYPE; prior mise.extra_events%ROWTYPE; unit uuid; day date; mon date;
- budget jsonb; amount numeric; commission numeric; new_status text; old_status text; note text:=nullif(trim(p_data->>'note'),'');
+ budget jsonb; amount numeric; new_status text; old_status text; note text:=nullif(trim(p_data->>'note'),'');
  urgent boolean; command_payload jsonb; receipt mise.extra_receipts%ROWTYPE; employee_user uuid;
 BEGIN
  IF p_actor IS NULL OR p_command IS NULL OR p_extra IS NULL THEN RAISE EXCEPTION 'Identificadores obrigatórios'; END IF;
@@ -148,18 +148,17 @@ BEGIN
   IF p_role NOT IN ('lider','caixa') THEN RAISE EXCEPTION 'Papel não pode solicitar'; END IF;
   urgent:=coalesce((p_data->>'emergencial')::boolean,false);
   IF p_role='caixa' AND NOT urgent THEN RAISE EXCEPTION 'Caixa registra somente emergências'; END IF;
-  amount:=(p_data->>'valor')::numeric;commission:=coalesce((p_data->>'comissao')::numeric,0);
-  IF amount IS NULL OR amount<=0 OR amount::text IN ('NaN','Infinity','-Infinity') OR commission::text IN ('NaN','Infinity','-Infinity') OR commission<0 OR amount<>round(amount,2) OR commission<>round(commission,2) THEN RAISE EXCEPTION 'Valores inválidos'; END IF;
+  amount:=(p_data->>'valor')::numeric;
+  IF amount IS NULL OR amount<=0 OR amount::text IN ('NaN','Infinity','-Infinity') OR amount<>round(amount,2) THEN RAISE EXCEPTION 'Valores inválidos'; END IF;
   IF nullif(trim(p_data->>'setor'),'') IS NULL OR nullif(trim(p_data->>'funcao'),'') IS NULL OR nullif(trim(p_data->>'motivo_detalhe'),'') IS NULL THEN RAISE EXCEPTION 'Informe setor, função e contexto'; END IF;
   IF urgent AND nullif(trim(p_data->>'nome'),'') IS NULL THEN RAISE EXCEPTION 'Identifique o recebedor da emergência'; END IF;
   IF nullif(p_data->>'periodo','') IS NULL THEN RAISE EXCEPTION 'Informe o período'; END IF;
-  IF coalesce((p_data->>'sequencia')::integer,0) NOT BETWEEN 1 AND 20 THEN RAISE EXCEPTION 'Sequência inválida'; END IF;
   budget:=mise.extra_week_budget(unit,day);
-  new_status:=CASE WHEN NOT urgent AND amount+commission>(budget->>'saldo')::numeric THEN 'aguardando_diretoria' ELSE 'solicitado' END;
+  new_status:=CASE WHEN NOT urgent AND amount>(budget->>'saldo')::numeric THEN 'aguardando_diretoria' ELSE 'solicitado' END;
   SELECT user_id INTO employee_user FROM public.employees WHERE id=p_actor;
-  e:=jsonb_populate_record(NULL::public.op_extra,jsonb_build_object('id',p_extra,'unit_id',unit,'data_solicitacao',(now() AT TIME ZONE 'America/Sao_Paulo')::date,'data_trabalho',day,'setor',trim(p_data->>'setor'),'funcao',trim(p_data->>'funcao'),'motivo',p_data->>'motivo','motivo_detalhe',trim(p_data->>'motivo_detalhe'),'nome',nullif(trim(p_data->>'nome'),''),'valor',amount,'comissao',commission,'status',new_status,'emergencial',urgent,'pagadora','casa','periodo',p_data->>'periodo','sequencia',(p_data->>'sequencia')::integer));
-  INSERT INTO public.op_extra(id,unit_id,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,comissao,status,emergencial,pagadora,periodo,sequencia,solicitante_id,mise_managed,mise_requested_by,mise_stage_at,mise_version,mise_allowance_snapshot)
-   VALUES(e.id,e.unit_id,e.data_solicitacao,e.data_trabalho,e.setor,e.funcao,e.motivo,e.motivo_detalhe,e.nome,e.valor,e.comissao,e.status,e.emergencial,e.pagadora,e.periodo,e.sequencia,employee_user,true,p_actor,now(),1,budget);
+  e:=jsonb_populate_record(NULL::public.op_extra,jsonb_build_object('id',p_extra,'unit_id',unit,'data_solicitacao',(now() AT TIME ZONE 'America/Sao_Paulo')::date,'data_trabalho',day,'setor',trim(p_data->>'setor'),'funcao',trim(p_data->>'funcao'),'motivo',p_data->>'motivo','motivo_detalhe',trim(p_data->>'motivo_detalhe'),'nome',nullif(trim(p_data->>'nome'),''),'valor',amount,'status',new_status,'emergencial',urgent,'pagadora','casa','periodo',p_data->>'periodo'));
+  INSERT INTO public.op_extra(id,unit_id,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,status,emergencial,pagadora,periodo,solicitante_id,mise_managed,mise_requested_by,mise_stage_at,mise_version,mise_allowance_snapshot)
+   VALUES(e.id,e.unit_id,e.data_solicitacao,e.data_trabalho,e.setor,e.funcao,e.motivo,e.motivo_detalhe,e.nome,e.valor,e.status,e.emergencial,e.pagadora,e.periodo,employee_user,true,p_actor,now(),1,budget);
  ELSE
   SELECT * INTO e FROM public.op_extra WHERE id=p_extra AND mise_managed FOR UPDATE;
   IF NOT FOUND OR (p_version IS NULL OR e.mise_version<>p_version) THEN RAISE EXCEPTION 'Solicitação atualizada. Recarregue antes de agir'; END IF;
@@ -175,17 +174,17 @@ BEGIN
   ELSIF p_action='preparar_rh' THEN
    IF p_role<>'rh' OR old_status NOT IN ('solicitado','pagamento_informado') THEN RAISE EXCEPTION 'Etapa do RH indisponível'; END IF;
    IF nullif(trim(p_data->>'nome'),'') IS NULL OR NOT mise.extra_valid_cpf(p_data->>'cpf') THEN RAISE EXCEPTION 'Informe nome e CPF válido'; END IF;
-   amount:=(p_data->>'valor')::numeric;commission:=coalesce((p_data->>'comissao')::numeric,0);
-   IF amount IS NULL OR amount<=0 OR amount::text IN ('NaN','Infinity','-Infinity') OR commission::text IN ('NaN','Infinity','-Infinity') OR commission<0 OR amount<>round(amount,2) OR commission<>round(commission,2) THEN RAISE EXCEPTION 'Valores inválidos'; END IF;
+   amount:=(p_data->>'valor')::numeric;
+   IF amount IS NULL OR amount<=0 OR amount::text IN ('NaN','Infinity','-Infinity') OR amount<>round(amount,2) THEN RAISE EXCEPTION 'Valores inválidos'; END IF;
    IF p_data->>'pagadora' NOT IN ('casa','terceirizada') OR p_data->>'pagadora' IS NULL THEN RAISE EXCEPTION 'Pagadora inválida'; END IF;
-   IF old_status='pagamento_informado' AND (amount<>e.valor OR commission<>e.comissao OR p_data->>'pagadora'<>e.pagadora::text) THEN RAISE EXCEPTION 'Pagamento informado: preserve valores e pagadora'; END IF;
-   e.nome:=trim(p_data->>'nome');e.cpf:=p_data->>'cpf';e.valor:=amount;e.comissao:=commission;
+   IF old_status='pagamento_informado' AND (amount<>e.valor OR p_data->>'pagadora'<>e.pagadora::text) THEN RAISE EXCEPTION 'Pagamento informado: preserve valores e pagadora'; END IF;
+   e.nome:=trim(p_data->>'nome');e.cpf:=p_data->>'cpf';e.valor:=amount;
    e.pagadora:=(jsonb_populate_record(NULL::public.op_extra,jsonb_build_object('pagadora',p_data->>'pagadora'))).pagadora;
    e.mise_rh_complete:=true;
    SELECT user_id INTO e.aprovador_rh_id FROM public.employees WHERE id=p_actor;
    budget:=mise.extra_week_budget(unit,day,p_extra);
    IF old_status<>'pagamento_informado' THEN
-    new_status:=CASE WHEN NOT e.emergencial AND amount+commission>(budget->>'saldo')::numeric AND amount+commission>coalesce(e.mise_approved_total,0) THEN 'aguardando_diretoria' ELSE 'aprovado_rh' END;
+    new_status:=CASE WHEN NOT e.emergencial AND amount>(budget->>'saldo')::numeric AND amount>coalesce(e.mise_approved_total,0) THEN 'aguardando_diretoria' ELSE 'aprovado_rh' END;
    END IF;
   ELSIF p_action='reservar' THEN
    IF p_role<>'financeiro' OR old_status<>'aprovado_rh' THEN RAISE EXCEPTION 'Reserva indisponível'; END IF;
@@ -202,7 +201,7 @@ BEGIN
    new_status:='pago';
   ELSE RAISE EXCEPTION 'Ação desconhecida';
   END IF;
-  UPDATE public.op_extra SET nome=e.nome,cpf=e.cpf,valor=e.valor,comissao=e.comissao,pagadora=e.pagadora,
+  UPDATE public.op_extra SET nome=e.nome,cpf=e.cpf,valor=e.valor,pagadora=e.pagadora,
    aprovador_rh_id=e.aprovador_rh_id,status=(jsonb_populate_record(NULL::public.op_extra,jsonb_build_object('status',new_status))).status,
    mise_approved_total=e.mise_approved_total,mise_rh_complete=e.mise_rh_complete,mise_payment_at=e.mise_payment_at,
    mise_receipt_id=e.mise_receipt_id,pago_em=e.pago_em,mise_version=mise_version+1,

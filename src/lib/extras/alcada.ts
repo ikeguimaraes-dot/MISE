@@ -50,7 +50,7 @@ export function calcWeeklyBudget(unitId: string, reference: string, source: { me
   return { segunda: days[0], domingo: days[6], metaSemana, percentual, vigenteDesde: config?.vigente_desde ?? null, teto, gasto, saldo: teto - gasto, diasSemMeta, avisos }
 }
 export function requestRoute(budget: WeeklyBudget, amount: number, emergency: boolean) {
-  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Informe o valor estimado positivo da solicitação, incluindo comissão.')
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Informe o valor estimado positivo da solicitação.')
   const excesso = Math.max(0, budget.gasto + amount - budget.teto)
   return { status: !emergency && excesso > 0 ? 'aguardando_diretoria' as const : 'solicitado' as const, excesso, alertarDiretoria: emergency }
 }

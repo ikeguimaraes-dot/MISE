@@ -89,7 +89,7 @@ export function extraResponseError(error: unknown) {
 }
 // Explicit projection: CPF and internal command payload never enter a list response.
 export const EXTRA_SELECT =
-  "id,unit_id,solicitante_nome,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,comissao,total,pagadora,status,emergencial,periodo,sequencia,pago_em,mise_requested_by,mise_stage_at,mise_version,mise_rh_complete,mise_approved_total,mise_receipt_id,mise_allowance_snapshot,mise_managed,mise_emergency_decision";
+  "id,unit_id,solicitante_nome,data_solicitacao,data_trabalho,setor,funcao,motivo,motivo_detalhe,nome,valor,total,pagadora,status,emergencial,periodo,pago_em,mise_requested_by,mise_stage_at,mise_version,mise_rh_complete,mise_approved_total,mise_receipt_id,mise_allowance_snapshot,mise_managed,mise_emergency_decision";
 
 export function requireExtraRead(grants: ExtraAccess[], unit: string, requester: string | null, employee: string) {
   requireExtraAccess(grants, unit);

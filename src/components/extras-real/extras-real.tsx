@@ -75,7 +75,6 @@ export function ExtrasReal({
     [creating, setCreating] = useState(false),
     [action, setAction] = useState(""),
     [amount, setAmount] = useState(0),
-    [commission, setCommission] = useState(0),
     [urgent, setUrgent] = useState(false);
   const [requesters, setRequesters] = useState<{id: string; nome: string}[]>([]);
   const [requesterId, setRequesterId] = useState("");
@@ -166,8 +165,6 @@ export function ExtrasReal({
           unit_id: unit,
           data_trabalho: day,
           valor: data.valor === "" ? null : Number(data.valor),
-          comissao: Number(data.comissao || 0),
-          sequencia: Number(data.sequencia),
           emergencial: urgent || role === "caixa",
         });
         body = { role, data };
@@ -181,7 +178,6 @@ export function ExtrasReal({
               "Confira o CPF: os dígitos verificadores não conferem.",
             );
           data.valor = Number(data.valor);
-          data.comissao = Number(data.comissao);
         }
         if (action === "informar_pagamento") {
           const file = f.get("file");
@@ -307,7 +303,6 @@ export function ExtrasReal({
             onClick={() => {
               setCreating(true);
               setAmount(0);
-              setCommission(0);
               setUrgent(role === "caixa");
               setError("");
             }}
@@ -425,17 +420,6 @@ export function ExtrasReal({
               </select>
             </label>
             <label>
-              Sequência
-              <input
-                name="sequencia"
-                type="number"
-                min="1"
-                max="20"
-                defaultValue="1"
-                required
-              />
-            </label>
-            <label>
               Diária estimada (se conhecida)
               <input
                 name="valor"
@@ -447,17 +431,6 @@ export function ExtrasReal({
               />
             </label>
             {!urgent && <p>Sem estimativa, o RH define o valor e a alçada é verificada antes da liberação.</p>}
-            <label>
-              Comissão
-              <input
-                name="comissao"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue="0"
-                onChange={(e) => setCommission(Number(e.target.value))}
-              />
-            </label>
             <label>
               Pessoa {urgent ? "(obrigatório)" : "(se já definida)"}
               <input name="nome" required={urgent} maxLength={200} />
@@ -476,10 +449,10 @@ export function ExtrasReal({
               Emergencial · alerta imediato à diretoria
             </label>
             {budget &&
-              Math.round((amount + commission) * 100) > budget.saldo && (
+              Math.round(amount * 100) > budget.saldo && (
                 <p className="er-wide" role="status">
                   Esta solicitação excede a alçada da semana em{" "}
-                  {money(amount + commission - budget.saldo / 100)}.{" "}
+                  {money(amount - budget.saldo / 100)}.{" "}
                   {urgent
                     ? "A exceção ficará registrada e a diretoria será alertada."
                     : "Será enviada para aprovação do Diretor de Operação."}
@@ -569,7 +542,7 @@ export function ExtrasReal({
                 </p>
                 <p>
                   {item.data_trabalho.split("-").reverse().join("/")} ·{" "}
-                  {item.periodo} · sequência {item.sequencia ?? "—"}
+                  {item.periodo}
                 </p>
                 <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome || "Não informado no registro"}</strong><small>Nome autodeclarado · não é identificação autenticada</small></div>
                 <blockquote>{item.motivo_detalhe}</blockquote>
@@ -667,18 +640,6 @@ export function ExtrasReal({
                             min="0.01"
                             step="0.01"
                             defaultValue={item.valor ?? ""}
-                            readOnly={item.status === "pagamento_informado"}
-                            required
-                          />
-                        </label>
-                        <label>
-                          Comissão
-                          <input
-                            name="comissao"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            defaultValue={item.comissao}
                             readOnly={item.status === "pagamento_informado"}
                             required
                           />

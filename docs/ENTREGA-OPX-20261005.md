@@ -102,3 +102,11 @@ Nenhum novo template foi semeado. As duas referências incompletas criadas anter
 - Leitura direta do cadastro pela chave pública bloqueada; o aplicativo usa rotas autenticadas com verificação de unidade/papel.
 - Filas e detalhes exibem solicitante, assim como Envio Caixa e o resumo mensal por solicitante nos relatórios. Registros anteriores sem nome permanecem como não informados.
 - Testes PostgreSQL isolados: seleção obrigatória, unidade, ativo, cópia do nome, renomeação/desativação sem mudar histórico, rejeição de nome forjado e reenvio após desativação. Testes da API: permissões, ordenação, filtro de ativos, cadastro, edição e desativação.
+
+### Ajuste do processo de Extras — valor único
+
+- Comissão e sequência removidas da operação, avaliação, projeções e impressão do Envio Caixa.
+- RPC não envia comissão no INSERT nem permite alterá-la no RH; mantém a coluna compartilhada com default zero e o total gerado pelo banco.
+- Migração `20261005_extras_value_only.sql` substitui somente a função de comando. A coluna de sequência já foi removida do banco pelo responsável.
+- Histórico privado: 709 lançamentos, R$ 113.535,00. Por decisão explícita do usuário, foram descartados R$ 1.723,50 de comissão (78 registros). INSERT corrigido e validado sem execução; arquivo com dados pessoais permanece fora do Git. Nenhuma importação realizada.
+- Validação: testes da alçada e avaliação, fluxo completo em PostgreSQL isolado sem a coluna removida, payload antigo de comissão ignorado na criação e no RH.
