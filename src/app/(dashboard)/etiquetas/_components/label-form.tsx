@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus } from 'lucide-react'
+import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus, Trash2 } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
 
@@ -339,6 +339,13 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     window.location.href = url
   }
 
+  // O app MISE Print deve tratar este deep link cancelando os trabalhos
+  // pendentes antes de aceitar novas etiquetas.
+  function handleClearBluetoothQueue() {
+    if (!window.confirm('Limpar todos os trabalhos pendentes da impressora Bluetooth?')) return
+    window.location.href = 'miseprint://clear-queue'
+  }
+
   return (
     <div className="rounded-xl border border-edge bg-surface">
       <div className="border-b border-edge px-5 py-4">
@@ -645,6 +652,12 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               className="flex items-center gap-2 rounded-lg bg-ember px-4 py-2 text-sm font-semibold text-ember-ink hover:bg-ember-hover transition-colors">
               <Bluetooth className="h-4 w-4" />
               Imprimir (Bluetooth)
+            </button>
+            <button type="button" onClick={handleClearBluetoothQueue}
+              title="Cancela os trabalhos pendentes no MISE Print"
+              className="flex items-center gap-2 rounded-lg border border-alert/40 px-3 py-2 text-sm font-medium text-alert-bright hover:bg-alert/10 transition-colors">
+              <Trash2 className="h-4 w-4" />
+              Limpar fila
             </button>
           </div>
         </div>
