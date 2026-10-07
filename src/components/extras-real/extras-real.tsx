@@ -15,6 +15,8 @@ import { useWeeklyBudget } from "@/components/extras-evaluation/weekly-budget";
 import { usageLevel, weekDays } from "@/lib/extras/alcada";
 import "./extras-real.css";
 import { useDetailNavigation } from "./use-detail-navigation";
+import { operationalDay } from "@/lib/operational-calendar";
+import { WeeklyPlan } from "./weekly-plan";
 import { ExtraPositions } from "./extras-positions";
 type Unit = { id: string; name: string };
 type Grant = { unit_id: string; role: OperationalRole };
@@ -28,10 +30,6 @@ type Event = {
 const money = (n: number | null) => n === null ? "A definir" :
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     n,
-  );
-const today = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
-    new Date(),
   );
 async function api(url: string, options?: RequestInit) {
   const r = await fetch(url, { cache: "no-store", ...options });
@@ -61,13 +59,19 @@ export function ExtrasReal({
   notificationsPending?: boolean;
 }) {
   const [unit, setUnit] = useState(initialUnit || units[0].id),
-    [day, setDay] = useState(initialDay || today()),
+    [day, setDay] = useState(initialDay || operationalDay()),
     [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const updateDay = () => setDay(operationalDay());
+    const interval = window.setInterval(updateDay, 60_000);
+    window.addEventListener('focus', updateDay);
+    return () => { window.clearInterval(interval); window.removeEventListener('focus', updateDay); };
+  }, []);
   const roles = grants.filter((g) => g.unit_id === unit).map((g) => g.role);
   const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
   const role = roles.includes(chosenRole) ? chosenRole : roles[0];
-  const [chosenView, setView] = useState<"positions" | "people" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
-  const view = chosenView ?? (["financeiro", "caixa"].includes(role) ? "people" : "positions");
+  const [chosenView, setView] = useState<"positions" | "people" | "plan" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
+  const view = chosenView ?? (role === "lider" ? "plan" : ["financeiro", "caixa"].includes(role) ? "people" : "positions");
   const [items, setItems] = useState<RealExtra[]>([]),
     [selected, setSelected] = useState<string | null>(initialExtra || null),
     [detail, setDetail] = useState<{
@@ -77,6 +81,10 @@ export function ExtrasReal({
     } | null>(null);
   const {detailRef,listRef,returnToList}=useDetailNavigation(selected,!!detail);
   const [query,setQuery]=useState("");
+  const [requesters,setRequesters]=useState<{id:string;nome:string}[]>([]),[requesterId,setRequesterId]=useState("");
+  useEffect(()=>{const c=new AbortController();setRequesterId("");setRequesters([]);api(`/api/extras/solicitantes?unit_id=${unit}`,{signal:c.signal}).then(d=>setRequesters(d.items)).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[unit]);
+  const requesterName=requesters.find(r=>r.id===requesterId)?.nome||"";
+
   const [filtersOpen,setFiltersOpen]=useState(false);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -222,18 +230,18 @@ export function ExtrasReal({
         <summary><Bell size={14} aria-hidden="true" /><span>Notificações externas pendentes de configuração</span><span className="er-notice-more">Detalhes</span></summary>
         <p>Emergências e aprovações continuam disponíveis na Central de Alertas. Configure o canal para receber esses avisos também fora do MISE.</p>
       </details>}
-      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa, data ou papel</span></button>
+      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {requesterName||ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa ou responsável</span></button>
         {["lider", "caixa"].includes(role) && (
           <button
-            className="er-primary"
-            disabled={busy}
+            className={role === "caixa" ? "er-primary" : ""}
+            disabled={busy||(role==='lider'&&!requesterId)}
             onClick={() => {
               setCreating(true);
               setView("positions");
               setError("");
             }}
           >
-            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar posições"}
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Pedido avulso"}
           </button>
         )}
       </div>
@@ -245,7 +253,9 @@ export function ExtrasReal({
             value={unit}
             disabled={busy}
             onChange={(e) => {
+              setRequesterId("");
               setUnit(e.target.value);
+              setView(null);
               setQuery("");
               setSelected(null);
               setCreating(false);
@@ -259,25 +269,15 @@ export function ExtrasReal({
           </select>
         </label>
         <label>
-          Data de referência
-          <input
-            type="date"
-            required
-            value={day}
-            disabled={busy}
-            onChange={(e) => {
-              if (e.target.value) setDay(e.target.value);
-            }}
-          />
-        </label>
-        <label>
-          Seu papel
+          Responsável
           <select
-            aria-label="Seu papel"
-            value={role}
+            aria-label="Responsável"
+            value={role==='lider'?(requesterId?`manager:${requesterId}`:''):role}
             disabled={busy}
             onChange={(e) => {
-              setRole(e.target.value as OperationalRole);
+              const value=e.target.value;
+              setRequesterId(value.startsWith('manager:')?value.slice(8):'');
+              setRole(value.startsWith('manager:')||!value?'lider':value as OperationalRole);
               setView(null);
               setQuery("");
               setSelected(null);
@@ -285,16 +285,15 @@ export function ExtrasReal({
               setAction("");
             }}
           >
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </option>
-            ))}
+            <option value="" disabled>Selecione seu nome ou papel</option>
+            {roles.includes('lider')&&<optgroup label="Gerentes da casa">{requesters.map(r=><option key={r.id} value={`manager:${r.id}`}>{r.nome}</option>)}</optgroup>}
+            <optgroup label="Outros papéis">{roles.filter(r=>r!=='lider').map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</optgroup>
           </select>
         </label>
 
       </div>
-      <section className="er-budget" aria-label="Alçada semanal">
+      {role==='lider'&&!requesterId&&<p role="status">Selecione seu nome em “Responsável” para solicitar ou planejar. No celular, toque no nome da casa para abrir essa seleção.</p>}
+      {view !== "plan" && <section className="er-budget" aria-label="Alçada semanal">
         <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
            {from.split("-").reverse().slice(0, 2).join("/")}–
           {to.split("-").reverse().slice(0, 2).join("/")}
@@ -337,7 +336,7 @@ export function ExtrasReal({
             )}
           </p>
         )}
-      </section>
+      </section>}
       {error && (
         <p className="er-error" role="alert">
           {error}{" "}
@@ -352,17 +351,17 @@ export function ExtrasReal({
         </p>
       )}
 <div className="er-controls">
-      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
-      <div className="er-queue-toolbar">
+      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas">{role==='lider'&&<button aria-pressed={view==='plan'} onClick={()=>{setView('plan');setCreating(false)}}>Planejar semana</button>}<button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
+      {view !== "plan" && <div className="er-queue-toolbar">
         <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
           <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
           <button type="button" aria-pressed={!queue} onClick={() => setQueue(false)}>Histórico da semana</button>
         </div>
         <span>{queue ? "Pendências de todas as semanas" : "Solicitações da semana selecionada"}</span>
-      </div>
+      </div>}
 </div>
 
-      {view === "positions" ? <ExtraPositions key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
+      {view === "plan" ? <WeeklyPlan key={`${unit}-${from}-${role}`} unit={unit} unitName={units.find(u=>u.id===unit)!.name} day={day} requesterId={requesterId} requesterName={requesterName} onChanged={refresh}/> : view === "positions" ? <ExtraPositions requesterId={requesterId} requesterName={requesterName} key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={() => refresh()} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
         <div className="er-grid" data-detail-open={!!selected}>
           <section ref={listRef} tabIndex={-1} className="er-panel er-list" aria-label="Lista de pessoas">
             <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>
@@ -438,7 +437,7 @@ export function ExtrasReal({
                   {item.periodo}
                 </p>
                 <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome || "Não informado no registro"}</strong><small>Nome autodeclarado · não é identificação autenticada</small></div>
-                <blockquote>{item.motivo_detalhe}</blockquote>
+                {item.motivo_detalhe&&<blockquote>{item.motivo_detalhe}</blockquote>}
                 <div className="er-values">
                   <span>
                     Pagadora{" "}
@@ -563,8 +562,8 @@ export function ExtrasReal({
                           <input
                             name="pago_em"
                             type="date"
-                            defaultValue={today()}
-                            max={today()}
+                            defaultValue={operationalDay()}
+                            max={operationalDay()}
                             required
                           />
                         </label>

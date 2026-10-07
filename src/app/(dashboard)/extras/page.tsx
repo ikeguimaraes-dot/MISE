@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { validDate } from "@/lib/extras/alcada";
+import { operationalDay } from "@/lib/operational-calendar";
 import { redirect } from "next/navigation";
 import { extrasContext, ExtraError } from "@/lib/extras/access";
 import { ExtrasReal } from "@/components/extras-real/extras-real";
@@ -71,9 +71,7 @@ export default async function Page({
       }
       initialExtra={params.extra_id}
       initialRequest={params.solicitacao_id}
-      initialDay={
-        params.data && validDate(params.data) ? params.data : undefined
-      }
+      initialDay={operationalDay()}
     />
   );
 }

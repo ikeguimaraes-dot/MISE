@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),Module=require('node:module');
+const m=new Module('planning',module);m._compile(ts.transpileModule(fs.readFileSync('src/lib/extras/planning.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,'planning');const {planRows,cellCost,cellLocked,planPayload,moveWeek}=m.exports;
+const jobs=[{id:'1',nome:'Cumim',setor_padrao:'Salão',valor_referencia:150,ordem:1}],days=Array.from({length:7},(_,i)=>`2026-10-${String(5+i).padStart(2,'0')}`);
+const item=(id,day,period='almoco',more={})=>({id,data_trabalho:day,funcao:'Cumim',setor:'Salão',quantidade:2,valor_unitario:150,valor_consumido:300,motivo:'folga',periodo:period,status:'solicitado',editable:true,...more});
+const saved=[item('a',days[0]),item('b',days[1],'almoco',{valor_unitario:200,valor_consumido:400}),item('c',days[0],'jantar',{editable:false,quantidade:3,valor_consumido:150})];
+const rows=planRows(jobs,saved,days);assert.equal(rows.length,2);assert.equal(cellCost(rows[0],1),40000);assert.equal(cellCost(rows[1],0),15000);assert.equal(cellLocked(rows[1],0),true);
+let data=planPayload(rows,rows,days,'evento',false);assert.equal(data.length,2);assert.equal(data[1].valor_unitario,200);assert.ok(data.every(x=>x.motivo==='folga'));assert.ok(data.every(x=>x.periodo==='almoco'));
+rows[0].rate='175';rows[0].rateChanged=true;rows[0].motive='quadro_clt';data=planPayload(rows,rows,days,'evento',true);assert.ok(data.every(x=>x.valor_unitario===175&&x.motivo==='quadro_clt'));
+const original=planRows(jobs,saved,days);data=planPayload([],original,days,'evento',false);assert.ok(data.every(x=>x.quantidade===0));assert.equal(data.length,2);
+const dup=planRows(jobs,[saved[0],{...saved[0],id:'duplicate'}],days)[0];assert.equal(cellLocked(dup,0),true);assert.equal(cellCost(dup,0),60000);assert.equal(planPayload([dup],[dup],days,'evento',false).length,0);
+assert.equal(moveWeek('2026-10-05',-1),'2026-09-28');assert.equal(moveWeek('2026-12-28',1),'2027-01-04');
+console.log('PASS grid model: separate periods, saved heterogeneous rates, motive override, cancellation payload, RH partial actual cost, duplicate locks and month/year boundaries');

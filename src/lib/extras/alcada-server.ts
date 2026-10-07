@@ -1,4 +1,6 @@
 import 'server-only'
+import {loadLeadRows} from './anticipation-server'
+import {leadMix} from './anticipation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { calcWeeklyBudget, extraAlerts, weekDays, type Spend, type PendingExtra } from './alcada'
 
@@ -42,12 +44,18 @@ export async function loadExtraAlerts(db: SupabaseClient, units: { id: string; n
   const requests: PendingExtra[] = []
   if (units.length) for (const source of ['op_extra_solicitacao', 'op_extra']) for (let offset = 0; ; offset += 500) {
     // Not limited to the selected/current week: old approvals must remain visible.
-    let query = db.from(source).select('id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision').in('unit_id', units.map(unit => unit.id)).or('status.not.in.(recusado,cancelado,pago),and(emergencial.eq.true,mise_emergency_decision.is.null,status.eq.pago)').order('id').range(offset, offset + 499)
-    if (source === 'op_extra') query = query.is('solicitacao_id', null)
+    let query = (source==='op_extra_solicitacao'?db.schema('mise').from('extra_request_summary'):db.from(source)).select(source==='op_extra_solicitacao'?'id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision, rh_pendente':'id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision, solicitacao_id').in('unit_id', units.map(unit => unit.id)).or('status.not.in.(recusado,cancelado,pago),and(emergencial.eq.true,mise_emergency_decision.is.null,status.eq.pago)').order('id').range(offset, offset + 499)
+    if (source === 'op_extra_solicitacao') query=query.or('rh_pendente.eq.true,status.eq.aguardando_diretoria,and(emergencial.eq.true,mise_emergency_decision.is.null)')
     const result = await query
     if (result.error) throw new Error('Não foi possível consultar as solicitações pendentes de Extras.')
-    requests.push(...(result.data ?? []).map(item=>({...item,request_kind: source === 'op_extra_solicitacao' ? 'positions' as const : 'person' as const,created_at:item.mise_stage_at??item.created_at})))
+    requests.push(...(result.data ?? []).map(item=>({...item,emergencial:source==='op_extra'&&'solicitacao_id' in item&&item.solicitacao_id?false:item.emergencial,request_kind: source === 'op_extra_solicitacao' ? 'positions' as const : 'person' as const,created_at:item.mise_stage_at??item.created_at})))
     if ((result.data?.length ?? 0) < 500) break
   }
-  return { alerts: extraAlerts(budgets, requests, now), warnings: budgets.flatMap(unit => unit.budget.avisos.map(warning => `${unit.name}: ${warning}`)) }
+  const alerts=extraAlerts(budgets,requests,now)
+  const threshold=process.env.EXTRAS_REACTIVE_THRESHOLD_PERCENT??'80'
+  if(threshold!==undefined&&Number.isFinite(Number(threshold))&&Number(threshold)>=0&&Number(threshold)<=100){
+   const days=weekDays(reference),rows=await loadLeadRows(db,units.map(u=>u.id),days[0],days[6])
+   for(const unit of units){const mix=leadMix(rows.filter(r=>r.unit_id===unit.id));if(mix.reactivePct!==null&&mix.reactivePct>Number(threshold))alerts.push({id:`extras-reativo-${unit.id}-${days[0]}`,modulo:'EXTRAS',unidade:unit.name,severidade:'atencao',titulo:'Semana com excesso de solicitações reativas',descricao:`${mix.reactivePct.toFixed(1)}% reativas; limite configurado de ${threshold}%. ${mix.total} solicitações na semana.`,data:days[0],href:`/extras/relatorios?unit_id=${unit.id}&ano=${reference.slice(0,4)}`})}
+  }
+  return { alerts, warnings: budgets.flatMap(unit => unit.budget.avisos.map(warning => `${unit.name}: ${warning}`)) }
 }

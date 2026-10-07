@@ -9,6 +9,7 @@ export async function PATCH(
   const actorSession=await getMiseSession();if(!actorSession || actorSession.role!=='admin')return NextResponse.json({error:'Acesso restrito.'},{status:actorSession?403:401})
   const { id, itemId } = await params
   const body = await request.json()
+  if(body.por_equipamento&&(typeof body.equipamento_tipo!=='string'||!body.equipamento_tipo.trim()))return NextResponse.json({error:'Tipo de equipamento obrigatório.'},{status:400})
   const supabase = createServiceClient()
 
   const { data, error } = await supabase

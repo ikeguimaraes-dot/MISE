@@ -6,3 +6,5 @@ const report={execution:{id:'00000000-0000-4000-8000-000000000000',status:'concl
 const bytes=await buildCrivoPdf(report,[{key:'demo',type:'png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aMioAAAAASUVORK5CYII=','base64')}]);const pdf=await PDFDocument.load(bytes);assert.ok(pdf.getPageCount()>=5);assert.equal(pdf.getTitle(),`${report.title} — ${report.unit}`);writeFileSync('/tmp/mise-crivo-laudo-exemplo.pdf',bytes)
 const narrative=await buildCrivoPdf({...report,model:'headchef_narrativo',execution:{...report.execution,percentual:null},topics:report.topics.map(t=>({...t,percentual:null}))},[]);assert.ok((await PDFDocument.load(narrative)).getPageCount()>=5)
 console.log('PASS PDF quantitative + narrative, pagination, accents, photo, captions, action plan and unsigned signature field')
+
+const noPhoto=await buildCrivoPdf({...report,items:report.items.map(i=>({...i,requer_foto:'sim'})),responses:report.responses.map(r=>({...r,foto_url:null})),photos:[]},[]);writeFileSync('/tmp/mise-crivo-laudo-sem-foto.pdf',noPhoto);assert.ok((await PDFDocument.load(noPhoto)).getPageCount()>=5);

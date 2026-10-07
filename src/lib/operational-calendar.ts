@@ -1,3 +1,8 @@
+// Same operational date convention used by TURNO: calendar day in São Paulo.
+export function operationalDay(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Sao_Paulo'}).format(now)
+}
+
 export function expectedDays(from:string,to:string,schedule:{dia_semana:number;periodo:string}[]):string[] {
   const result:string[]=[];
   for(let d=new Date(`${from}T12:00:00Z`);d.toISOString().slice(0,10)<=to;d.setUTCDate(d.getUTCDate()+1))

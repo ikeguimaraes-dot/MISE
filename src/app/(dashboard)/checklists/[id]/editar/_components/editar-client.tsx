@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, createContext, useContext } from 'react'
 import {
   DndContext, DragOverlay, closestCenter,
   PointerSensor, KeyboardSensor,
@@ -18,7 +18,11 @@ import { GripVertical, Plus, Pencil, Trash2, Check, X, AlertTriangle } from 'luc
 
 type Topico = { key: string; nome: string; peso: number }
 
+const EquipmentEditorContext=createContext(false)
+
 type Item = {
+  por_equipamento:boolean; equipamento_tipo:string
+
   id: string; key: string; titulo: string; descricao: string | null
   tipo_resposta: string; opcoes: string[] | null
   peso: number; critico: boolean; topico_key: string | null
@@ -26,6 +30,8 @@ type Item = {
 }
 
 type IEdit = {
+  por_equipamento:boolean; equipamento_tipo:string
+
   titulo: string; descricao: string; tipo_resposta: string
   opcoes_str: string; peso: string; critico: boolean
   criterio_regramento: string; requer_foto: string
@@ -59,7 +65,7 @@ const IC = 'w-full rounded-lg border border-edge-strong bg-surface-raised px-3 p
 
 const DEFI: IEdit = {
   titulo: '', descricao: '', tipo_resposta: 'sim_nao', opcoes_str: '',
-  peso: '1', critico: false, criterio_regramento: '', requer_foto: 'nao',
+  peso: '1', critico: false, por_equipamento:false,equipamento_tipo:'', criterio_regramento: '', requer_foto: 'nao',
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -116,7 +122,7 @@ function initState(
       tipo_resposta: (r.tipo_resposta as string) ?? 'sim_nao',
       opcoes: Array.isArray(r.opcoes) ? (r.opcoes as string[]) : null,
       peso: Number(r.peso ?? 1),
-      critico: Boolean(r.critico ?? false),
+      critico: Boolean(r.critico ?? false),por_equipamento:Boolean(r.por_equipamento),equipamento_tipo:String(r.equipamento_tipo??''),
       topico_key: tKey,
       criterio_regramento: (r.criterio_regramento as string | null) ?? null,
       requer_foto: (r.requer_foto as string | null) ?? 'nao',
@@ -133,6 +139,7 @@ function ItemEditForm({ state, onChange, onSave, onCancel, saving }: {
   onChange: (p: Partial<IEdit>) => void
   onSave: () => void; onCancel: () => void; saving: boolean
 }) {
+  const isCrivo=useContext(EquipmentEditorContext)
   return (
     <div className="px-4 py-4 bg-surface-raised/40 space-y-3 border-b border-edge/60">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -176,6 +183,7 @@ function ItemEditForm({ state, onChange, onSave, onCancel, saving }: {
             <button type="button" onClick={() => onChange({ critico: !state.critico })} className={`rounded px-2.5 py-1 text-xs font-semibold transition-colors ${state.critico ? 'bg-alert text-white' : 'border border-edge text-ink-muted hover:text-ink'}`}>{state.critico ? 'Sim' : 'Não'}</button>
           </div>
         </div>
+        {isCrivo&&<div className="sm:col-span-2 space-y-3 rounded-lg border border-edge p-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={state.por_equipamento} onChange={e=>onChange({por_equipamento:e.target.checked})}/>Repetir por equipamento ativo do local</label>{state.por_equipamento&&<label className="block text-sm">Tipo de equipamento<input className={IC} required value={state.equipamento_tipo} onChange={e=>onChange({equipamento_tipo:e.target.value})} maxLength={200}/><span className="text-xs text-ink-muted">Use o mesmo tipo do cadastro. O peso será dividido entre os equipamentos.</span></label>}</div>}
         {state.critico && (
           <div className="sm:col-span-2 flex items-center gap-2 rounded-lg bg-alert/10 border border-alert/30 px-3 py-2">
             <AlertTriangle className="h-3.5 w-3.5 text-alert-bright shrink-0" />
@@ -375,7 +383,7 @@ function SortableTopico({
 
 // ── EditarClient ──────────────────────────────────────────────────────────────
 
-export function EditarClient({ templateId, initialItems, initialTopicos }: Props) {
+export function EditarClient({ templateId, modulo, initialItems, initialTopicos }: Props) {
   const [initData] = useState(() => initState(initialItems, initialTopicos))
   const [topicos, setTopicos] = useState<Topico[]>(initData.tops)
   const [byKey, setByKey] = useState<Map<string | null, Item[]>>(initData.byKey)
@@ -427,7 +435,7 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
           tipo_resposta: found.tipo_resposta,
           opcoes_str: found.opcoes?.join(', ') ?? '',
           peso: String(found.peso),
-          critico: found.critico,
+          critico: found.critico,por_equipamento:found.por_equipamento,equipamento_tipo:found.equipamento_tipo,
           criterio_regramento: found.criterio_regramento ?? '',
           requer_foto: found.requer_foto ?? 'nao',
         })
@@ -460,7 +468,7 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
           criterio_regramento: itemEditState.criterio_regramento.trim() || null,
           requer_foto: itemEditState.requer_foto,
           peso: parseFloat(itemEditState.peso) || 0,
-          critico: itemEditState.critico,
+          critico: itemEditState.critico,por_equipamento:modulo==='CRIVO'&&itemEditState.por_equipamento,equipamento_tipo:itemEditState.por_equipamento?itemEditState.equipamento_tipo.trim():null,
         }),
       })
       if (!res.ok) { alert('Erro ao salvar item.'); return }
@@ -477,7 +485,7 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
               tipo_resposta: saved.tipo_resposta, opcoes: saved.opcoes,
               criterio_regramento: saved.criterio_regramento,
               requer_foto: saved.requer_foto,
-              peso: Number(saved.peso ?? 1), critico: Boolean(saved.critico),
+              peso: Number(saved.peso ?? 1), critico: Boolean(saved.critico),por_equipamento:Boolean(saved.por_equipamento),equipamento_tipo:String(saved.equipamento_tipo??''),
             }
             next.set(k, updated)
             break
@@ -551,7 +559,7 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
           criterio_regramento: addItemState.criterio_regramento.trim() || null,
           requer_foto: addItemState.requer_foto,
           peso: parseFloat(addItemState.peso) || 1,
-          critico: addItemState.critico,
+          critico: addItemState.critico,por_equipamento:modulo==='CRIVO'&&addItemState.por_equipamento,equipamento_tipo:addItemState.por_equipamento?addItemState.equipamento_tipo.trim():null,
           topico_ordem: topicoIdx,
           topico_nome: topico?.nome ?? null,
         }),
@@ -562,7 +570,7 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
         id: saved.id, key: uid(),
         titulo: saved.titulo, descricao: saved.descricao,
         tipo_resposta: saved.tipo_resposta, opcoes: saved.opcoes,
-        peso: Number(saved.peso ?? 1), critico: Boolean(saved.critico),
+        peso: Number(saved.peso ?? 1), critico: Boolean(saved.critico),por_equipamento:Boolean(saved.por_equipamento),equipamento_tipo:String(saved.equipamento_tipo??''),
         topico_key: topicoKey,
         criterio_regramento: saved.criterio_regramento,
         requer_foto: saved.requer_foto,
@@ -760,7 +768,7 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
   const totalItems = Array.from(byKey.values()).reduce((s, a) => s + a.length, 0)
 
   return (
-    <div className="space-y-3">
+    <EquipmentEditorContext.Provider value={modulo==='CRIVO'}><div className="space-y-3">
       {reorderSaving && (
         <p className="text-xs text-ink-faint text-right animate-pulse">Salvando ordem...</p>
       )}
@@ -921,6 +929,6 @@ export function EditarClient({ templateId, initialItems, initialTopicos }: Props
       <div className="pt-2 border-t border-edge/40">
         <p className="text-xs text-ink-faint">{topicos.length} tópico{topicos.length !== 1 ? 's' : ''} · {totalItems} item{totalItems !== 1 ? 's' : ''}</p>
       </div>
-    </div>
+    </div></EquipmentEditorContext.Provider>
   )
 }

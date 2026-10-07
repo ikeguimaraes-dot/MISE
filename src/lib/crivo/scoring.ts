@@ -6,6 +6,7 @@ export const SCORING_MODELS = [
 export type ScoringModel = (typeof SCORING_MODELS)[number];
 export type ScoreItem = {
   id: string;
+  expansion_count?: number;
   topico_ordem: number | null;
   topico_nome: string | null;
   tipo_resposta: string;
@@ -100,12 +101,9 @@ export function scoreCrivo(
       !r?.comentario?.trim()
     )
       throw new Error("Há itens com comentário obrigatório pendente.");
-    if (
-      (["sempre", "sim"].includes(i.requer_foto || "") ||
-        (i.requer_foto === "se_nao" && no)) &&
-      !r?.foto_url
-    )
-      throw new Error("Há itens com foto obrigatória pendente.");
+    // CRIVO policy (02/09): missing inspection photos are shown as SEM FOTO.
+    // They never block completion or change the score. Corrective-action
+    // resolution separately requires evidence in crivo_action_save.
   }
   const topics: TopicScore[] = [];
   const ordens = [...new Set(items.map((i) => i.topico_ordem ?? 0))].sort(
@@ -133,13 +131,13 @@ export function scoreCrivo(
     const weight =
       model === "ff_ponderado"
         ? Number(weights.find((t) => t.topico_ordem === ordem)?.peso ?? 1)
-        : eligible.length;
+        : eligible.reduce((sum,i)=>sum+1/(i.expansion_count??1),0);
     const applicablePoints = eligible.reduce((sum,i)=>sum+Number(i.peso??1),0);
     const conformingPoints = eligible.filter(i=>conforming(i,map.get(i.id))).reduce((sum,i)=>sum+Number(i.peso??1),0);
     const fraction = eligible.length
       ? critical
         ? 0
-        : model === "ff_ponderado" ? conformingPoints / applicablePoints : conformes / eligible.length
+        : model === "ff_ponderado" ? conformingPoints / applicablePoints : eligible.filter(i=>conforming(i,map.get(i.id))).reduce((sum,i)=>sum+1/(i.expansion_count??1),0) / weight
       : null;
     topics.push({
       topico_ordem: ordem,

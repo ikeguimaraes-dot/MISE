@@ -290,6 +290,7 @@ export function CrivoReportClient({ report: r }: { report: CrivoReport }) {
                     <p>Orientação: {answer.orientacao_corretiva}</p>
                   )}
                   {answer.foto_url && <p>Foto da inspeção incluída no PDF.</p>}
+                  {!answer.nao_aplicavel && answer.resposta?.valor === "nao" && !answer.foto_url && !photos.length && <p>SEM FOTO</p>}
                   {photos.map((p) => (
                     <div key={p.id} className="cr-photo">
                       <button type="button" onClick={() => openAsset(p.url)}>

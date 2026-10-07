@@ -28,6 +28,7 @@ export const ACTION_LABELS: Record<string, string> = {
   recusar: "Recusar solicitação",
   cancelar: "Cancelar solicitação",
   preparar_rh: "Completar cadastro",
+  nomear_emergencia: "Identificar recebedores da emergência",
   nomear_rh: "Nomear pessoas",
   reservar: "Reservar / liberar",
   informar_pagamento: "Informar pagamento",
@@ -43,7 +44,7 @@ export type RealExtra = {
   setor: string;
   funcao: string;
   motivo: string;
-  motivo_detalhe: string;
+  motivo_detalhe: string | null;
   nome: string | null;
   solicitante_nome: string | null;
   valor: number | null;
@@ -103,7 +104,7 @@ export function realActions(
     item.mise_receipt_id
   )
     actions.push("conferir");
-  return item.solicitacao_id ? actions.filter(a => ["reservar", "informar_pagamento", "conferir"].includes(a)) : actions;
+  return item.solicitacao_id ? actions.filter(a => ["reservar", "informar_pagamento", "conferir"].includes(a)||(a==="preparar_rh"&&item.emergencial&&item.status==="pagamento_informado")) : actions;
 }
 export function validCpf(input: string): boolean {
   const d = input.replace(/\D/g, "");

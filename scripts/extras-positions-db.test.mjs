@@ -23,7 +23,7 @@ const id=randomUUID(),key=randomUUID(),data=create(3,150,{valor_total:1,comissao
 fails(()=>call('lider','solicitar',randomUUID(),0,create(0)),'zero quantity denied')
 fails(()=>call('lider','solicitar',randomUUID(),0,create(1.5)),'fractional quantity denied')
 fails(()=>call('lider','solicitar',randomUUID(),0,create(3,0)),'invalid rate denied')
-fails(()=>call('lider','solicitar',randomUUID(),0,create(3,150,{setor:'Wrong'})),'job must match sector')
+const forgedSector=randomUUID();call('lider','solicitar',forgedSector,0,create(1,1,{setor:'Wrong'}));assert.equal(sql(`select setor from op_extra_solicitacao where id=${quote(forgedSector)}`),'Synthetic sector');call('lider','cancelar',forgedSector,1,{note:'Synthetic cleanup'});console.log('PASS sector resolved from catalog; client cannot forge it')
 fails(()=>call('lider','solicitar',randomUUID(),0,create(3,150,{solicitante_cadastro_id:randomUUID()})),'requester must belong to unit')
 assert.equal(call('lider','solicitar',id,0,data,key).status,'solicitado');assert.equal(call('lider','solicitar',id,0,data,key).replayed,true)
 assert.equal(people(id).length,0);assert.equal(row(id).valor_total,450);assert.equal(budget().usado,450)
@@ -65,3 +65,33 @@ fails(()=>sql(`UPDATE public.op_extra_solicitacao SET quantidade=20 WHERE id=${q
 fails(()=>sql(`SET ROLE authenticated; SELECT * FROM mise.extra_request_summary`),'public client cannot read cross-unit request view')
 fails(()=>sql(`SET ROLE authenticated; SELECT mise.extra_request_command(${quote(actors.lider)},'lider',${quote(randomUUID())},'solicitar',${quote(randomUUID())},0,'{}')`),'public client cannot invoke privileged request command')
 console.log('PASS concurrent requests reserve allowance atomically, no double count, service-only scoped API')
+// V2: one transaction for the entire weekly plan, including retries.
+c=context();const planRows=[300,500].map((value,i)=>({id:randomUUID(),command_id:randomUUID(),data:create(1,value,{data_trabalho:`2026-10-0${5+i}`})}));
+const plan=(rows,r='lider')=>JSON.parse(sql(`select mise.extra_plan_command(${quote(actors[r])},${quote(r)},${quote(c.unit)},'2026-10-05',${quote(JSON.stringify(rows))})`));
+const badRows=[{...planRows[0]},{...planRows[1],data:{...planRows[1].data,quantidade:0}}];
+fails(()=>plan(badRows),'invalid last demand rolls back the entire weekly plan');assert.equal(budget().usado,0);
+fails(()=>plan(planRows,'rh'),'RH cannot submit a manager weekly plan');
+const planned=plan(planRows);assert.deepEqual(planned.items.map(r=>r.status),['solicitado','aguardando_diretoria']);assert.equal(budget().usado,800);
+assert.ok(plan(planRows).items.every(r=>r.replayed));assert.equal(budget().usado,800);
+fails(()=>plan([{id:randomUUID(),command_id:randomUUID(),data:create(1,100,{data_trabalho:'2026-10-12'})}]),'cross-week demand denied');
+console.log('PASS weekly plan atomic creation, allowance routing, idempotency and week scope');
+c=context();const emergency2=randomUUID();call('caixa','solicitar',emergency2,0,create(1,900,{emergencial:true}));
+fails(()=>call('lider','nomear_emergencia',emergency2,1,{pagadora:'casa',pessoas:[person(1)]}),'only cashier names emergency recipients');
+call('caixa','nomear_emergencia',emergency2,1,{pagadora:'casa',pessoas:[{posicao:1,nome:'Synthetic emergency recipient',cpf:'',valor:900}]});
+let ep=people(emergency2)[0];assert.equal(ep.cpf,null);assert.equal(ep.mise_rh_complete,false);
+fails(()=>individual('caixa','informar_pagamento',ep.id,ep.mise_version,{pago_em:'2026-10-05'}),'emergency cannot pay without receipt');
+const er=randomUUID();sql(`INSERT INTO mise.extra_receipts(id,extra_id,uploaded_by,object_path,content_type,size_bytes) VALUES(${quote(er)},${quote(ep.id)},${quote(actors.caixa)},${quote(er)},'application/pdf',100)`);
+assert.equal(individual('caixa','informar_pagamento',ep.id,ep.mise_version,{receipt_id:er,pago_em:'2026-10-05'}).status,'pagamento_informado');
+ep=people(emergency2)[0];assert.equal(individual('rh','preparar_rh',ep.id,ep.mise_version,{nome:ep.nome,cpf:cpf(9),valor:900,pagadora:'casa'}).status,'pago');assert.equal(budget().usado,900);
+console.log('PASS cashier emergency payment, unknown CPF stays null, mandatory receipt and RH regularization');
+// Optional context must work in both normal and emergency requests, including naming.
+c=context();
+for(const emergency of [false,true]){
+ const request=randomUUID(),body=create(1,150,{emergencial:emergency});delete body.motivo_detalhe;
+ call(emergency?'caixa':'lider','solicitar',request,0,body);
+ assert.equal(row(request).motivo_detalhe,null);
+ nominate(request,[person(1)]);assert.equal(people(request)[0].motivo_detalhe,null);
+}
+const blank=randomUUID();call('caixa','solicitar',blank,0,create(1,150,{emergencial:true,motivo_detalhe:'   '}));assert.equal(row(blank).motivo_detalhe,null);
+const explained=randomUUID();call('caixa','solicitar',explained,0,create(1,150,{emergencial:true,motivo_detalhe:'  Falta no turno  '}));assert.equal(row(explained).motivo_detalhe,'Falta no turno');
+console.log('PASS optional context: normal/emergency requests, blank normalized to null, RH inherits null, supplied explanation retained');

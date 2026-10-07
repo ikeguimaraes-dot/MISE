@@ -114,7 +114,8 @@ export default async function CrivoLocalPage({
             <h1 className="text-xl font-bold text-ink">{local.nome}</h1>
             <p className="text-sm text-ink-muted">Histórico de visitas</p>
           </div>
-          <AgendarVisita localId={localId} />
+          <Link href={`/crivo/${localId}/equipamentos`} className="inline-flex min-h-11 items-center rounded-lg border border-edge px-4 text-sm">Equipamentos</Link>
+              <AgendarVisita localId={localId} />
         </div>
       </div>
 

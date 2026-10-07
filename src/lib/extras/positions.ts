@@ -2,7 +2,7 @@ import type { OperationalRole } from './workflow'
 export type PositionRequest = {
  id:string;unit_id:string;data_trabalho:string;periodo:string;setor:string;funcao:string;
  quantidade:number;valor_unitario:number;valor_total:number;valor_consumido:number;valor_nomeado:number;
- preenchidos:number;pagamentos_pendentes:number;motivo:string;motivo_detalhe:string;solicitante_nome:string;
+ preenchidos:number;pagamentos_pendentes:number;motivo:string;motivo_detalhe:string|null;solicitante_nome:string;
  pagadora:string;status:string;emergencial:boolean;mise_managed:boolean;mise_requested_by:string|null;
  mise_version:number;mise_named_at:string|null;mise_emergency_decision:string|null;
 }
@@ -14,6 +14,7 @@ export function positionActions(item:PositionRequest,role:OperationalRole,employ
  if(role==='diretor' && item.status==='aguardando_diretoria') result.push('aprovar','recusar')
  if(role==='lider' && item.mise_requested_by===employee && ['solicitado','aguardando_diretoria'].includes(item.status)) result.push('cancelar')
  if(role==='rh' && ['solicitado','aprovado_rh'].includes(item.status) && item.preenchidos<item.quantidade) result.push('nomear_rh')
+ if(role==='caixa' && item.emergencial && ['solicitado','aprovado_rh'].includes(item.status) && item.preenchidos<item.quantidade) result.push('nomear_emergencia')
  return result
 }
 export function positionStatus(item:PositionRequest) {
