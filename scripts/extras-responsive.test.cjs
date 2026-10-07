@@ -7,14 +7,14 @@ if(!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(base))throw new Error('Loc
 const output=process.env.MISE_UX_OUTPUT||'/tmp/mise-ux-review';fs.mkdirSync(output,{recursive:true});
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROME?{executablePath:process.env.PLAYWRIGHT_CHROME}:{})});try{
  for(const width of (process.env.MISE_UX_WIDTHS||'320,390,768,1024,1440').split(',').map(Number)){
-  const page=await browser.newPage({viewport:{width,height:900}});page.setDefaultTimeout(20000);await mock(page);
+  const page=await browser.newPage({viewport:{width,height:900}});page.setDefaultTimeout(20000);await page.clock.install({time:new Date('2026-10-05T15:00:00Z')});await mock(page);
   console.log('START',width);
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`${base}/preview/extras-ux`,{waitUntil:'domcontentloaded',timeout:90000});await page.locator('.er-request').first().waitFor();
   const compact=await page.locator('.er').evaluate(el=>el.clientWidth-parseFloat(getComputedStyle(el).paddingLeft)-parseFloat(getComputedStyle(el).paddingRight)<=800);
   async function noOverflow(label){const m=await page.evaluate(()=>({width:innerWidth,actual:document.documentElement.scrollWidth}));assert.ok(m.actual<=m.width+1,`${width} ${label}: overflow ${m.actual}`)}
-  async function setRole(role){if(compact&&!await page.getByLabel('Seu papel',{exact:true}).isVisible())await page.locator('.er-filter-summary').click();await page.getByLabel('Seu papel',{exact:true}).selectOption(role==='lider'?'manager:manager-1':role);if(compact)await page.locator('.er-filter-summary').click()}
-  await noOverflow('list');
+  async function setRole(role){if(compact&&!await page.getByLabel('Responsável',{exact:true}).isVisible())await page.locator('.er-filter-summary').click();await page.getByLabel('Responsável',{exact:true}).selectOption(role==='lider'?'manager:manager-1':role);if(compact)await page.locator('.er-filter-summary').click()}
+  assert.equal(await page.getByLabel('Data de referência',{exact:true}).count(),0);await noOverflow('list');
   const rects=await page.locator('.er-request').first().locator(':scope > span').evaluateAll(nodes=>nodes.map(n=>({top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom})));
   for(let i=1;i<rects.length;i++)assert.ok(rects[i].top>=rects[i-1].bottom-1,'card metadata overlaps');
   if([390,1440].includes(width))await page.screenshot({path:`${output}/extras-lista-${width}.png`,fullPage:false});
@@ -26,11 +26,20 @@ const output=process.env.MISE_UX_OUTPUT||'/tmp/mise-ux-review';fs.mkdirSync(outp
   if([390,768].includes(width))await page.screenshot({path:`${output}/extras-rh-${width}.png`,fullPage:false});
   console.log('RH PASS',width);
   await setRole('lider');await page.getByRole('button',{name:'Solicitar posições',exact:true}).click();await page.waitForFunction(()=>document.activeElement?.classList.contains('er-create'));
+  const emergency=page.getByRole('checkbox',{name:'Emergencial · alerta imediato à diretoria'}),context=page.getByLabel('Contexto emergencial',{exact:true});
+  assert.equal(await context.count(),0);await emergency.check();assert.equal(await context.getAttribute('required'),null);
+  assert.ok(await page.locator('.er-create form').evaluate(form=>{const labels=[...form.children].filter(e=>e.tagName==='LABEL');return labels[0].textContent.includes('Emergencial')&&labels[1].textContent.includes('Contexto emergencial')}));
+  await emergency.uncheck();assert.equal(await context.count(),0);
   await page.getByLabel('Função',{exact:true}).selectOption('job-1');await page.getByLabel('Quantidade',{exact:true}).fill('3');
   assert.match(await page.locator('.er-estimate').textContent(),/450,00/);await noOverflow('manager form');
   assert.ok(await page.getByLabel('Valor da diária (R$)',{exact:true}).evaluate(el=>parseFloat(getComputedStyle(el).fontSize)>=16));
   if(width===390)await page.screenshot({path:`${output}/extras-formulario-${width}.png`,fullPage:false});
-  await page.getByRole('button',{name:'Voltar',exact:true}).click();
+  if(width===390){
+   let submitted;
+   await page.route('**/api/extras/solicitacoes',async route=>{if(route.request().method()!=='POST')return route.fallback();submitted=route.request().postDataJSON();return route.fulfill({status:201,json:{id:'request-1',status:'solicitado'}})});
+   await emergency.check();await page.getByLabel('Data do trabalho',{exact:true}).fill('2026-10-12');await page.getByRole('button',{name:'Registrar solicitação',exact:true}).click();await page.locator('.er-create').waitFor({state:'detached'});
+   assert.equal(submitted.data.emergencial,true);assert.equal(submitted.data.motivo_detalhe,null);assert.equal(submitted.data.data_trabalho,'2026-10-12');assert.match(await page.locator('.er-budget-heading').textContent(),/05\/10.*11\/10/);
+  }else await page.getByRole('button',{name:'Voltar',exact:true}).click();
   await page.getByRole('button',{name:'Planejar semana',exact:true}).click();await page.getByRole('button',{name:'+ Adicionar demanda',exact:true}).first().click();await page.getByLabel('Função 2026-10-05 1',{exact:true}).selectOption('job-1');await page.getByLabel('Quantidade 2026-10-05 1',{exact:true}).fill('3');assert.match(await page.locator('.er-plan-summary').textContent(),/450,00/);await noOverflow('weekly plan');await page.getByLabel('Função 2026-10-05 1',{exact:true}).selectOption('job-2');assert.equal(await page.getByLabel('Diária 2026-10-05 1',{exact:true}).inputValue(),'');await noOverflow('unknown reference rate');
   await setRole('caixa');
   await page.locator('.er-request').first().click();await page.getByRole('button',{name:'Informar pagamento',exact:true}).click();await page.getByLabel('Recibo assinado (até 4 MB)').waitFor();await noOverflow('payment form');

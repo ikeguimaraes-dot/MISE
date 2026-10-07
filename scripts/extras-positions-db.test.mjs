@@ -84,3 +84,14 @@ const er=randomUUID();sql(`INSERT INTO mise.extra_receipts(id,extra_id,uploaded_
 assert.equal(individual('caixa','informar_pagamento',ep.id,ep.mise_version,{receipt_id:er,pago_em:'2026-10-05'}).status,'pagamento_informado');
 ep=people(emergency2)[0];assert.equal(individual('rh','preparar_rh',ep.id,ep.mise_version,{nome:ep.nome,cpf:cpf(9),valor:900,pagadora:'casa'}).status,'pago');assert.equal(budget().usado,900);
 console.log('PASS cashier emergency payment, unknown CPF stays null, mandatory receipt and RH regularization');
+// Optional context must work in both normal and emergency requests, including naming.
+c=context();
+for(const emergency of [false,true]){
+ const request=randomUUID(),body=create(1,150,{emergencial:emergency});delete body.motivo_detalhe;
+ call(emergency?'caixa':'lider','solicitar',request,0,body);
+ assert.equal(row(request).motivo_detalhe,null);
+ nominate(request,[person(1)]);assert.equal(people(request)[0].motivo_detalhe,null);
+}
+const blank=randomUUID();call('caixa','solicitar',blank,0,create(1,150,{emergencial:true,motivo_detalhe:'   '}));assert.equal(row(blank).motivo_detalhe,null);
+const explained=randomUUID();call('caixa','solicitar',explained,0,create(1,150,{emergencial:true,motivo_detalhe:'  Falta no turno  '}));assert.equal(row(explained).motivo_detalhe,'Falta no turno');
+console.log('PASS optional context: normal/emergency requests, blank normalized to null, RH inherits null, supplied explanation retained');

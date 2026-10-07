@@ -2,7 +2,7 @@ import type { OperationalRole } from './workflow'
 export type PositionRequest = {
  id:string;unit_id:string;data_trabalho:string;periodo:string;setor:string;funcao:string;
  quantidade:number;valor_unitario:number;valor_total:number;valor_consumido:number;valor_nomeado:number;
- preenchidos:number;pagamentos_pendentes:number;motivo:string;motivo_detalhe:string;solicitante_nome:string;
+ preenchidos:number;pagamentos_pendentes:number;motivo:string;motivo_detalhe:string|null;solicitante_nome:string;
  pagadora:string;status:string;emergencial:boolean;mise_managed:boolean;mise_requested_by:string|null;
  mise_version:number;mise_named_at:string|null;mise_emergency_decision:string|null;
 }

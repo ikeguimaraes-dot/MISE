@@ -15,6 +15,7 @@ import { useWeeklyBudget } from "@/components/extras-evaluation/weekly-budget";
 import { usageLevel, weekDays } from "@/lib/extras/alcada";
 import "./extras-real.css";
 import { useDetailNavigation } from "./use-detail-navigation";
+import { operationalDay } from "@/lib/operational-calendar";
 import { WeeklyPlan } from "./weekly-plan";
 import { ExtraPositions } from "./extras-positions";
 type Unit = { id: string; name: string };
@@ -29,10 +30,6 @@ type Event = {
 const money = (n: number | null) => n === null ? "A definir" :
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     n,
-  );
-const today = () =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
-    new Date(),
   );
 async function api(url: string, options?: RequestInit) {
   const r = await fetch(url, { cache: "no-store", ...options });
@@ -62,8 +59,14 @@ export function ExtrasReal({
   notificationsPending?: boolean;
 }) {
   const [unit, setUnit] = useState(initialUnit || units[0].id),
-    [day, setDay] = useState(initialDay || today()),
+    [day, setDay] = useState(initialDay || operationalDay()),
     [revision, setRevision] = useState(0);
+  useEffect(() => {
+    const updateDay = () => setDay(operationalDay());
+    const interval = window.setInterval(updateDay, 60_000);
+    window.addEventListener('focus', updateDay);
+    return () => { window.clearInterval(interval); window.removeEventListener('focus', updateDay); };
+  }, []);
   const roles = grants.filter((g) => g.unit_id === unit).map((g) => g.role);
   const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
   const role = roles.includes(chosenRole) ? chosenRole : roles[0];
@@ -227,7 +230,7 @@ export function ExtrasReal({
         <summary><Bell size={14} aria-hidden="true" /><span>Notificações externas pendentes de configuração</span><span className="er-notice-more">Detalhes</span></summary>
         <p>Emergências e aprovações continuam disponíveis na Central de Alertas. Configure o canal para receber esses avisos também fora do MISE.</p>
       </details>}
-      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {requesterName||ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa, data ou identificação</span></button>
+      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {requesterName||ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa ou responsável</span></button>
         {["lider", "caixa"].includes(role) && (
           <button
             className="er-primary"
@@ -265,21 +268,9 @@ export function ExtrasReal({
           </select>
         </label>
         <label>
-          Data de referência
-          <input
-            type="date"
-            required
-            value={day}
-            disabled={busy}
-            onChange={(e) => {
-              if (e.target.value) setDay(e.target.value);
-            }}
-          />
-        </label>
-        <label>
-          Seu papel
+          Responsável
           <select
-            aria-label="Seu papel"
+            aria-label="Responsável"
             value={role==='lider'?(requesterId?`manager:${requesterId}`:''):role}
             disabled={busy}
             onChange={(e) => {
@@ -300,7 +291,7 @@ export function ExtrasReal({
         </label>
 
       </div>
-      {role==='lider'&&!requesterId&&<p role="status">Selecione seu nome em “Seu papel” para solicitar ou planejar. No celular, toque no nome da casa para abrir essa seleção.</p>}
+      {role==='lider'&&!requesterId&&<p role="status">Selecione seu nome em “Responsável” para solicitar ou planejar. No celular, toque no nome da casa para abrir essa seleção.</p>}
       <section className="er-budget" aria-label="Alçada semanal">
         <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
            {from.split("-").reverse().slice(0, 2).join("/")}–
@@ -369,7 +360,7 @@ export function ExtrasReal({
       </div>
 </div>
 
-      {view === "plan" ? <WeeklyPlan key={`${unit}-${from}-${role}`} unit={unit} day={day} requesterId={requesterId} requesterName={requesterName} budget={budget} onChanged={refresh}/> : view === "positions" ? <ExtraPositions requesterId={requesterId} requesterName={requesterName} key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
+      {view === "plan" ? <WeeklyPlan key={`${unit}-${from}-${role}`} unit={unit} day={day} requesterId={requesterId} requesterName={requesterName} budget={budget} onChanged={refresh}/> : view === "positions" ? <ExtraPositions requesterId={requesterId} requesterName={requesterName} key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={() => refresh()} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
         <div className="er-grid" data-detail-open={!!selected}>
           <section ref={listRef} tabIndex={-1} className="er-panel er-list" aria-label="Lista de pessoas">
             <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>
@@ -445,7 +436,7 @@ export function ExtrasReal({
                   {item.periodo}
                 </p>
                 <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome || "Não informado no registro"}</strong><small>Nome autodeclarado · não é identificação autenticada</small></div>
-                <blockquote>{item.motivo_detalhe}</blockquote>
+                {item.motivo_detalhe&&<blockquote>{item.motivo_detalhe}</blockquote>}
                 <div className="er-values">
                   <span>
                     Pagadora{" "}
@@ -570,8 +561,8 @@ export function ExtrasReal({
                           <input
                             name="pago_em"
                             type="date"
-                            defaultValue={today()}
-                            max={today()}
+                            defaultValue={operationalDay()}
+                            max={operationalDay()}
                             required
                           />
                         </label>

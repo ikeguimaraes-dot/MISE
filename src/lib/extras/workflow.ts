@@ -44,7 +44,7 @@ export type RealExtra = {
   setor: string;
   funcao: string;
   motivo: string;
-  motivo_detalhe: string;
+  motivo_detalhe: string | null;
   nome: string | null;
   solicitante_nome: string | null;
   valor: number | null;

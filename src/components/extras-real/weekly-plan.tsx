@@ -3,7 +3,7 @@ import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {weekDays,type WeeklyBudget} from '@/lib/extras/alcada'
 import {EXTRA_MOTIVES,jobSectors,type ExtraJob} from '@/lib/extras/catalog'
 import {ExtraCurrencyInput} from './currency-input'
-type Draft={id:string;day:string;job:string;quantity:number;rate:string;motive:string;period:string;context:string}
+type Draft={id:string;day:string;job:string;quantity:number;rate:string;motive:string;period:string}
 const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 export function WeeklyPlan({unit,day,requesterId,requesterName,budget,onChanged}:{unit:string;day:string;requesterId:string;requesterName:string;budget:WeeklyBudget|null|undefined;onChanged:()=>void}){
  const [jobs,setJobs]=useState<ExtraJob[]>([]),[rows,setRows]=useState<Draft[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
@@ -11,10 +11,10 @@ export function WeeklyPlan({unit,day,requesterId,requesterName,budget,onChanged}
  useEffect(()=>{const c=new AbortController();fetch(`/api/extras/catalogo?unit_id=${unit}`,{signal:c.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);setJobs(d.items)}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[unit])
  const total=rows.reduce((sum,r)=>sum+Math.round(Number(r.rate)*100)*r.quantity,0),projected=(budget?.gasto??0)+total
  const pct=budget&&budget.teto>0?Math.round(projected/budget.teto*100):null
- const invalid=rows.some(r=>!r.job||!Number.isInteger(r.quantity)||r.quantity<1||!r.rate||Number(r.rate)<=0||!r.context.trim())
+ const invalid=rows.some(r=>!r.job||!Number.isInteger(r.quantity)||r.quantity<1||!r.rate||Number(r.rate)<=0)
  function update(id:string,patch:Partial<Draft>){setRows(prev=>prev.map(r=>r.id===id?{...r,...patch}:r));setNotice('')}
  async function submit(e:FormEvent){e.preventDefault();if(invalid||!rows.length||!requesterId)return;setBusy(true);setError('');try{
-  const data=rows.map(r=>({unit_id:unit,data_trabalho:r.day,cargo_id:r.job,quantidade:r.quantity,valor_unitario:Number(r.rate),motivo:r.motive,periodo:r.period,motivo_detalhe:r.context,solicitante_cadastro_id:requesterId,emergencial:false})),signature=JSON.stringify(data)
+  const data=rows.map(r=>({unit_id:unit,data_trabalho:r.day,cargo_id:r.job,quantidade:r.quantity,valor_unitario:Number(r.rate),motivo:r.motive,periodo:r.period,motivo_detalhe:null,solicitante_cadastro_id:requesterId,emergencial:false})),signature=JSON.stringify(data)
   if(pending.current?.signature!==signature)pending.current={signature,items:data.map(data=>({id:crypto.randomUUID(),command_id:crypto.randomUUID(),data}))}
   const response=await fetch('/api/extras/planejamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({unit_id:unit,week:days[0],items:pending.current.items})}),result=await response.json();if(!response.ok)throw Error(result.error)
   const approvals=result.items.filter((r:{status:string})=>r.status==='aguardando_diretoria').length
@@ -29,9 +29,9 @@ export function WeeklyPlan({unit,day,requesterId,requesterName,budget,onChanged}
  {r.rate!==''&&<p>Estimado: <strong>{brl(r.quantity*Number(r.rate))}</strong></p>}
  <label>Motivo<select value={r.motive} onChange={e=>update(r.id,{motive:e.target.value})}>{EXTRA_MOTIVES.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
  <label>Período<select value={r.period} onChange={e=>update(r.id,{period:e.target.value})}><option value="almoco">Almoço</option><option value="jantar">Jantar</option><option value="manha">Manhã</option><option value="eventos">Eventos</option></select></label>
- <label>Contexto<textarea required value={r.context} maxLength={2000} onChange={e=>update(r.id,{context:e.target.value})}/></label><button type="button" onClick={()=>setRows(prev=>prev.filter(x=>x.id!==r.id))}>Retirar do rascunho</button>
+ <button type="button" onClick={()=>setRows(prev=>prev.filter(x=>x.id!==r.id))}>Retirar do rascunho</button>
  </fieldset>)}
- <button type="button" disabled={!jobs.length||rows.length>=70} onClick={()=>setRows(prev=>[...prev,{id:crypto.randomUUID(),day:date,job:'',quantity:1,rate:'',motive:'evento',period:'almoco',context:''}])}>+ Adicionar demanda</button></section>)}</div>
+ <button type="button" disabled={!jobs.length||rows.length>=70} onClick={()=>setRows(prev=>[...prev,{id:crypto.randomUUID(),day:date,job:'',quantity:1,rate:'',motive:'evento',period:'almoco'}])}>+ Adicionar demanda</button></section>)}</div>
  <div className="er-plan-summary" aria-live="polite"><h3>Antes de enviar</h3><p>Novas demandas: <strong>{brl(total/100)}</strong>{invalid?' · há campos a completar.':''}</p>{budget?<><p>Com o que já foi registrado, este plano consome <strong>{brl(projected/100)}</strong> dos <strong>{brl(budget.teto/100)}</strong> da semana{pct!==null?` — ${pct}%`:''}.</p>{projected>budget.teto&&<p>Excede a alçada em {brl((projected-budget.teto)/100)}. As demandas que ultrapassarem o saldo seguirão para aprovação da diretoria.</p>}</>:<p>Alçada indisponível para prévia. O servidor verifica o saldo no envio.</p>}<p>A estimativa será conferida novamente no envio para considerar outras solicitações da casa.</p>
  <button className="er-primary" disabled={busy||invalid||!rows.length||!requesterId}>{busy?'Registrando plano…':'Registrar plano da semana'}</button></div>
  </fieldset></form></section>

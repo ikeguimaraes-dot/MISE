@@ -51,3 +51,11 @@ Decisão de 02/09 reafirmada pelo usuário: `requer_foto` orienta o registro vis
 Não conformidades sem imagem exibem “SEM FOTO” na execução, revisão e laudos HTML/PDF. O resumo deixa explícito que é possível concluir sem fotos. Nenhum template, snapshot ou dado histórico foi alterado.
 
 A resolução de `crivo_plano_acao` continua exigindo imagem de evidência válida, vinculada à auditoria, que alimenta `evidencia_url`. Testes de regressão: conclusão via API sem foto com flag `sim`; igualdade de nota com/sem fotos nos três estilos; ausência de resposta/comentário exigido ainda rejeitada; PostgreSQL isolado rejeita resolver ação sem evidência e aceita com evidência. A mudança não conclui automaticamente execuções existentes.
+
+## Ajuste de uso — responsável e contexto emergencial
+
+- `/extras`: rótulo “Responsável”, com os mesmos nomes, papéis e permissões.
+- Removido seletor “Data de referência”. Cabeçalho e planejamento usam a semana do dia operacional corrente em São Paulo (mesma convenção do TURNO), atualizada ao retornar à janela e a cada minuto. Parâmetro antigo `data` e data futura de uma solicitação não deslocam o cabeçalho. Consultas de outras semanas ficam nos relatórios; links diretos para pedidos antigos continuam abrindo seus detalhes.
+- Checkbox Emergencial é o primeiro campo. “Contexto emergencial” aparece imediatamente abaixo, apenas quando marcado, e é opcional. Ausência/branco grava null. Solicitação normal e planejamento semanal não exigem contexto; nenhuma justificativa é inventada e textos históricos são preservados.
+- A data do trabalho continua no pedido. A aprovação desse pedido considera sua semana de trabalho, sem alterar a semana corrente exibida no cabeçalho.
+- Migração substitui apenas a função MISE de solicitação para remover a exigência do contexto; schema compartilhado já permite null. Testes em PostgreSQL isolado cobrem normal/emergencial sem contexto, branco, texto preenchido e herança pelo RH. Testes de calendário cobrem virada domingo/segunda em São Paulo; navegador cobre ordem/visibilidade, rótulo, envio emergencial vazio e estabilidade da semana ao solicitar data futura.

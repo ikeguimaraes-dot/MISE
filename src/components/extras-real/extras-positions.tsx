@@ -34,7 +34,7 @@ export function ExtraPositions({unit,day,role,employeeId,queue,creating,onClose,
   event.preventDefault();setError('');setBusy(true)
   try{
    const f=new FormData(event.currentTarget);let endpoint='/api/extras/solicitacoes',data:Record<string,unknown>,body:Record<string,unknown>
-   if(creating){data={unit_id:unit.id,data_trabalho:requestDay,periodo:f.get('periodo'),cargo_id:job,quantidade:quantity,valor_unitario:Number(rate),solicitante_cadastro_id:role==='lider'?requesterId:f.get('solicitante'),motivo:f.get('motivo'),motivo_detalhe:f.get('contexto'),emergencial:urgent};body={role,data}}
+   if(creating){data={unit_id:unit.id,data_trabalho:requestDay,periodo:f.get('periodo'),cargo_id:job,quantidade:quantity,valor_unitario:Number(rate),solicitante_cadastro_id:role==='lider'?requesterId:f.get('solicitante'),motivo:f.get('motivo'),motivo_detalhe:urgent?(String(f.get('contexto')||'').trim()||null):null,emergencial:urgent};body={role,data}}
    else{
     if(!detail)throw new Error('Selecione uma solicitação.')
     data={note:f.get('note')};endpoint+=`/${detail.item.id}/actions`
@@ -65,6 +65,8 @@ export function ExtraPositions({unit,day,role,employeeId,queue,creating,onClose,
   {notice&&<p className="er-field-help" role="status">{notice}</p>}
   {creating?<section ref={createRef} tabIndex={-1} className="er-panel er-create" aria-label="Nova solicitação de posições"><h2>Solicitar posições</h2><p>Informe a necessidade da casa. O RH identifica as pessoas que vão trabalhar.</p>
    <form className="er-form" onSubmit={submit}>
+    <label className="er-wide er-check"><input type="checkbox" checked={urgent} disabled={role==='caixa'} onChange={e=>setUrgent(e.target.checked)}/>Emergencial · alerta imediato à diretoria</label>
+    {urgent&&<label className="er-wide">Contexto emergencial <small>(opcional)</small><textarea name="contexto" aria-label="Contexto emergencial" maxLength={2000}/></label>}
     <label className="er-wide">Função<select aria-label="Função" required value={job} disabled={catalogLoading||busy} onChange={e=>{setJob(e.target.value);setRate(String(jobs.find(j=>j.id===e.target.value)?.valor_referencia??''))}}><option value="">Selecione a função</option>{sectors.map(sector=><optgroup key={sector} label={sector}>{jobs.filter(j=>j.setor_padrao===sector).map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</optgroup>)}</select>{job&&<small>Setor: {jobs.find(j=>j.id===job)?.setor_padrao}</small>}</label>
     <label>Quantidade<input type="number" min="1" step="1" required value={quantity||''} onChange={e=>setQuantity(Number(e.target.value))}/></label>
     <label>Valor da diária (R$)<ExtraCurrencyInput label="Valor da diária (R$)" value={rate} onChange={setRate} disabled={busy}/></label>
@@ -76,8 +78,6 @@ export function ExtraPositions({unit,day,role,employeeId,queue,creating,onClose,
     <p className="er-wide er-field-help">Solicitante autodeclarado. Não substitui a identificação por login individual.</p>
     {!catalogLoading&&!requesters.length&&<p className="er-wide">Nenhum solicitante ativo nesta casa. Peça o cadastro à administração.</p>}
     {!catalogLoading&&!jobs.length&&<p className="er-wide">Nenhuma função ativa disponível. Peça a revisão do catálogo à administração.</p>}
-    <label className="er-wide">Contexto da necessidade<textarea name="contexto" required maxLength={2000}/></label>
-    <label className="er-wide er-check"><input type="checkbox" checked={urgent} disabled={role==='caixa'} onChange={e=>setUrgent(e.target.checked)}/>Emergencial · alerta imediato à diretoria</label>
     {budget&&estimate*100>budget.saldo&&<p className="er-wide" role="status">Esta solicitação excede a alçada da semana em {money(estimate-budget.saldo/100)}. {urgent?'A exceção ficará registrada e a diretoria será alertada.':'Será enviada para aprovação do Diretor de Operação.'}</p>}
     {!budget&&<p className="er-wide">{budgetState.error||'Consultando alçada…'} O valor será verificado no envio.</p>}
     <div className="er-wide er-buttons"><button disabled={busy||catalogLoading||!requesters.length||!job||(role==='lider'&&!requesterId)||Number(rate)<=0}>{busy?'Registrando…':'Registrar solicitação'}</button><button type="button" disabled={busy} onClick={()=>returnToList(()=>{setSelected('');onClose()})}>Voltar</button></div>
@@ -93,7 +93,7 @@ export function ExtraPositions({unit,day,role,employeeId,queue,creating,onClose,
    <section ref={detailRef} tabIndex={-1} className={`er-panel er-detail ${!item?'er-detail-empty':''}`} aria-label="Detalhes do pedido de posições">
     <button type="button" className="er-mobile-back" onClick={()=>returnToList(()=>{setSelected('');setAction('');})}>← Voltar aos pedidos</button>
     {item&&detail?<><p className="er-eyebrow">{positionStatus(item)}</p><h2>{item.quantidade} posições · {item.funcao}</h2><p>{item.setor} · {item.data_trabalho.split('-').reverse().join('/')} · {item.periodo}</p>
-     <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome}</strong><small>Nome autodeclarado</small></div><blockquote>{item.motivo_detalhe}</blockquote>
+     <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome}</strong><small>Nome autodeclarado</small></div>{item.motivo_detalhe&&<blockquote>{item.motivo_detalhe}</blockquote>}
      <div className="er-values"><span>Pedido original<b>{money(item.valor_total)}</b></span><span>Consumo da alçada<b>{money(item.valor_consumido)}</b></span></div>
      <p className="er-fill-count">{item.preenchidos} de {item.quantidade} preenchidos</p><p className="er-field-help">{item.mise_named_at?'O consumo considera as pessoas nomeadas. Novas nomeações recalculam a alçada.':'O pedido reserva a estimativa completa até o RH nomear as pessoas.'}</p>
      {item.emergencial&&<p>Diretoria: {item.mise_emergency_decision==='aprovado'?'emergência aprovada':item.mise_emergency_decision==='nao_ratificado'?'emergência não aprovada; pagamentos preservados':'revisão da emergência pendente'}.</p>}
