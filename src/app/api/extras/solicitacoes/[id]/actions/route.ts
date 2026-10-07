@@ -6,7 +6,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
  try {
   const {db,grants,session}=await extrasContext(),{id}=await params;requireUuid(id)
   const body=await request.json(),role=body.role as ExtraRole
-  if(!['nomear_rh','aprovar','cancelar','recusar','ratificar_emergencia','nao_ratificar_emergencia'].includes(body.action)||!Number.isInteger(body.version))throw new ExtraError('Comando inválido.')
+  if(!['nomear_rh','nomear_emergencia','aprovar','cancelar','recusar','ratificar_emergencia','nao_ratificar_emergencia'].includes(body.action)||!Number.isInteger(body.version))throw new ExtraError('Comando inválido.')
   const item=await db.from('op_extra_solicitacao').select('unit_id').eq('id',id).single()
   if(item.error||!item.data)throw new ExtraError('Solicitação não encontrada.',404)
   requireExtraAccess(grants,item.data.unit_id,role)

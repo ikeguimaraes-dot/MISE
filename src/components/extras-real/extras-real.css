@@ -208,6 +208,7 @@
 .er-access-list{display:grid;gap:12px;margin-top:20px}
 .er-access-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .er-access-list li>span{flex:1 1 220px;overflow-wrap:anywhere;line-height:1.6}
+.er-access-list li>span small{display:block;margin-top:4px}
 .er-access-list li>button{flex-shrink:0}
 
 .er-context-toolbar{display:flex;justify-content:flex-end;gap:12px;margin-bottom:16px}
@@ -222,3 +223,17 @@
  .er-context-filters[data-expanded=false]{display:none}
 }
 @container extras (max-width:800px){.er-grid[data-detail-open=true]>.er-detail{min-height:calc(100dvh - 96px)}}
+
+.er-currency-input{display:flex;align-items:center;border:1px solid var(--color-edge-strong);border-radius:7px;background:var(--color-base);min-width:0}
+.er-currency-input>span{padding-left:12px;font-size:14px;color:var(--color-ink-muted)}
+.er .er-currency-input input{border:0;background:transparent}
+.er-plan-fieldset{border:0;min-width:0;padding:0;margin-top:20px}
+.er-week-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.er-plan-day{padding:16px;border:1px solid var(--er-line);border-radius:8px;min-width:0}
+.er-plan-day h3{margin:0 0 16px;text-transform:capitalize}
+.er-plan-demand{display:grid;gap:12px;min-width:0;margin:0 0 20px;padding:12px;border:1px solid var(--er-line);border-radius:8px}
+.er-plan-demand legend{font-size:12px;padding:0 6px}
+.er-plan-pair{display:grid;grid-template-columns:1fr 1.3fr;gap:10px}
+.er-plan-summary{margin-top:24px;padding:20px;border:1px solid var(--er-line);border-radius:8px;background:var(--color-surface)}
+@container extras (max-width:1000px){.er-week-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@container extras (max-width:650px){.er-week-grid{grid-template-columns:minmax(0,1fr)}.er-controls .er-queue-toolbar:first-child .er-view-switch{gap:8px;flex-wrap:wrap}.er-controls .er-queue-toolbar:first-child button{flex:1 1 100px}}

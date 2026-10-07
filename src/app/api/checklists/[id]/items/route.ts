@@ -17,6 +17,7 @@ export async function POST(
     return NextResponse.json({ error: 'tipo_resposta é obrigatório' }, { status: 400 })
   }
 
+  if(body.por_equipamento&&(typeof body.equipamento_tipo!=='string'||!body.equipamento_tipo.trim()))return NextResponse.json({error:'Tipo de equipamento obrigatório.'},{status:400})
   const supabase = createServiceClient()
 
   const { data: existing } = await supabase
@@ -45,6 +46,7 @@ export async function POST(
       topico_nome: body.topico_nome ?? null,
       criterio_regramento: body.criterio_regramento?.trim() || null,
       requer_foto: body.requer_foto ?? 'nao',
+      por_equipamento:body.por_equipamento===true,equipamento_tipo:body.por_equipamento?body.equipamento_tipo.trim():null,
     })
     .select('*')
     .single()

@@ -14,6 +14,7 @@ export function positionActions(item:PositionRequest,role:OperationalRole,employ
  if(role==='diretor' && item.status==='aguardando_diretoria') result.push('aprovar','recusar')
  if(role==='lider' && item.mise_requested_by===employee && ['solicitado','aguardando_diretoria'].includes(item.status)) result.push('cancelar')
  if(role==='rh' && ['solicitado','aprovado_rh'].includes(item.status) && item.preenchidos<item.quantidade) result.push('nomear_rh')
+ if(role==='caixa' && item.emergencial && ['solicitado','aprovado_rh'].includes(item.status) && item.preenchidos<item.quantidade) result.push('nomear_emergencia')
  return result
 }
 export function positionStatus(item:PositionRequest) {

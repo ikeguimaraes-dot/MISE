@@ -6,7 +6,7 @@ module.exports=async function mockExtras(page){
   const url=new URL(route.request().url()),path=url.pathname;let body
   if(route.request().method()!=='GET')return route.fulfill({status:409,json:{error:'Teste visual: nenhuma gravação é realizada.'}})
   if(path.endsWith('/alcada'))body={segunda:'2026-10-05',domingo:'2026-10-11',metaSemana:50000000,teto:500000,gasto:324000,saldo:176000,percentual:1,avisos:[]}
-  else if(path.endsWith('/catalogo'))body={items:[{id:'job-1',nome:'Auxiliar de cozinha',valor_referencia:150,setores:['Cozinha de Produção']}]}
+  else if(path.endsWith('/catalogo'))body={items:[{id:'job-1',nome:'Auxiliar de cozinha',valor_referencia:150,setor_padrao:'Cozinha de Produção',ordem:1},{id:'job-2',nome:'Hosts',valor_referencia:null,setor_padrao:'Portaria',ordem:2}]}
   else if(path.endsWith('/solicitantes'))body={items:[{id:'manager-1',nome:'Gerente de demonstração'}]}
   else if(path.endsWith('/solicitacoes'))body={items:requests,hasMore:false}
   else if(path.includes('/solicitacoes/'))body={item:requests.find(r=>path.endsWith(r.id))||requests[0],people:[],events:[{id:'event-1',actor_role:'lider',action:'solicitar',note:null,created_at:'2026-10-05T12:00:00Z'}]}

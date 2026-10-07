@@ -15,6 +15,7 @@ import { useWeeklyBudget } from "@/components/extras-evaluation/weekly-budget";
 import { usageLevel, weekDays } from "@/lib/extras/alcada";
 import "./extras-real.css";
 import { useDetailNavigation } from "./use-detail-navigation";
+import { WeeklyPlan } from "./weekly-plan";
 import { ExtraPositions } from "./extras-positions";
 type Unit = { id: string; name: string };
 type Grant = { unit_id: string; role: OperationalRole };
@@ -66,7 +67,7 @@ export function ExtrasReal({
   const roles = grants.filter((g) => g.unit_id === unit).map((g) => g.role);
   const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
   const role = roles.includes(chosenRole) ? chosenRole : roles[0];
-  const [chosenView, setView] = useState<"positions" | "people" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
+  const [chosenView, setView] = useState<"positions" | "people" | "plan" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
   const view = chosenView ?? (["financeiro", "caixa"].includes(role) ? "people" : "positions");
   const [items, setItems] = useState<RealExtra[]>([]),
     [selected, setSelected] = useState<string | null>(initialExtra || null),
@@ -77,6 +78,10 @@ export function ExtrasReal({
     } | null>(null);
   const {detailRef,listRef,returnToList}=useDetailNavigation(selected,!!detail);
   const [query,setQuery]=useState("");
+  const [requesters,setRequesters]=useState<{id:string;nome:string}[]>([]),[requesterId,setRequesterId]=useState("");
+  useEffect(()=>{const c=new AbortController();setRequesterId("");setRequesters([]);api(`/api/extras/solicitantes?unit_id=${unit}`,{signal:c.signal}).then(d=>setRequesters(d.items)).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[unit]);
+  const requesterName=requesters.find(r=>r.id===requesterId)?.nome||"";
+
   const [filtersOpen,setFiltersOpen]=useState(false);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -222,11 +227,11 @@ export function ExtrasReal({
         <summary><Bell size={14} aria-hidden="true" /><span>Notificações externas pendentes de configuração</span><span className="er-notice-more">Detalhes</span></summary>
         <p>Emergências e aprovações continuam disponíveis na Central de Alertas. Configure o canal para receber esses avisos também fora do MISE.</p>
       </details>}
-      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa, data ou papel</span></button>
+      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {requesterName||ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa, data ou identificação</span></button>
         {["lider", "caixa"].includes(role) && (
           <button
             className="er-primary"
-            disabled={busy}
+            disabled={busy||(role==='lider'&&!requesterId)}
             onClick={() => {
               setCreating(true);
               setView("positions");
@@ -245,6 +250,7 @@ export function ExtrasReal({
             value={unit}
             disabled={busy}
             onChange={(e) => {
+              setRequesterId("");
               setUnit(e.target.value);
               setQuery("");
               setSelected(null);
@@ -274,10 +280,12 @@ export function ExtrasReal({
           Seu papel
           <select
             aria-label="Seu papel"
-            value={role}
+            value={role==='lider'?(requesterId?`manager:${requesterId}`:''):role}
             disabled={busy}
             onChange={(e) => {
-              setRole(e.target.value as OperationalRole);
+              const value=e.target.value;
+              setRequesterId(value.startsWith('manager:')?value.slice(8):'');
+              setRole(value.startsWith('manager:')||!value?'lider':value as OperationalRole);
               setView(null);
               setQuery("");
               setSelected(null);
@@ -285,15 +293,14 @@ export function ExtrasReal({
               setAction("");
             }}
           >
-            {roles.map((r) => (
-              <option key={r} value={r}>
-                {ROLE_LABELS[r]}
-              </option>
-            ))}
+            <option value="" disabled>Selecione seu nome ou papel</option>
+            {roles.includes('lider')&&<optgroup label="Gerentes da casa">{requesters.map(r=><option key={r.id} value={`manager:${r.id}`}>{r.nome}</option>)}</optgroup>}
+            <optgroup label="Outros papéis">{roles.filter(r=>r!=='lider').map(r=><option key={r} value={r}>{ROLE_LABELS[r]}</option>)}</optgroup>
           </select>
         </label>
 
       </div>
+      {role==='lider'&&!requesterId&&<p role="status">Selecione seu nome em “Seu papel” para solicitar ou planejar. No celular, toque no nome da casa para abrir essa seleção.</p>}
       <section className="er-budget" aria-label="Alçada semanal">
         <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
            {from.split("-").reverse().slice(0, 2).join("/")}–
@@ -352,7 +359,7 @@ export function ExtrasReal({
         </p>
       )}
 <div className="er-controls">
-      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
+      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button>{role==='lider'&&<button aria-pressed={view==='plan'} onClick={()=>{setView('plan');setCreating(false)}}>Planejar semana</button>}</div></div>
       <div className="er-queue-toolbar">
         <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
           <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
@@ -362,7 +369,7 @@ export function ExtrasReal({
       </div>
 </div>
 
-      {view === "positions" ? <ExtraPositions key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
+      {view === "plan" ? <WeeklyPlan key={`${unit}-${from}-${role}`} unit={unit} day={day} requesterId={requesterId} requesterName={requesterName} budget={budget} onChanged={refresh}/> : view === "positions" ? <ExtraPositions requesterId={requesterId} requesterName={requesterName} key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
         <div className="er-grid" data-detail-open={!!selected}>
           <section ref={listRef} tabIndex={-1} className="er-panel er-list" aria-label="Lista de pessoas">
             <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>

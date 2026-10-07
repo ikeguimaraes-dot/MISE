@@ -55,10 +55,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const { db, session } = await crivoExecution(id, true);
+    const { db, session, execution } = await crivoExecution(id, true);
     const b = await request.json();
     let response = db.schema("mise").from("checklist_responses").select("id").eq("execution_id",id);
-    response = b.response_id ? response.eq("id",b.response_id) : response.eq("item_id",b.item_id);
+    if(b.response_id)response=response.eq("id",b.response_id);
+    else {
+      const item=execution.crivo_snapshot?.items.find((i:{id:string})=>i.id===b.item_id);
+      if(execution.crivo_snapshot&&!item)throw new CrivoError("Item de outra visita.",403);
+      response=response.eq("item_id",item?.base_item_id??b.item_id);
+      response=item?.equipamento_id?response.eq("equipamento_id",item.equipamento_id):response.is("equipamento_id",null);
+    }
     const selected=await response.single();
     if(selected.error)throw new CrivoError("Salve a resposta antes de anexar fotos.");
     const result=await db.schema("mise").rpc("crivo_response_media",{p_actor:session.employeeId,p_execution:id,p_response:selected.data.id,p_data:b});

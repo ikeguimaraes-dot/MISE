@@ -1,4 +1,5 @@
 import "server-only";
+import {normalizeEquipmentResponses} from "./equipment";
 import { crivoExecution, CrivoError } from "./access";
 import {scoreCrivo} from "./scoring";
 import type { ScoreItem, TopicScore, ScoringModel } from "./scoring";
@@ -26,7 +27,7 @@ export async function loadCrivoReport(id: string) {
         .schema("mise")
         .from("checklist_responses")
         .select(
-          "id,item_id,resposta,nao_aplicavel,comentario,foto_url,orientacao_corretiva,responsavel_orientado",
+          "id,item_id,equipamento_id,resposta,nao_aplicavel,comentario,foto_url,orientacao_corretiva,responsavel_orientado",
         )
         .eq("execution_id", id),
       db
@@ -76,9 +77,10 @@ export async function loadCrivoReport(id: string) {
       throw new CrivoError("Itens históricos indisponíveis.", 503);
     items = legacy.data;
   }
+  const normalizedResponses=normalizeEquipmentResponses(items,responses.data??[]);
   let preview: ReturnType<typeof scoreCrivo> | null = null;
   if(execution.status !== "concluido" && execution.crivo_snapshot) {
-    try {preview=scoreCrivo(execution.crivo_snapshot.model,items,responses.data??[],execution.crivo_snapshot.weights,{validateEvidence:false});} catch { /* Incomplete answers have no preview score. */ }
+    try {preview=scoreCrivo(execution.crivo_snapshot.model,items,normalizedResponses,execution.crivo_snapshot.weights,{validateEvidence:false});} catch { /* Incomplete answers have no preview score. */ }
   }
   const previous = await db.schema("mise").from("checklist_executions").select("percentual,concluido_em,crivo_snapshot")
     .eq("unit_id",execution.unit_id).eq("template_id",execution.template_id)
@@ -118,7 +120,7 @@ export async function loadCrivoReport(id: string) {
         topics.data ??
         []) as TopicScore[],
       items,
-      responses: responses.data ?? [],
+      responses: normalizedResponses,
       photos: photos.data ?? [],
       actions: context.session.role === "admin" || execution.plano_revisado_em ? actions.data ?? [] : [],
       employees: employees.data ?? [],

@@ -6,6 +6,7 @@ export const SCORING_MODELS = [
 export type ScoringModel = (typeof SCORING_MODELS)[number];
 export type ScoreItem = {
   id: string;
+  expansion_count?: number;
   topico_ordem: number | null;
   topico_nome: string | null;
   tipo_resposta: string;
@@ -133,13 +134,13 @@ export function scoreCrivo(
     const weight =
       model === "ff_ponderado"
         ? Number(weights.find((t) => t.topico_ordem === ordem)?.peso ?? 1)
-        : eligible.length;
+        : eligible.reduce((sum,i)=>sum+1/(i.expansion_count??1),0);
     const applicablePoints = eligible.reduce((sum,i)=>sum+Number(i.peso??1),0);
     const conformingPoints = eligible.filter(i=>conforming(i,map.get(i.id))).reduce((sum,i)=>sum+Number(i.peso??1),0);
     const fraction = eligible.length
       ? critical
         ? 0
-        : model === "ff_ponderado" ? conformingPoints / applicablePoints : conformes / eligible.length
+        : model === "ff_ponderado" ? conformingPoints / applicablePoints : eligible.filter(i=>conforming(i,map.get(i.id))).reduce((sum,i)=>sum+1/(i.expansion_count??1),0) / weight
       : null;
     topics.push({
       topico_ordem: ordem,
