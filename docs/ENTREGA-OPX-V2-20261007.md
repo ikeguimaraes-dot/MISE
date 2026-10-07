@@ -18,7 +18,7 @@ Escopo: somente MISE / mise-backoffice. Integração com o banco compartilhado a
 - Preservadas geração transacional de ações, revisão com orientação/dono/prazo, resolução com evidência, múltiplas fotos/legendas, nota anterior, geolocalização e assinaturas.
 - Renderização e impressão A4 comparadas visualmente com o PDF FF Nutri. Capa mais compacta; tabelas com cabeçalho repetido, linhas preservadas e espaço para gráficos.
 - Respostas reais da Casa de Apoio calculam **55,85%**; Refeitório **66,73%**. Relatório de conferência marcado provisório. Original classifica 55,85 como Regular; MISE segue as faixas solicitadas e classifica como Ruim.
-- **Aceite B incompleto:** execução real segue `em_andamento`; seis não conformidades não têm comentários nem fotos exigidos. Não concluída pela interface, não se fabricaram evidências para forçar o aceite. O teste de impressão usa respostas reais com exigência de evidência desativada apenas na fixture de renderização, nunca na API de conclusão.
+- **Aceite B incompleto:** execução real segue `em_andamento`; seis não conformidades ainda não têm os comentários exigidos. Fotos de inspeção são opcionais para concluir, conforme decisão de 02/09 reafirmada nesta revisão; ausências aparecem como “SEM FOTO”. O teste de impressão dispensa apenas comentários na fixture de conferência, nunca na API de conclusão. Nenhuma auditoria real foi encerrada automaticamente.
 - HeadChef quantitativo e narrativo renderizam sem seção crítica vazia. Nenhum template de Madonna/Frêneze foi inventado ou ativado: questionários completos continuam necessários.
 
 ## C — Equipamentos
@@ -43,3 +43,11 @@ Escopo: somente MISE / mise-backoffice. Integração com o banco compartilhado a
 - Navegador isolado em **320, 390, 768, 1024 e 1440 px**: sem transbordamento horizontal, filas/detalhes, voltar com foco, busca, formulários de gerente/RH/Caixa, moeda/estimativa, planejamento e referências vazias; gestão de acesso/equipamentos e impressão do caixa em celular/desktop. Dados sintéticos e APIs interceptadas: não equivale a aceite operacional dos cinco usuários reais.
 - `tsc --noEmit` e `next build` executados nas etapas e novamente antes de publicar. Aviso conhecido do Next sobre migração futura de middleware para proxy permanece não bloqueante.
 - Quatro migrações v2 aplicadas em 07/10/2026: planejamento, regularização emergencial, expansão por equipamentos e autoria TURNO. Schema existente introspectado antes, funções comparadas com as originais antes da aplicação. Contagens após migração: zero solicitações/zero equipamentos reais (testes não poluíram produção).
+
+## Correção — foto de inspeção não bloqueia conclusão
+
+Decisão de 02/09 reafirmada pelo usuário: `requer_foto` orienta o registro visual e não impede concluir CRIVO. A validação de foto foi removida do motor usado pela API de conclusão; respostas e comentários obrigatórios continuam validados e a pontuação não muda pela presença/ausência da foto.
+
+Não conformidades sem imagem exibem “SEM FOTO” na execução, revisão e laudos HTML/PDF. O resumo deixa explícito que é possível concluir sem fotos. Nenhum template, snapshot ou dado histórico foi alterado.
+
+A resolução de `crivo_plano_acao` continua exigindo imagem de evidência válida, vinculada à auditoria, que alimenta `evidencia_url`. Testes de regressão: conclusão via API sem foto com flag `sim`; igualdade de nota com/sem fotos nos três estilos; ausência de resposta/comentário exigido ainda rejeitada; PostgreSQL isolado rejeita resolver ação sem evidência e aceita com evidência. A mudança não conclui automaticamente execuções existentes.

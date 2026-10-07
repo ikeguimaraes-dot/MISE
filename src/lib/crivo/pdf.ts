@@ -243,6 +243,7 @@ export async function buildCrivoPdf(r: CrivoReport, images: ReportImage[]) {
         false,
         muted,
       );
+    if (!response.nao_aplicavel && response.resposta?.valor === "nao" && !response.foto_url && !r.photos.some(p => p.response_id === response.id)) text("SEM FOTO", 10, true, muted);
     if (response.foto_url)
       await photo(
         response.foto_url,

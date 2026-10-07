@@ -101,12 +101,9 @@ export function scoreCrivo(
       !r?.comentario?.trim()
     )
       throw new Error("Há itens com comentário obrigatório pendente.");
-    if (
-      (["sempre", "sim"].includes(i.requer_foto || "") ||
-        (i.requer_foto === "se_nao" && no)) &&
-      !r?.foto_url
-    )
-      throw new Error("Há itens com foto obrigatória pendente.");
+    // CRIVO policy (02/09): missing inspection photos are shown as SEM FOTO.
+    // They never block completion or change the score. Corrective-action
+    // resolution separately requires evidence in crivo_action_save.
   }
   const topics: TopicScore[] = [];
   const ordens = [...new Set(items.map((i) => i.topico_ordem ?? 0))].sort(

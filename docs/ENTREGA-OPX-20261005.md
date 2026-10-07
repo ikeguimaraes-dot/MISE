@@ -36,7 +36,7 @@ O webhook recebe `event_id`, tipo, unidade, dia de trabalho, total e link autent
 - `/crivo/plano-acao`: filtros por local, status e vencidas. Alertas: vencidas (crítico) e cinco ou mais abertas no local (atenção), sem limitar a idade da auditoria.
 - `/crivo/execucao/[id]/laudo`: impressão A4, nota anterior comparável, datas, auditor/cargo/registro, gráfico de conformidade, pontos perdidos, tabela Possível/Obtido/%, críticos quando existem, geolocalização, itens por tópico, orientações, pessoa orientada, fotos/legendas, parecer, ações e assinaturas.
 - Fotos privadas múltiplas por resposta; a primeira preenche `foto_url`. Complementos fotográficos e orientações não permitem reescrever respostas nem a nota de uma visita concluída.
-- Visitas abertas podem mostrar nota provisória calculada com as respostas atuais. Evidências e comentários continuam obrigatórios para concluir. A prévia não grava conclusão, nota definitiva ou ações reais.
+- Visitas abertas podem mostrar nota provisória calculada com as respostas atuais. Comentários obrigatórios continuam validados para concluir. Fotos de inspeção não bloqueiam conclusão (decisão de 02/09 reafirmada em 07/10); ausência é exibida como “SEM FOTO”. A prévia não grava conclusão, nota definitiva ou ações reais.
 
 ### Conferência FF Nutri
 

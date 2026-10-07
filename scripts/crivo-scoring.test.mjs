@@ -10,7 +10,13 @@ test('Freneze narrative never invents a score',()=>{const r=scoreCrivo('headchef
 test('NA excluded; FF zero-weight findings do not reduce score',()=>{const r=scoreCrivo('ff_ponderado',[item('a'),item('b'),item('c',1,{peso:0})],[response('a'),response('b','nao',{nao_aplicavel:true}),response('c','nao')]);assert.equal(r.percentual,100)})
 test('incomplete answers cannot become silent zeroes',()=>assert.throws(()=>scoreCrivo('headchef_conformidade',[item('a')],[]),/pendentes/))
 test('all NA has no denominator, not zero conformity',()=>assert.equal(scoreCrivo('headchef_conformidade',[item('a')],[response('a','nao',{nao_aplicavel:true})]).percentual,null))
-test('required photos and comments validated on server',()=>{assert.throws(()=>scoreCrivo('ff_ponderado',[item('a',1,{requer_foto:'sim'})],[response('a')]),/foto/);assert.throws(()=>scoreCrivo('ff_ponderado',[item('a',1,{requer_comentario:'se_nao'})],[response('a','nao')]),/comentário/)})
+test('inspection photo flags never block completion or change scores',()=>{
+ for(const model of ['ff_ponderado','headchef_conformidade','headchef_narrativo']) for(const flag of ['sim','sempre','se_nao']){
+  const items=[item('a',1,{requer_foto:flag}),item('b')],responses=[response('a','nao'),response('b')];
+  assert.deepEqual(scoreCrivo(model,items,responses),scoreCrivo(model,items,[response('a','nao',{foto_url:'photo'}),response('b')]));
+ }
+})
+test('required comments remain validated on server',()=>assert.throws(()=>scoreCrivo('ff_ponderado',[item('a',1,{requer_comentario:'se_nao'})],[response('a','nao')]),/comentário/))
 
 test('FF preserves unequal item weights: refectory 3.33 / 4.99 = 66.73%, total 55.85%',()=>{
  const weights=[12.50,12.47,12.49,12.50,12.51,12.51,4.99,4.99,5.04,5,5];

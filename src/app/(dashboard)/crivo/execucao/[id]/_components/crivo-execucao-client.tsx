@@ -379,9 +379,9 @@ export function CrivoExecucaoClient({
   if (showSummary) {
     const unanswered = items.filter(it => !isAnswered(answers[it.id], it))
     const semFoto = items.filter(it => {
-      if (it.requer_foto !== 'sim') return false
+      if (!['sim', 'sempre', 'se_nao'].includes(it.requer_foto)) return false
       if (answers[it.id]?.nao_aplicavel) return false
-      return !answers[it.id]?.foto_url
+      return answers[it.id]?.resposta?.valor === 'nao' && !answers[it.id]?.foto_url && !photos.some(p => p.item_id === it.id)
     })
 
     return (
@@ -417,6 +417,7 @@ export function CrivoExecucaoClient({
               <ImageOff className="h-3.5 w-3.5" />
               {semFoto.length} {semFoto.length === 1 ? 'item' : 'itens'} sem evidência fotográfica:
             </p>
+            <p className="text-xs text-ink-muted mb-3">Você pode concluir a auditoria sem essas fotos.</p>
             <ul className="space-y-1.5">
               {semFoto.map(it => (
                 <li key={it.id} className="text-xs text-ink-muted flex items-center gap-2">
@@ -452,9 +453,11 @@ export function CrivoExecucaoClient({
 
   const opcoes = getOpcoes(currentItem)
   const answered = isAnswered(currentAnswer ?? undefined, currentItem)
-  const showSemFoto = currentItem.requer_foto === 'sim'
+  const showSemFoto = ['sim', 'sempre', 'se_nao'].includes(currentItem.requer_foto)
+    && !currentAnswer?.nao_aplicavel
     && currentAnswer?.resposta?.valor === 'nao'
     && !currentAnswer?.foto_url
+    && !photos.some(p => p.item_id === currentItem.id)
 
   return (
     <div className="flex flex-col min-h-screen bg-base">
@@ -565,7 +568,7 @@ export function CrivoExecucaoClient({
               {showSemFoto && (
                 <div className="flex items-center gap-2 rounded-lg border border-edge bg-surface-raised px-3 py-2">
                   <ImageOff className="h-3.5 w-3.5 text-ink-muted shrink-0" />
-                  <span className="text-xs font-medium text-ink-muted">SEM FOTO — adicione evidência abaixo</span>
+                  <span className="text-xs font-medium text-ink-muted">SEM FOTO</span>
                 </div>
               )}
 

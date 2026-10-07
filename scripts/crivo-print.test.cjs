@@ -7,14 +7,15 @@ const {CrivoPrintReport}=load(path.join(root,'src/components/crivo/print-report.
 const fixturePath=process.env.CRIVO_SOURCE_FIXTURE;
 const actual=fixturePath?JSON.parse(fs.readFileSync(fixturePath)):null;
 const {scoreCrivo}=load(path.join(root,'src/lib/crivo/scoring.ts'));
-const items=actual?.items||[{id:'one',topico_ordem:1,topico_nome:'Armazenamento',titulo:'Identificação',tipo_resposta:'sim_nao',peso:1}];
+const items=actual?.items||[{id:'one',topico_ordem:1,topico_nome:'Armazenamento',titulo:'Identificação',tipo_resposta:'sim_nao',peso:1,requer_foto:'sim'}];
 const responses=(actual?.responses||[{item_id:'one',resposta:{valor:'nao'},nao_aplicavel:false}]).map((r,i)=>({...r,id:`response-${i}`,foto_url:null}));
 const model=actual?'ff_ponderado':'headchef_conformidade';
-const result=scoreCrivo(model,items.map(i=>({...i,requer_foto:'nao',requer_comentario:'nao'})),responses,actual?.weights||[]);
+const result=scoreCrivo(model,items.map(i=>({...i,requer_comentario:'nao'})),responses,actual?.weights||[]);
 const report={execution:{id:'anonymous-validation',status:actual?'em_andamento':'concluido',percentual:result.percentual,iniciado_em:null,concluido_em:null,avaliador_nome:null,avaliador_registro:null,assinatura_avaliador_url:null,plano_revisado_em:null},previous:null,title:actual?'Conferência da pontuação · Casa de Apoio':'Exemplo fictício de inspeção',unit:actual?'Casa de Apoio':'Unidade demonstrativa',local:'',address:'',model,items,responses,photos:[],topics:result.topicos,actions:[],employees:[],canEdit:true};
 const html=renderToStaticMarkup(React.createElement(CrivoPrintReport,{report}));
-assert.match(html,/Conformidade dos itens/);assert.match(html,/Pontos perdidos por tópico/);assert.match(html,/CPF:/);assert.match(html,/Visita anterior/);
+assert.match(html,/SEM FOTO/);assert.match(html,/Conformidade dos itens/);assert.match(html,/Pontos perdidos por tópico/);assert.match(html,/CPF:/);assert.match(html,/Visita anterior/);
 if(actual){assert.equal(result.percentual,55.85);assert.match(html,/55,85/);assert.match(html,/66,73/)}else{assert.doesNotMatch(html,/Principais apontamentos críticos/);assert.doesNotMatch(html,/zerada por item crítico/)}
+const withPhoto=renderToStaticMarkup(React.createElement(CrivoPrintReport,{report:{...report,responses:report.responses.map(r=>({...r,foto_url:'synthetic-photo'}))}}));assert.doesNotMatch(withPhoto,/SEM FOTO/);
 const narrative=renderToStaticMarkup(React.createElement(CrivoPrintReport,{report:{...report,model:'headchef_narrativo',execution:{...report.execution,percentual:null}}}));assert.doesNotMatch(narrative,/Conformidade dos itens|Pontos perdidos por tópico|Principais apontamentos críticos/);
 if(process.env.CRIVO_PRINT_HTML){const css=['src/components/extras-real/print.css','src/components/crivo/print-report.css'].map(p=>fs.readFileSync(path.join(root,p),'utf8')).join('\n');fs.writeFileSync(process.env.CRIVO_PRINT_HTML,`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#e9e3d8;font-family:Arial,sans-serif}*{box-sizing:border-box}a{color:inherit}</style><style>${css}</style><body>${html}</body></html>`)}
 console.log('PASS printable cover, conformity chart, lost points, previous score, signatures, narrative/HeadChef without empty critical sections'+(actual?' and real Casa de Apoio 55.85%':''));
