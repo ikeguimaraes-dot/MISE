@@ -39,6 +39,8 @@ type FormErros = {
   horarios?: Partial<Record<keyof HorariosState, boolean>>
   vendas_ab?: boolean
   pax_total?: boolean
+  alimentos?: boolean
+  bebidas?: boolean
   desconto?: boolean
   taxa_servico?: boolean
   delivery?: boolean
@@ -162,6 +164,10 @@ function refEq(a: PeriodoRef, b: PeriodoRef) {
   return a.periodo === b.periodo && a.sequencia === b.sequencia
 }
 
+function refKey(ref: PeriodoRef) {
+  return `${ref.periodo}:${ref.sequencia}`
+}
+
 // Espinha dorsal: só o que vem da config, excluindo eventos e manha —
 // os dois são sempre opt-in (adicionados por dia, pra qualquer unidade).
 function buildTabs(
@@ -261,21 +267,31 @@ export function RelatorioClient({
   const initialTab = tabs[0] ?? { periodo: 'almoco', sequencia: 1 }
 
   const [periodoAtivo, setPeriodoAtivo] = useState<PeriodoRef>(initialTab)
-  const [form, setForm] = useState<FormState>(() =>
-    estadoInicial(
-      periodos.find(p => p.periodo === initialTab.periodo && Number(p.sequencia) === initialTab.sequencia) as Record<string, unknown>,
-      avaliacoesSetor.filter(a => a.periodo === initialTab.periodo && a.sequencia === initialTab.sequencia),
-      faltas.filter(f => f.periodo === initialTab.periodo && f.sequencia === initialTab.sequencia),
-      horariosPadrao,
-      dataParam,
-      initialTab.periodo
-    )
-  )
+  // Cache local por período — fonte da verdade após a primeira renderização.
+  // Nunca reconstruído a partir das props ao trocar de aba: as props são um
+  // snapshot estático do carregamento da página e ficariam obsoletas assim
+  // que o autosave grava uma edição, apagando visualmente o que foi digitado.
+  const [formsCache, setFormsCache] = useState<Record<string, FormState>>(() => {
+    const cache: Record<string, FormState> = {}
+    for (const ref of tabs.length > 0 ? tabs : [initialTab]) {
+      cache[refKey(ref)] = estadoInicial(
+        periodos.find(row => row.periodo === ref.periodo && Number(row.sequencia) === ref.sequencia) as Record<string, unknown>,
+        avaliacoesSetor.filter(a => a.periodo === ref.periodo && a.sequencia === ref.sequencia),
+        faltas.filter(f => f.periodo === ref.periodo && f.sequencia === ref.sequencia),
+        horariosPadrao,
+        dataParam,
+        ref.periodo
+      )
+    }
+    return cache
+  })
+  const form = formsCache[refKey(periodoAtivo)]
   const [erros, setErros] = useState<FormErros>({})
   const [salvando, setSalvando] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [adicionando, setAdicionando] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = useRef<{ ref: PeriodoRef; estado: FormState } | null>(null)
 
   const router = useRouter()
 
@@ -348,34 +364,76 @@ export function RelatorioClient({
   )
   const disabled = periodoAtualEnviado || relatorioFechado || role === 'cozinheiro'
 
-  // Ao trocar de aba, recarregar estado do período
+  // Ao trocar de aba, só os erros de validação são limpos — o formulário
+  // já está preservado em formsCache, não precisa (e não deve) ser
+  // reconstruído a partir das props.
   useEffect(() => {
-    setForm(estadoInicial(
-      periodos.find(p => p.periodo === periodoAtivo.periodo && Number(p.sequencia) === periodoAtivo.sequencia) as Record<string, unknown>,
-      avaliacoesSetor.filter(a => a.periodo === periodoAtivo.periodo && a.sequencia === periodoAtivo.sequencia),
-      faltas.filter(f => f.periodo === periodoAtivo.periodo && f.sequencia === periodoAtivo.sequencia),
-      horariosPadrao,
-      dataParam,
-      periodoAtivo.periodo
-    ))
     setErros({})
-  }, [periodoAtivo]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [periodoAtivo])
+
+  // Garante que nenhuma edição fique presa só na memória: dispara o
+  // salvamento pendente imediatamente em vez de esperar o debounce.
+  // Chamado ao trocar de período, ao enviar e ao sair/ocultar a página.
+  function flushSalvamentoPendente() {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = null
+    const pendente = pendingSaveRef.current
+    if (!pendente) return
+    pendingSaveRef.current = null
+    salvarRascunho(pendente.ref, pendente.estado)
+  }
+
+  function trocarPeriodo(ref: PeriodoRef) {
+    flushSalvamentoPendente()
+    const key = refKey(ref)
+    setFormsCache(prev => prev[key] ? prev : {
+      ...prev,
+      [key]: estadoInicial(
+        periodos.find(p => p.periodo === ref.periodo && Number(p.sequencia) === ref.sequencia) as Record<string, unknown>,
+        avaliacoesSetor.filter(a => a.periodo === ref.periodo && a.sequencia === ref.sequencia),
+        faltas.filter(f => f.periodo === ref.periodo && f.sequencia === ref.sequencia),
+        horariosPadrao,
+        dataParam,
+        ref.periodo
+      ),
+    })
+    setPeriodoAtivo(ref)
+  }
+
+  useEffect(() => {
+    function aoOcultar() {
+      if (document.visibilityState === 'hidden') flushSalvamentoPendente()
+    }
+    document.addEventListener('visibilitychange', aoOcultar)
+    window.addEventListener('pagehide', flushSalvamentoPendente)
+    return () => {
+      document.removeEventListener('visibilitychange', aoOcultar)
+      window.removeEventListener('pagehide', flushSalvamentoPendente)
+      flushSalvamentoPendente()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleFormChange(partial: Partial<FormState>) {
     const next = { ...form, ...partial }
-    setForm(next)
+    setFormsCache(prev => ({ ...prev, [refKey(periodoAtivo)]: next }))
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => salvarRascunho(next), 1500)
+    pendingSaveRef.current = { ref: periodoAtivo, estado: next }
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null
+      pendingSaveRef.current = null
+      salvarRascunho(periodoAtivo, next)
+    }, 1500)
   }
 
-  async function salvarRascunho(estado: FormState) {
+  async function salvarRascunho(ref: PeriodoRef, estado: FormState) {
     setSalvando(true)
-    await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo.periodo}`, {
+    await fetch(`/api/relatorio-diario/${dataParam}/periodos/${ref.periodo}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
       body: JSON.stringify({
         unit_id: unitId,
-        sequencia: periodoAtivo.sequencia,
+        sequencia: ref.sequencia,
         horario_abertura: estado.horarios.abertura || null,
         horario_ultimo_cliente: estado.horarios.ultimo_cliente || null,
         horario_fechamento: estado.horarios.fechamento || null,
@@ -420,6 +478,8 @@ export function RelatorioClient({
     const camposVenda: [keyof typeof estado.vendas, keyof FormErros, string][] = [
       ['vendas_ab', 'vendas_ab', 'vendas_ab'],
       ['pax_total', 'pax_total', 'pax_total'],
+      ['alimentos', 'alimentos', 'alimentos'],
+      ['bebidas', 'bebidas', 'bebidas'],
       ['taxa_servico', 'taxa_servico', 'taxa_servico'],
       ['delivery', 'delivery', 'delivery'],
       ['portaria_valor', 'portaria_valor', 'portaria_valor'],
@@ -479,8 +539,11 @@ export function RelatorioClient({
     setErros({})
     setEnviando(true)
 
+    // Save-then-submit: garantir que o período está persistido antes do envio
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    await salvarRascunho(form)
+    debounceRef.current = null
+    pendingSaveRef.current = null
+    await salvarRascunho(periodoAtivo, form)
 
     const res = await fetch(`/api/relatorio-diario/${dataParam}/periodos/${periodoAtivo.periodo}/enviar`, {
       method: 'POST',
@@ -600,7 +663,7 @@ export function RelatorioClient({
               >
                 <button
                   type="button"
-                  onClick={() => setPeriodoAtivo(ref)}
+                  onClick={() => trocarPeriodo(ref)}
                   className={`flex flex-col items-start leading-tight ${!ativo ? 'hover:text-ink' : ''}`}
                 >
                   <span className={`flex items-center gap-1.5 ${na && !ativo ? 'line-through' : ''}`}>

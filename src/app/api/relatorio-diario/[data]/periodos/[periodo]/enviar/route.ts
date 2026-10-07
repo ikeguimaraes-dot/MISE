@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { canAccessUnit } from '@/app/api/relatorio-diario/_auth'
 import { emitTurnoEvent } from '@/app/api/relatorio-diario/_ledger'
+import { SETORES_AVALIACAO, SETORES_EQUIPE, SETOR_EQUIPE_TO_AREA } from '@/app/api/relatorio-diario/_schema'
 
 export async function POST(
   request: Request,
@@ -48,7 +49,7 @@ export async function POST(
   // 3. Buscar período — save-then-submit: deve existir (autosave garantiu isso)
   const { data: per } = await supabase
     .from('op_relatorio_periodo')
-    .select('id, enviado_em')
+    .select('id, enviado_em, resumo_operacional, responsavel_preenchimento, venda_total, venda_alimentos, venda_bebidas, taxa_servico, delivery, portaria, pax_total, perda_produto')
     .eq('relatorio_id', relatorio.id)
     .eq('periodo', periodo)
     .eq('sequencia', sequencia)
@@ -62,6 +63,56 @@ export async function POST(
   }
   if (per.enviado_em) {
     return NextResponse.json({ error: 'Período já enviado.' }, { status: 409 })
+  }
+
+  // 3.5 Validar campos obrigatórios no servidor — espelha `validar()` do
+  // client (relatorio-client.tsx), mas nunca confia só nele: o client pode
+  // ficar dessincronizado (ex.: troca de aba) ou o endpoint pode ser
+  // chamado diretamente, sem passar pela validação da UI.
+  const camposObrigatorios: [string, unknown][] = [
+    ['Vendas A&B', per.venda_total],
+    ['PAX Total', per.pax_total],
+    ['Alimentos', per.venda_alimentos],
+    ['Bebidas', per.venda_bebidas],
+    ['Taxa de Serviço', per.taxa_servico],
+    ['Delivery', per.delivery],
+    ['Portaria (valor)', per.portaria],
+    ['Perda de Produto', per.perda_produto],
+  ]
+  const faltandoVendas = camposObrigatorios.filter(([, v]) => v == null).map(([label]) => label)
+  const faltandoTexto = [
+    per.resumo_operacional?.trim() ? null : 'Resumo Operacional',
+    per.responsavel_preenchimento?.trim() ? null : 'Responsável pelo Preenchimento',
+  ].filter((v): v is string => v !== null)
+
+  const { data: avaliacoes } = await supabase
+    .from('op_avaliacao_setor')
+    .select('setor, nota, observacao')
+    .eq('relatorio_id', relatorio.id)
+    .eq('periodo', periodo)
+  const faltandoSetores = SETORES_AVALIACAO.flatMap(setor => {
+    const av = avaliacoes?.find(a => a.setor === setor)
+    return av && av.nota != null && av.nota <= 2 && !av.observacao?.trim()
+      ? [`Observação de ${setor} (nota ${av.nota})`]
+      : []
+  })
+
+  const { data: faltasEquipe } = await supabase
+    .from('op_falta_equipe')
+    .select('area, lider_turno')
+    .eq('relatorio_id', relatorio.id)
+    .eq('periodo', periodo)
+  const faltandoEquipe = SETORES_EQUIPE.flatMap(setor => {
+    const linha = faltasEquipe?.find(f => f.area === SETOR_EQUIPE_TO_AREA[setor])
+    return linha?.lider_turno?.trim() ? [] : [`Líder de ${setor}`]
+  })
+
+  const faltando = [...faltandoVendas, ...faltandoTexto, ...faltandoSetores, ...faltandoEquipe]
+  if (faltando.length > 0) {
+    return NextResponse.json(
+      { error: `Preencha os campos obrigatórios antes de enviar: ${faltando.join(', ')}.` },
+      { status: 400 }
+    )
   }
 
   // 4. Resolver user_id do funcionário — enviado_por faz FK para auth.users, não employees

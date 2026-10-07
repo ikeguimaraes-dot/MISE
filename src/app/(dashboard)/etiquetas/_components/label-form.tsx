@@ -32,6 +32,9 @@ const METODOS = [
   'Temperatura ambiente',
 ]
 
+const METODO_TEMPERATURA_AMBIENTE = 'Temperatura ambiente'
+const PRAZO_TEMPERATURA_AMBIENTE_DIAS = 30
+
 const SELOS = ['Nenhum', 'SIF', 'SISP', 'SIM'] as const
 
 const SETORES = [
@@ -73,6 +76,13 @@ function nowLocalISO(): string {
   return `${sp.getFullYear()}-${p(sp.getMonth() + 1)}-${p(sp.getDate())}T${p(sp.getHours())}:${p(sp.getMinutes())}`
 }
 
+function temperaturaAmbienteValidade(): string {
+  const base = new Date(nowLocalISO())
+  base.setDate(base.getDate() + PRAZO_TEMPERATURA_AMBIENTE_DIAS)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`
+}
+
 export function LabelForm({
   ingredients,
   menuItems,
@@ -103,7 +113,7 @@ export function LabelForm({
   const [validade, setValidade] = useState('')
   const [validadeReadonly, setValidadeReadonly] = useState(false)
   const [prazoHoras, setPrazoHoras] = useState<number | null>(null)
-  const [shelfLifeSource, setShelfLifeSource] = useState<'custom' | 'anvisa' | null>(null)
+  const [shelfLifeSource, setShelfLifeSource] = useState<'custom' | 'anvisa' | 'ambiente' | null>(null)
   const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
   const [printPointId, setPrintPointId] = useState('')
   const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; unit?: Unit } | null>(null)
@@ -157,6 +167,14 @@ export function LabelForm({
       return
     }
 
+    if (metodo === METODO_TEMPERATURA_AMBIENTE) {
+      setPrazoHoras(PRAZO_TEMPERATURA_AMBIENTE_DIAS * 24)
+      setValidade(temperaturaAmbienteValidade())
+      setValidadeReadonly(true)
+      setShelfLifeSource('ambiente')
+      return
+    }
+
     const ingredientId = selectedProduct?.tipo === 'ingrediente' ? selectedProduct.id : null
 
     // Precisa de pelo menos ingredient_id ou categoria para buscar
@@ -191,12 +209,12 @@ export function LabelForm({
   }, [categoria, metodo, selectedProduct])
 
   useEffect(() => {
-    if (!prazoHoras || !dataManipulacao) return
+    if (!prazoHoras || !dataManipulacao || shelfLifeSource === 'ambiente') return
     const base = new Date(dataManipulacao)
     base.setHours(base.getHours() + prazoHoras)
     const p = (n: number) => String(n).padStart(2, '0')
     setValidade(`${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`)
-  }, [prazoHoras, dataManipulacao])
+  }, [prazoHoras, dataManipulacao, shelfLifeSource])
 
   useEffect(() => {
     if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
@@ -235,6 +253,13 @@ export function LabelForm({
     setSaving(true)
     setError('')
 
+    // Para temperatura ambiente, a validade parte do momento em que a etiqueta
+    // é efetivamente gerada, mesmo que o formulário tenha ficado aberto.
+    const validadeEfetiva = metodo === METODO_TEMPERATURA_AMBIENTE
+      ? temperaturaAmbienteValidade()
+      : validade
+    if (validadeEfetiva !== validade) setValidade(validadeEfetiva)
+
     if (conflictLabel && conflictResolution === 'overwrite') {
       await fetch(`/api/labels/${conflictLabel.id}`, {
         method: 'PATCH',
@@ -258,7 +283,7 @@ export function LabelForm({
       validade_fornecedor: validadeFornecedor || null,
       metodo_conservacao: metodo || null,
       data_manipulacao: new Date(dataManipulacao).toISOString(),
-      validade: new Date(validade).toISOString(),
+      validade: new Date(validadeEfetiva).toISOString(),
       print_point_id: printPointId || null,
       status: 'ativa',
     }
@@ -485,7 +510,11 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
                   {validade ? new Date(validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
                 </span>
                 <span className="ml-auto text-xs text-fresh">
-                  {shelfLifeSource === 'custom' ? `Suflex · ${prazoHoras}h` : `ANVISA · ${prazoHoras}h`}
+                  {shelfLifeSource === 'ambiente'
+                    ? `Automático · ${PRAZO_TEMPERATURA_AMBIENTE_DIAS} dias`
+                    : shelfLifeSource === 'custom'
+                      ? `Suflex · ${prazoHoras}h`
+                      : `ANVISA · ${prazoHoras}h`}
                 </span>
               </div>
             ) : (
@@ -566,7 +595,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 
         <button
           type="submit"
-          disabled={saving || !selectedProduct || !selectedUnit || (selectedProduct?.tipo === 'ingrediente' && !categoria && shelfLifeSource !== 'custom')}
+          disabled={saving || !selectedProduct || !selectedUnit || (selectedProduct?.tipo === 'ingrediente' && !categoria && shelfLifeSource !== 'custom' && shelfLifeSource !== 'ambiente')}
           className="rounded-lg bg-ember px-4 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
         >
           {saving ? 'Salvando...' : 'Gerar Etiqueta'}
