@@ -59,3 +59,21 @@ A resolução de `crivo_plano_acao` continua exigindo imagem de evidência váli
 - Checkbox Emergencial é o primeiro campo. “Contexto emergencial” aparece imediatamente abaixo, apenas quando marcado, e é opcional. Ausência/branco grava null. Solicitação normal e planejamento semanal não exigem contexto; nenhuma justificativa é inventada e textos históricos são preservados.
 - A data do trabalho continua no pedido. A aprovação desse pedido considera sua semana de trabalho, sem alterar a semana corrente exibida no cabeçalho.
 - Migração substitui apenas a função MISE de solicitação para remover a exigência do contexto; schema compartilhado já permite null. Testes em PostgreSQL isolado cobrem normal/emergencial sem contexto, branco, texto preenchido e herança pelo RH. Testes de calendário cobrem virada domingo/segunda em São Paulo; navegador cobre ordem/visibilidade, rótulo, envio emergencial vazio e estabilidade da semana ao solicitar data futura.
+
+## Grade semanal de Extras — atualização de 07/10
+
+O gerente abre `/extras` diretamente em **Planejar semana**. O pedido avulso e a emergência do Caixa permanecem disponíveis. A grade permite adicionar funções agrupadas por setor, editar diárias, distribuir quantidades, acompanhar custos por dia e copiar as quantidades da semana anterior sem enviar.
+
+**Decisão posterior ao build:** o usuário pediu “Planejamento diário por período”. Por isso, o seletor **Período da grade** alterna almoço, jantar, manhã e eventos, preservando os rascunhos dos outros períodos. A identidade do pedido passa a ser **casa + data + função + período**; almoço e jantar do mesmo dia não se sobrescrevem. **Enviar semana** envia todos os períodos preenchidos; a alçada soma todos eles e os demais pedidos da casa. Navegação permite a semana corrente e semanas futuras; consultas históricas continuam nos relatórios.
+
+- Dias sem operação, conforme `op_horario_padrao`, ficam desabilitados e o banco rejeita novas quantidades nesses dias. Casa sem horário é explicitamente sinalizada.
+- Diárias ausentes no catálogo precisam ser preenchidas. Diárias e motivos salvos são preservados ao reabrir; a edição da diária por função se aplica às suas células editáveis daquele período.
+- Reabrir carrega os pedidos persistidos. Reenviar não duplica. Zerar/remover e enviar cancela os pedidos editáveis, preservando o histórico e seus valores originais.
+- Solicitações com pessoas nomeadas ficam travadas, inclusive quando voltaram a aguardar diretoria. Emergenciais, registros de outro fluxo/autor e múltiplos pedidos na mesma célula também são preservados como leitura. Ajustes passam pela fila/RH.
+- Uma revisão da semana protege contra sobrescrever alterações concorrentes. A transação inteira é validada antes de gravar; tentativas com a mesma chave são idempotentes. A identidade declarada não é tratada como autenticação individual.
+- A prévia substitui o custo já salvo das células editáveis pelo rascunho; não soma duas vezes. O servidor recalcula a alçada sob trava da semana. Se o conjunto exceder o teto, os pedidos novos/alterados vão à diretoria; pedidos inalterados mantêm sua etapa.
+- Mantidos o percentual configurável no banco, as metas por competência de cada dia, avisos de metas ausentes, antecipação nos relatórios e alerta de reativas acima de 80%.
+
+Migração: `db/migrations/20261007_extras_week_grid.sql`. Somente funções e tabela privada de idempotência em `mise`; sem nova restrição de unicidade na tabela compartilhada, sem importação histórica. A interface usa GET/PUT autenticados em `/api/extras/planejamento`; o POST anterior continua compatível.
+
+Validação específica: `scripts/extras-grid-db.test.mjs`, `scripts/extras-grid-model.test.cjs`, `scripts/extras-grid-ui.test.cjs` e cobertura de API em `scripts/opx-v2-api.test.cjs`. Casos incluem seis solicitações, reload, cancelamento, repetição idempotente, concorrência, separação de períodos, domingo fechado, diária ausente, estouro da alçada e bloqueio após atuação do RH. Testes de banco usam PostgreSQL isolado; testes visuais interceptam APIs com dados fictícios.

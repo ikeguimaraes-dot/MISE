@@ -6,6 +6,7 @@ module.exports=async function mockExtras(page){
   const url=new URL(route.request().url()),path=url.pathname;let body
   if(route.request().method()!=='GET')return route.fulfill({status:409,json:{error:'Teste visual: nenhuma gravação é realizada.'}})
   if(path.endsWith('/alcada'))body={segunda:'2026-10-05',domingo:'2026-10-11',metaSemana:50000000,teto:500000,gasto:324000,saldo:176000,percentual:1,avisos:[]}
+  else if(path.endsWith('/planejamento'))body={revision:'0'.repeat(32),items:[],schedule:Array.from({length:7},(_,dia_semana)=>({dia_semana,periodo:'almoco'})),budget:{teto:5000,usado:3240,saldo:1760,percentual:1,dias_sem_meta:0}}
   else if(path.endsWith('/catalogo'))body={items:[{id:'job-1',nome:'Auxiliar de cozinha',valor_referencia:150,setor_padrao:'Cozinha de Produção',ordem:1},{id:'job-2',nome:'Hosts',valor_referencia:null,setor_padrao:'Portaria',ordem:2}]}
   else if(path.endsWith('/solicitantes'))body={items:[{id:'manager-1',nome:'Gerente de demonstração'}]}
   else if(path.endsWith('/solicitacoes'))body={items:requests,hasMore:false}

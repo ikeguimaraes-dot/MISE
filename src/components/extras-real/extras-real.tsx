@@ -71,7 +71,7 @@ export function ExtrasReal({
   const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
   const role = roles.includes(chosenRole) ? chosenRole : roles[0];
   const [chosenView, setView] = useState<"positions" | "people" | "plan" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
-  const view = chosenView ?? (["financeiro", "caixa"].includes(role) ? "people" : "positions");
+  const view = chosenView ?? (role === "lider" ? "plan" : ["financeiro", "caixa"].includes(role) ? "people" : "positions");
   const [items, setItems] = useState<RealExtra[]>([]),
     [selected, setSelected] = useState<string | null>(initialExtra || null),
     [detail, setDetail] = useState<{
@@ -233,7 +233,7 @@ export function ExtrasReal({
       <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {requesterName||ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa ou responsável</span></button>
         {["lider", "caixa"].includes(role) && (
           <button
-            className="er-primary"
+            className={role === "caixa" ? "er-primary" : ""}
             disabled={busy||(role==='lider'&&!requesterId)}
             onClick={() => {
               setCreating(true);
@@ -241,7 +241,7 @@ export function ExtrasReal({
               setError("");
             }}
           >
-            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar posições"}
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Pedido avulso"}
           </button>
         )}
       </div>
@@ -255,6 +255,7 @@ export function ExtrasReal({
             onChange={(e) => {
               setRequesterId("");
               setUnit(e.target.value);
+              setView(null);
               setQuery("");
               setSelected(null);
               setCreating(false);
@@ -292,7 +293,7 @@ export function ExtrasReal({
 
       </div>
       {role==='lider'&&!requesterId&&<p role="status">Selecione seu nome em “Responsável” para solicitar ou planejar. No celular, toque no nome da casa para abrir essa seleção.</p>}
-      <section className="er-budget" aria-label="Alçada semanal">
+      {view !== "plan" && <section className="er-budget" aria-label="Alçada semanal">
         <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
            {from.split("-").reverse().slice(0, 2).join("/")}–
           {to.split("-").reverse().slice(0, 2).join("/")}
@@ -335,7 +336,7 @@ export function ExtrasReal({
             )}
           </p>
         )}
-      </section>
+      </section>}
       {error && (
         <p className="er-error" role="alert">
           {error}{" "}
@@ -350,17 +351,17 @@ export function ExtrasReal({
         </p>
       )}
 <div className="er-controls">
-      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button>{role==='lider'&&<button aria-pressed={view==='plan'} onClick={()=>{setView('plan');setCreating(false)}}>Planejar semana</button>}</div></div>
-      <div className="er-queue-toolbar">
+      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas">{role==='lider'&&<button aria-pressed={view==='plan'} onClick={()=>{setView('plan');setCreating(false)}}>Planejar semana</button>}<button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
+      {view !== "plan" && <div className="er-queue-toolbar">
         <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
           <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
           <button type="button" aria-pressed={!queue} onClick={() => setQueue(false)}>Histórico da semana</button>
         </div>
         <span>{queue ? "Pendências de todas as semanas" : "Solicitações da semana selecionada"}</span>
-      </div>
+      </div>}
 </div>
 
-      {view === "plan" ? <WeeklyPlan key={`${unit}-${from}-${role}`} unit={unit} day={day} requesterId={requesterId} requesterName={requesterName} budget={budget} onChanged={refresh}/> : view === "positions" ? <ExtraPositions requesterId={requesterId} requesterName={requesterName} key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={() => refresh()} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
+      {view === "plan" ? <WeeklyPlan key={`${unit}-${from}-${role}`} unit={unit} unitName={units.find(u=>u.id===unit)!.name} day={day} requesterId={requesterId} requesterName={requesterName} onChanged={refresh}/> : view === "positions" ? <ExtraPositions requesterId={requesterId} requesterName={requesterName} key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={() => refresh()} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
         <div className="er-grid" data-detail-open={!!selected}>
           <section ref={listRef} tabIndex={-1} className="er-panel er-list" aria-label="Lista de pessoas">
             <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>

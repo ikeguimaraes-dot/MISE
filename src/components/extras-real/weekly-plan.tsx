@@ -1,38 +1,70 @@
 'use client'
 import {useEffect,useRef,useState,type FormEvent} from 'react'
-import {weekDays,type WeeklyBudget} from '@/lib/extras/alcada'
+import {ChevronLeft,ChevronRight,Copy,LockKeyhole,Plus,Send,Trash2} from 'lucide-react'
+import {weekDays} from '@/lib/extras/alcada'
 import {EXTRA_MOTIVES,jobSectors,type ExtraJob} from '@/lib/extras/catalog'
+import {cellCost,cellLocked,moveWeek,planPayload,planRows,type PlanRow,type PlanSnapshot} from '@/lib/extras/planning'
 import {ExtraCurrencyInput} from './currency-input'
-type Draft={id:string;day:string;job:string;quantity:number;rate:string;motive:string;period:string}
-const brl=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
-export function WeeklyPlan({unit,day,requesterId,requesterName,budget,onChanged}:{unit:string;day:string;requesterId:string;requesterName:string;budget:WeeklyBudget|null|undefined;onChanged:()=>void}){
- const [jobs,setJobs]=useState<ExtraJob[]>([]),[rows,setRows]=useState<Draft[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('')
- const pending=useRef<{signature:string;items:unknown[]}|null>(null),days=weekDays(day),sectors=jobSectors(jobs)
- useEffect(()=>{const c=new AbortController();fetch(`/api/extras/catalogo?unit_id=${unit}`,{signal:c.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);setJobs(d.items)}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[unit])
- const total=rows.reduce((sum,r)=>sum+Math.round(Number(r.rate)*100)*r.quantity,0),projected=(budget?.gasto??0)+total
- const pct=budget&&budget.teto>0?Math.round(projected/budget.teto*100):null
- const invalid=rows.some(r=>!r.job||!Number.isInteger(r.quantity)||r.quantity<1||!r.rate||Number(r.rate)<=0)
- function update(id:string,patch:Partial<Draft>){setRows(prev=>prev.map(r=>r.id===id?{...r,...patch}:r));setNotice('')}
- async function submit(e:FormEvent){e.preventDefault();if(invalid||!rows.length||!requesterId)return;setBusy(true);setError('');try{
-  const data=rows.map(r=>({unit_id:unit,data_trabalho:r.day,cargo_id:r.job,quantidade:r.quantity,valor_unitario:Number(r.rate),motivo:r.motive,periodo:r.period,motivo_detalhe:null,solicitante_cadastro_id:requesterId,emergencial:false})),signature=JSON.stringify(data)
-  if(pending.current?.signature!==signature)pending.current={signature,items:data.map(data=>({id:crypto.randomUUID(),command_id:crypto.randomUUID(),data}))}
-  const response=await fetch('/api/extras/planejamento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({unit_id:unit,week:days[0],items:pending.current.items})}),result=await response.json();if(!response.ok)throw Error(result.error)
-  const approvals=result.items.filter((r:{status:string})=>r.status==='aguardando_diretoria').length
-  setNotice(`Plano registrado: ${result.items.length} demanda(s). ${approvals?`${approvals} aguardando aprovação da diretoria.`:'Demandas enviadas ao RH.'}`);setRows([]);pending.current=null;onChanged()
+const brl=(cents:number)=>(cents/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
+const short=(date:string)=>date.slice(8)+'/'+date.slice(5,7)
+async function get(url:string,signal?:AbortSignal){const r=await fetch(url,{cache:'no-store',signal}),d=await r.json();if(!r.ok)throw Error(d.error||'Não foi possível carregar a semana.');return d}
+export function WeeklyPlan({unit,unitName,day,requesterId,requesterName,onChanged}:{unit:string;unitName:string;day:string;requesterId:string;requesterName:string;onChanged:()=>void}){
+ const [week,setWeek]=useState(weekDays(day)[0]),[jobs,setJobs]=useState<ExtraJob[]>([]),[rows,setRows]=useState<PlanRow[]>([]),[snapshot,setSnapshot]=useState<PlanSnapshot|null>(null)
+ const [busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[adding,setAdding]=useState(false),[dirty,setDirty]=useState(false)
+ const [motive,setMotive]=useState('evento'),[motiveChanged,setMotiveChanged]=useState(false),[period,setPeriod]=useState('almoco'),[reload,setReload]=useState(0)
+ const pending=useRef<{signature:string;command:string}|null>(null),days=weekDays(week),formId='weekly-extra-plan'
+ useEffect(()=>{const c=new AbortController();setLoading(true);setSnapshot(null);setError('');setRows([])
+  Promise.all([get(`/api/extras/catalogo?unit_id=${unit}`,c.signal),get(`/api/extras/planejamento?unit_id=${unit}&week=${week}`,c.signal)]).then(([catalog,data]:[{items:ExtraJob[]},PlanSnapshot])=>{
+   setJobs(catalog.items);setSnapshot(data);setRows(planRows(catalog.items,data.items,weekDays(week)));setPeriod(prev=>data.items.some(i=>i.periodo===prev)?prev:data.items.find(i=>i.periodo)?.periodo??data.schedule.find(s=>['almoco','jantar','manha','eventos'].includes(s.periodo))?.periodo??prev);setMotiveChanged(false);setDirty(false)
+  }).catch(e=>{if(!c.signal.aborted)setError(e.message)}).finally(()=>{if(!c.signal.aborted)setLoading(false)});return()=>c.abort()
+ },[unit,week,reload])
+ const openDays=days.map(d=>!!snapshot?.schedule.some(s=>s.dia_semana===new Date(`${d}T12:00:00Z`).getUTCDay()))
+ const original=snapshot?planRows(jobs,snapshot.items,days):[],originalEditable=original.reduce((s,r)=>s+r.original.flatMap((v,i)=>cellLocked(r,i)?[]:v).reduce((n,x)=>n+Math.round(Number(x.valor_consumido)*100),0),0)
+ const visibleRows=rows.filter(r=>r.period===period)
+ const totals=days.map((_,i)=>visibleRows.reduce((sum,r)=>sum+cellCost(r,i),0)),total=totals.reduce((s,n)=>s+n,0)
+ const editableTotal=rows.reduce((s,r)=>s+r.quantities.reduce((sum,_,i)=>sum+(cellLocked(r,i)?0:cellCost(r,i)),0),0)
+ const projected=Math.round((snapshot?.budget.usado??0)*100)-originalEditable+editableTotal,ceiling=Math.round((snapshot?.budget.teto??0)*100)
+ const pct=ceiling>0?projected/ceiling*100:null,tone=projected>ceiling?'danger':pct!==null&&pct>80?'warning':'accent'
+ const invalid=rows.some(r=>r.quantities.some((q,i)=>!cellLocked(r,i)&&(!Number.isSafeInteger(q)||q<0||(q>0&&(!openDays[i]||!r.rate||Number(r.rate)<=0)))))
+ const canSend=!!snapshot&&!!requesterId&&!invalid&&!busy&&!loading
+ function change(key:string,patch:Partial<PlanRow>){setRows(prev=>prev.map(r=>r.key===key?{...r,...patch}:r));setDirty(true);setNotice('')}
+ function navigate(offset:number){if(dirty&&!window.confirm('Trocar de semana descarta as alterações ainda não enviadas. Continuar?'))return;setWeek(moveWeek(week,offset));setNotice('')}
+ async function copy(){setBusy(true);setError('');try{
+  const source:PlanSnapshot=await get(`/api/extras/planejamento?unit_id=${unit}&week=${moveWeek(week,-1)}`)
+  if(!source.items.length){setNotice('A semana anterior não tem solicitações ativas para copiar.');return}
+  const previous=planRows(jobs,source.items,weekDays(moveWeek(week,-1))),base=[...rows]
+  for(const prev of previous)if(prev.job.id&&prev.period&&!base.some(r=>r.key===prev.key))base.push({key:prev.key,period:prev.period,job:prev.job,rate:String(prev.job.valor_referencia??''),rateChanged:false,motive:'',quantities:days.map(()=>0),original:days.map(()=>[])})
+  setRows(base.map(r=>({...r,quantities:r.quantities.map((q,i)=>cellLocked(r,i)?q:openDays[i]?(previous.find(p=>p.key===r.key)?.quantities[i]??0):0)})))
+  setDirty(true);setNotice('Quantidades copiadas para o rascunho. Confira diárias e motivos de cada período antes de enviar. Células em atendimento foram preservadas.')
  }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
- return <section className="er-panel er-week-plan"><h2>Planejar a semana</h2><p>Antecipe as posições de segunda a domingo. Confira o custo completo antes de enviar.</p><p>Solicitante: <strong>{requesterName||'Selecione seu nome no cabeçalho'}</strong> · identificação declarada.</p>
- {error&&<p role="alert" className="er-error">{error}</p>}{notice&&<p role="status">{notice}</p>}
- <form onSubmit={submit}><fieldset disabled={busy} className="er-plan-fieldset"><div className="er-week-grid">{days.map(date=><section key={date} className="er-plan-day"><h3>{new Date(`${date}T12:00:00Z`).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',timeZone:'UTC'})}</h3>
- {rows.filter(r=>r.day===date).map((r,i)=><fieldset className="er-plan-demand" key={r.id}><legend>Demanda {i+1}</legend>
- <label>Função<select aria-label={`Função ${date} ${i+1}`} required value={r.job} onChange={e=>update(r.id,{job:e.target.value,rate:String(jobs.find(j=>j.id===e.target.value)?.valor_referencia??'')})}><option value="">Selecione</option>{sectors.map(s=><optgroup key={s} label={s}>{jobs.filter(j=>j.setor_padrao===s).map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</optgroup>)}</select></label>{r.job&&<small>Setor: {jobs.find(j=>j.id===r.job)?.setor_padrao}</small>}
- <div className="er-plan-pair"><label>Quantidade<input aria-label={`Quantidade ${date} ${i+1}`} type="number" min={1} required value={r.quantity||''} onChange={e=>update(r.id,{quantity:Number(e.target.value)})}/></label><label>Diária<ExtraCurrencyInput label={`Diária ${date} ${i+1}`} value={r.rate} onChange={rate=>update(r.id,{rate})}/></label></div>
- {r.rate!==''&&<p>Estimado: <strong>{brl(r.quantity*Number(r.rate))}</strong></p>}
- <label>Motivo<select value={r.motive} onChange={e=>update(r.id,{motive:e.target.value})}>{EXTRA_MOTIVES.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
- <label>Período<select value={r.period} onChange={e=>update(r.id,{period:e.target.value})}><option value="almoco">Almoço</option><option value="jantar">Jantar</option><option value="manha">Manhã</option><option value="eventos">Eventos</option></select></label>
- <button type="button" onClick={()=>setRows(prev=>prev.filter(x=>x.id!==r.id))}>Retirar do rascunho</button>
- </fieldset>)}
- <button type="button" disabled={!jobs.length||rows.length>=70} onClick={()=>setRows(prev=>[...prev,{id:crypto.randomUUID(),day:date,job:'',quantity:1,rate:'',motive:'evento',period:'almoco'}])}>+ Adicionar demanda</button></section>)}</div>
- <div className="er-plan-summary" aria-live="polite"><h3>Antes de enviar</h3><p>Novas demandas: <strong>{brl(total/100)}</strong>{invalid?' · há campos a completar.':''}</p>{budget?<><p>Com o que já foi registrado, este plano consome <strong>{brl(projected/100)}</strong> dos <strong>{brl(budget.teto/100)}</strong> da semana{pct!==null?` — ${pct}%`:''}.</p>{projected>budget.teto&&<p>Excede a alçada em {brl((projected-budget.teto)/100)}. As demandas que ultrapassarem o saldo seguirão para aprovação da diretoria.</p>}</>:<p>Alçada indisponível para prévia. O servidor verifica o saldo no envio.</p>}<p>A estimativa será conferida novamente no envio para considerar outras solicitações da casa.</p>
- <button className="er-primary" disabled={busy||invalid||!rows.length||!requesterId}>{busy?'Registrando plano…':'Registrar plano da semana'}</button></div>
- </fieldset></form></section>
+ async function submit(e:FormEvent){e.preventDefault();if(!canSend||!snapshot)return;setBusy(true);setError('');try{
+  const data={unit_id:unit,week,revision:snapshot.revision,requester_id:requesterId,items:planPayload(rows,original,days,motive,motiveChanged)},signature=JSON.stringify(data)
+  if(pending.current?.signature!==signature)pending.current={signature,command:crypto.randomUUID()}
+  const response=await fetch('/api/extras/planejamento',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,command_id:pending.current.command})}),result=await response.json();if(!response.ok)throw Error(result.error)
+  const approvals=result.items.filter((r:{status:string})=>r.status==='aguardando_diretoria').length
+  setNotice(result.items.length?`Semana enviada. ${result.items.length} solicitação(ões) atualizada(s). ${approvals?`${approvals} aguardando aprovação da diretoria.`:''}`:'Semana conferida. Nenhuma alteração ou duplicação.');pending.current=null;setDirty(false);setReload(v=>v+1);onChanged()
+ }catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ return <section className="er-week-plan" aria-label="Planejamento semanal">
+ <form id={formId} onSubmit={submit}><fieldset className="er-plan-fieldset" disabled={busy||loading}>
+ <header className="er-plan-heading"><div><span className="er-plan-eyebrow">PLANEJAMENTO SEMANAL</span><h2>Semana {short(days[0])}–{short(days[6])} <span>· {unitName}</span></h2><p>Planejado por <strong>{requesterName||'selecione seu nome em Responsável'}</strong> · o envio inclui todos os períodos</p></div><button type="submit" className="er-primary" disabled={!canSend}><Send size={15} aria-hidden="true"/>{busy?'Enviando…':'Enviar semana'}</button></header>
+ <div className="er-plan-tools"><div className="er-plan-navigation"><button type="button" aria-label="Semana anterior" disabled={week<=weekDays(day)[0]} onClick={()=>navigate(-1)}><ChevronLeft size={16}/></button><span>{week===weekDays(day)[0]?'Semana corrente':'Semana futura'}</span><button type="button" aria-label="Próxima semana" onClick={()=>navigate(1)}><ChevronRight size={16}/></button></div><button type="button" onClick={copy}><Copy size={15}/>Copiar semana anterior</button></div>
+ <div className="er-plan-options"><label>Motivo predominante<select value={motive} onChange={e=>{setMotive(e.target.value);setMotiveChanged(true);setDirty(true)}}>{EXTRA_MOTIVES.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label><label>Período da grade<select aria-label="Período da grade" value={period} onChange={e=>{setPeriod(e.target.value);setAdding(false)}}><option value="almoco">Almoço</option><option value="jantar">Jantar</option><option value="manha">Manhã</option><option value="eventos">Eventos</option>{rows.some(r=>!r.period)&&<option value="">Sem período · pedidos anteriores</option>}</select></label></div>
+ {loading?<p role="status">Carregando a semana…</p>:snapshot&&<>
+ {!snapshot.schedule.length&&<p className="er-error" role="alert">Esta casa está sem horário de funcionamento cadastrado. Cadastre os dias para planejar.</p>}
+ <p className="er-plan-guide">Preencha quantas pessoas precisa por função, dia e período. A alçada soma todos os períodos. No celular, deslize a grade para ver a semana inteira.</p>
+ <div className="er-plan-scroll" role="region" aria-label="Grade de funções por dia" tabIndex={0}><table className="er-plan-table"><caption className="sr-only">Quantidade de extras por função e dia da semana</caption><thead><tr><th scope="col">Função / diária</th>{days.map((d,i)=><th key={d} scope="col" className={!openDays[i]?'is-closed':''}>{['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][i]}<small>{short(d)}{!openDays[i]&&<span>Fechado</span>}</small></th>)}<th scope="col">Custo</th></tr></thead>
+ <tbody>{visibleRows.map(row=><tr key={row.key}><th scope="row"><div className="er-plan-job"><strong>{row.job.nome}</strong><button type="button" className="er-plan-remove" aria-label={`Remover ${row.job.nome}`} title="Remover função e cancelar pedidos editáveis" disabled={row.original.some((v,i)=>v.length>0&&cellLocked(row,i))} onClick={()=>{setRows(prev=>prev.filter(r=>r.key!==row.key));setDirty(true)}}><Trash2 size={16}/></button></div><small>{row.job.setor_padrao} · {row.job.valor_referencia==null?'Sem diária de referência':brl(Math.round(Number(row.job.valor_referencia)*100))}</small>
+ <ExtraCurrencyInput label={`Diária de ${row.job.nome}`} value={row.rate} onChange={rate=>change(row.key,{rate,rateChanged:true})} disabled={row.original.every((v,i)=>v.length>0&&cellLocked(row,i))}/>
+ {!row.rateChanged&&new Set(row.original.flat().map(i=>Number(i.valor_unitario))).size>1&&<small>Diárias variam por dia. Editar aplica o novo valor às células livres.</small>}
+ {!row.rate&&<small className="er-plan-required">Informe a diária antes de enviar</small>}
+ <details className="er-plan-row-options"><summary>Motivo desta função</summary><label><span className="sr-only">Motivo de {row.job.nome}</span><select value={row.motive} onChange={e=>change(row.key,{motive:e.target.value})}><option value="">{row.original.some(v=>v.length)?'Manter motivos salvos / predominante para novos':'Usar predominante'}</option>{EXTRA_MOTIVES.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label></details></th>
+ {days.map((d,i)=>{const locked=cellLocked(row,i),existing=row.original[i];return <td key={d} className={`${!openDays[i]?'is-closed':''} ${locked?'is-locked':''}`}><input aria-label={`${row.job.nome} ${short(d)}`} type="number" inputMode="numeric" min={0} step={1} value={row.quantities[i]||''} placeholder="–" readOnly={locked} disabled={!openDays[i]&&!existing.length} title={locked?'Pedido em atendimento, emergencial ou de outro fluxo. Ajuste com o RH.':!openDays[i]?'Casa fechada':undefined} onChange={e=>change(row.key,{quantities:row.quantities.map((q,j)=>j===i?Number(e.target.value):q)})}/>{locked&&<small title={existing.map(x=>`${x.solicitante_nome} · ${x.status}`).join('; ')}><LockKeyhole size={11}/> {existing.length>1?'Pedidos distintos':'Em atendimento'}</small>}</td>})}<td className="er-plan-cost">{brl(days.reduce((s,_,i)=>s+cellCost(row,i),0))}</td></tr>)}
+ {!visibleRows.length&&<tr><td colSpan={9} className="er-plan-empty"><strong>A semana começa pelas funções.</strong><span>Adicione a primeira e distribua as quantidades pelos dias.</span></td></tr>}
+ </tbody><tfoot><tr><th scope="row">Total do dia</th>{totals.map((n,i)=><td key={i}>{n?brl(n):'–'}</td>)}<td>{brl(total)}</td></tr></tfoot></table></div>
+ <div className="er-plan-add">{adding?<label>Adicionar função<select autoFocus aria-label="Adicionar função" value="" onChange={e=>{const job=jobs.find(j=>j.id===e.target.value);if(!job)return;setRows(prev=>[...prev,{key:`${job.nome}|${period}`,period,job,quantities:days.map(()=>0),rate:String(job.valor_referencia??''),rateChanged:false,motive:'',original:original.find(r=>r.key===`${job.nome}|${period}`)?.original??days.map(()=>[])}]);setAdding(false);setDirty(true)}}><option value="">Selecione uma função</option>{jobSectors(jobs).map(s=><optgroup key={s} label={s}>{jobs.filter(j=>j.setor_padrao===s&&!visibleRows.some(r=>r.job.nome===j.nome)).map(j=><option key={j.id} value={j.id}>{j.nome}</option>)}</optgroup>)}</select></label>:<button type="button" disabled={!period||jobs.every(j=>visibleRows.some(r=>r.job.nome===j.nome))} onClick={()=>setAdding(true)}><Plus size={16}/>Adicionar função</button>}<small>Cadeado: mantenha a célula e peça ajustes ao RH. Ao zerar e enviar, o pedido editável é cancelado.</small></div>
+ </>}
+ </fieldset></form>
+ {error&&<div className="er-error" role="alert">{error} <button type="button" disabled={busy} onClick={()=>{if(!dirty||window.confirm('Recarregar descarta o rascunho não enviado. Continuar?'))setReload(v=>v+1)}}>Recarregar grade</button></div>}{notice&&<p role="status" className="er-plan-notice">{notice}</p>}
+ {snapshot&&<footer className={`er-plan-budget is-${tone}`} aria-label="Prévia da alçada" aria-live="polite"><div><strong>Alçada da semana <span>· {snapshot.budget.percentual?.toLocaleString('pt-BR')??'Sem configuração'}{snapshot.budget.percentual!==null?'% da meta':''}</span></strong><b>{brl(projected)} <span>· {pct===null?'—':`${Math.round(pct)}%`} de {brl(ceiling)}</span></b></div><progress aria-label="Consumo previsto da alçada" value={ceiling===0?(projected>0?100:0):Math.min(100,pct??0)} max={100}/><p>{projected>ceiling?`Estoura a alçada em ${brl(projected-ceiling)} — vai para aprovação da diretoria.`:`Dentro da alçada. Sobra ${brl(ceiling-projected)} para imprevistos da semana.`}</p>{snapshot.budget.dias_sem_meta>0&&<p role="status">Meta não cadastrada para {snapshot.budget.dias_sem_meta} dia(s) desta semana.</p>}<small>Inclui todos os períodos e demais pedidos da casa. Pedidos atendidos usam o custo das pessoas nomeadas. Saldo não acumula.</small>{invalid&&<p>Confira as quantidades e diárias antes de enviar: {rows.filter(r=>r.quantities.some((q,i)=>!cellLocked(r,i)&&q>0&&(!r.rate||Number(r.rate)<=0))).map(r=>`${r.job.nome} (${r.period})`).join(', ')}.</p>}</footer>}
+ </section>
 }

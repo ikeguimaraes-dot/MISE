@@ -16,6 +16,17 @@ const post=data=>new Request('https://example.invalid',{method:'POST',headers:{'
  assert.equal((await planning.POST(post(plan))).status,201);assert.equal(rpc.at(-1).args.p_actor,employee);
  assert.equal((await planning.POST(post({...plan,unit_id:other}))).status,403);
  assert.equal((await planning.POST(post({...plan,items:[{...plan.items[0],data:{...plan.items[0].data,data_trabalho:'2026-10-12'}}]}))).status,400);
+
+ const grid={unit_id:unit,week:'2026-10-05',command_id:id,requester_id:id,revision:'0'.repeat(32),items:[{cargo_id:id,data_trabalho:'2026-10-05',periodo:'jantar',quantidade:0,valor_unitario:150,motivo:'evento'}]};
+ assert.equal((await planning.PUT(post(grid))).status,200);assert.equal(rpc.at(-1).name,'extra_grid_command');assert.equal(rpc.at(-1).args.p_actor,employee);assert.equal(rpc.at(-1).args.p_unit,unit);
+ assert.equal((await planning.PUT(post({...grid,unit_id:other}))).status,403);
+ assert.equal((await planning.PUT(post({...grid,items:[{...grid.items[0],data_trabalho:'2026-10-12'}]}))).status,400);
+ assert.equal((await planning.PUT(post({...grid,items:[{...grid.items[0],quantidade:-1}]}))).status,400);
+ assert.equal((await planning.PUT(post({...grid,revision:'invalid'}))).status,400);
+ assert.equal((await planning.GET(new Request(`https://example.invalid?unit_id=${unit}&week=2026-10-05`))).status,200);assert.equal(rpc.at(-1).name,'extra_grid_read');
+ assert.equal((await planning.GET(new Request(`https://example.invalid?unit_id=${other}&week=2026-10-05`))).status,403);
+ role='financeiro';assert.equal((await planning.PUT(post(grid))).status,403);assert.equal((await planning.GET(new Request(`https://example.invalid?unit_id=${unit}&week=2026-10-05`))).status,403);
+ console.log('PASS weekly grid read/write auth, unit scope, week, revision, quantity and actor identity');
  role='financeiro';assert.equal((await planning.POST(post(plan))).status,403);
  const params={params:Promise.resolve({localId:id})};assert.equal((await equipment.POST(post({codigo:'G1',tipo:'geladeira'}),params)).status,403);
  role='admin';assert.equal((await equipment.POST(post({codigo:'G1',tipo:'geladeira',local_id:other}),params)).status,201);assert.equal(writes.at(-1).local_id,id);
