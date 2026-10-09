@@ -311,13 +311,11 @@ export function LabelForm({
     if (!savedLabel) return
     const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
     const respNome = selectedResponsavelNome.split(' ')[0]
-    const nomeSize = savedLabel.nome.length > 55 ? 'nome nome--small' : savedLabel.nome.length > 30 ? 'nome nome--medium' : 'nome'
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
 <style>@page{size:60mm 60mm;margin:0}
 html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:monospace}
 .label{width:60mm;height:60mm;padding:4mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;background:#fff;color:#000;overflow:hidden;page-break-inside:avoid;page-break-after:avoid}
 .nome{font-size:13pt;font-weight:bold;line-height:1.1;overflow-wrap:anywhere;word-break:break-word}
-.nome--medium{font-size:10.5pt}.nome--small{font-size:8.5pt;line-height:1.05}
 .metodo{font-size:8pt;line-height:1.2;margin-top:0.5mm;text-transform:uppercase}
 .dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:3mm 0;margin:3mm 0}
 .row{display:flex;justify-content:space-between;align-items:baseline;font-size:9.5pt;line-height:1.4}
@@ -329,7 +327,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 </style></head><body>
 <div class="label">
   <div>
-    <div class="${nomeSize}">${savedLabel.nome}</div>
+    <div class="nome">${savedLabel.nome}</div>
     ${metodo ? `<div class="metodo">${metodo}</div>` : ''}
   </div>
   <div class="dates">

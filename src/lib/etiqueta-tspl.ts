@@ -29,8 +29,6 @@ function ascii(s?: string | null): string {
     .replace(/"/g, "'")
 }
 
-type TextLine = { text: string; font: '2' | '3' | '4'; height: number }
-
 function wrapText(value: string, maxChars: number, maxLines: number): string[] {
   const words = value.trim().split(/\s+/).filter(Boolean)
   const lines: string[] = []
@@ -55,18 +53,10 @@ function wrapText(value: string, maxChars: number, maxLines: number): string[] {
   return lines
 }
 
-// Seleciona a maior fonte que comporta o nome na largura útil de 448 dots.
-// Fontes TSPL internas: "4" = 24x32, "3" = 16x24, "2" = 12x20.
-function productNameLines(value: string): TextLine[] {
+// Mantém a fonte grande ("4" = 24x32) e quebra o nome na largura útil de 448 dots.
+function productNameLines(value: string): string[] {
   const name = ascii(value).trim() || 'SEM NOME'
-  if (name.length <= 18) return [{ text: name, font: '4', height: 32 }]
-
-  const medium = wrapText(name, 28, 2)
-  if (!medium.at(-1)?.endsWith('...')) {
-    return medium.map(text => ({ text, font: '3', height: 24 }))
-  }
-
-  return wrapText(name, 37, 5).map(text => ({ text, font: '2', height: 20 }))
+  return wrapText(name, 18, 5)
 }
 
 // Monta os comandos TSPL da etiqueta 60x60mm (480x480 dots @ 203dpi),
@@ -82,32 +72,32 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   cmds.push('DIRECTION 1')
   cmds.push('CLS')
 
-  let y = 36
-  // Nome com quebra de linha e fonte adaptativa para nunca invadir a margem direita.
+  let y = 24
+  // Nome sempre na fonte grande; quando necessário, continua na linha seguinte.
   for (const line of productNameLines(nome)) {
-    cmds.push(`TEXT ${left},${y},"${line.font}",0,1,1,"${line.text}"`)
-    y += line.height + 4
+    cmds.push(`TEXT ${left},${y},"4",0,1,1,"${line}"`)
+    y += 36
   }
   if (metodo) {
     y += 6
     cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(metodo.toUpperCase())}"`)
+    y += 16
   }
-  // Mantém os blocos críticos em posições fixas mesmo quando o nome ocupa mais linhas.
-  y = 190
+  // O bloco inferior desce conforme o nome ganha linhas, sem sobrepor informações.
+  y = Math.max(180, y + 14)
   cmds.push(`BAR ${left},${y},448,3`)
-  y += 40
+  y += 24
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
-  y += 32
+  y += 30
   // Validade em destaque — fonte "4" (24x32) só na data, é a info mais crítica pra cozinha.
   // Rótulo fica na fonte "2" de sempre, centralizado verticalmente contra a data maior.
   cmds.push(`TEXT ${left},${y + 6},"2",0,1,1,"VALIDADE:"`)
   cmds.push(`TEXT ${left + 116},${y},"4",0,1,1,"${fmtDate(validade)}"`)
-  y += 56
+  y += 48
   cmds.push(`BAR ${left},${y},448,3`)
-  // Respiro simétrico antes de responsável/#ID
-  y += 90
+  y += 32
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
-  y += 34
+  y += 28
   cmds.push(`TEXT ${left},${y},"1",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
   cmds.push(`PRINT ${quantidade}`)
 
