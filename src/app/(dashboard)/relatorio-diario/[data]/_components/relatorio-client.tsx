@@ -478,8 +478,6 @@ export function RelatorioClient({
     const camposVenda: [keyof typeof estado.vendas, keyof FormErros, string][] = [
       ['vendas_ab', 'vendas_ab', 'vendas_ab'],
       ['pax_total', 'pax_total', 'pax_total'],
-      ['alimentos', 'alimentos', 'alimentos'],
-      ['bebidas', 'bebidas', 'bebidas'],
       ['taxa_servico', 'taxa_servico', 'taxa_servico'],
       ['delivery', 'delivery', 'delivery'],
       ['portaria_valor', 'portaria_valor', 'portaria_valor'],

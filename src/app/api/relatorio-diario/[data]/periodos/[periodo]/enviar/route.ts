@@ -72,8 +72,6 @@ export async function POST(
   const camposObrigatorios: [string, unknown][] = [
     ['Vendas A&B', per.venda_total],
     ['PAX Total', per.pax_total],
-    ['Alimentos', per.venda_alimentos],
-    ['Bebidas', per.venda_bebidas],
     ['Taxa de Serviço', per.taxa_servico],
     ['Delivery', per.delivery],
     ['Portaria (valor)', per.portaria],
