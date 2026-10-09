@@ -40,11 +40,17 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
     { data: ingredients },
     { data: menuItems },
     { data: responsaveisRaw },
+    { data: ultimaEtiqueta },
   ] = await Promise.all([
     supabase.from('units').select('id, name, cnpj, address').eq('active', true),
     supabase.from('ingredients').select('id, nome, categoria_anvisa').eq('ativo', true).order('nome'),
     supabase.from('menu_items').select('id, nome').order('nome'),
     supabase.schema('mise').from('responsaveis').select('id, nome, responsavel_unidades(unit_id)').eq('ativo', true).order('nome'),
+    supabase.schema('mise').from('labels')
+      .select('id, employee_id, responsavel_nome, nome, metodo_conservacao, data_manipulacao, validade, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
 
   const responsaveis = (responsaveisRaw ?? []).map(r => ({
@@ -67,7 +73,10 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
   const { data: labels, count } = await query
 
   const unitIds = Array.from(new Set(labels?.map(l => l.unit_id) ?? []))
-  const empIds = Array.from(new Set(labels?.map(l => l.employee_id).filter(Boolean) ?? []))
+  const empIds = Array.from(new Set([
+    ...(labels?.map(l => l.employee_id).filter(Boolean) ?? []),
+    ...(ultimaEtiqueta?.employee_id ? [ultimaEtiqueta.employee_id] : []),
+  ]))
 
   const [{ data: labelUnits }, { data: labelEmps }] = await Promise.all([
     unitIds.length ? supabase.from('units').select('id, name').in('id', unitIds) : Promise.resolve({ data: [] }),
@@ -94,8 +103,19 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
       />
 
       <div className="rounded-xl border border-edge bg-surface">
-        <div className="border-b border-edge px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge px-5 py-4">
           <p className="text-sm font-semibold text-ink">Histórico de Etiquetas</p>
+          {ultimaEtiqueta && podeReimprimir(ultimaEtiqueta.created_at) && (
+            <BotaoReimprimir
+              id={ultimaEtiqueta.id}
+              nome={ultimaEtiqueta.nome}
+              metodo={ultimaEtiqueta.metodo_conservacao}
+              dataManipulacao={ultimaEtiqueta.data_manipulacao}
+              validade={ultimaEtiqueta.validade}
+              respNome={(ultimaEtiqueta.responsavel_nome ?? empsMap[ultimaEtiqueta.employee_id ?? ''] ?? '').split(' ')[0]}
+              label={`Reimprimir última: ${ultimaEtiqueta.nome}`}
+            />
+          )}
         </div>
 
         <form method="GET" className="flex flex-wrap gap-3 px-5 py-3 border-b border-edge">

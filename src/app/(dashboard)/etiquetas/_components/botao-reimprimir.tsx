@@ -10,6 +10,7 @@ export function BotaoReimprimir({
   dataManipulacao,
   validade,
   respNome,
+  label = 'Reimprimir',
 }: {
   id: string
   nome: string
@@ -17,6 +18,7 @@ export function BotaoReimprimir({
   dataManipulacao: string
   validade: string
   respNome: string
+  label?: string
 }) {
   function handleReprint() {
     const tspl = buildTSPL({
@@ -40,7 +42,7 @@ export function BotaoReimprimir({
       className="flex items-center gap-1.5 rounded-lg border border-edge-strong px-2.5 py-1.5 text-xs font-medium text-ink-muted hover:text-ink transition-colors"
     >
       <Bluetooth className="h-3.5 w-3.5" />
-      Reimprimir
+      {label}
     </button>
   )
 }
