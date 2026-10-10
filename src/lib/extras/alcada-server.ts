@@ -14,7 +14,7 @@ export async function loadWeeklyBudget(db: SupabaseClient, unitId: string, refer
   const extras: Spend[] = []
   // Never silently truncate weekly spending to PostgREST's default row limit.
   for (let offset = 0; ; offset += 500) {
-    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, total, status').eq('unit_id', unitId).gte('data_trabalho', days[0]).lte('data_trabalho', days[6]).order('id').range(offset, offset + 499)
+    const result = await db.schema('mise').from('extra_allowance_spend').select('id, unit_id, data_trabalho, total, status').eq('unit_id', unitId).gte('data_trabalho', days[0]).lte('data_trabalho', days[6]).order('id').range(offset, offset + 499)
     if (result.error) throw new Error('Não foi possível consultar o consumo da alçada.')
     extras.push(...(result.data ?? []))
     if ((result.data?.length ?? 0) < 500) break
@@ -35,13 +35,18 @@ export async function loadWeeklyBudget(db: SupabaseClient, unitId: string, refer
   return budget
 }
 export async function loadExtraAlerts(db: SupabaseClient, units: { id: string; name: string }[], reference: string, now = new Date()) {
+  const configured = await db.from('op_extra_alcada').select('unit_id');
+  if(configured.error) throw new Error('Configuração de Extras indisponível.');
+  units = units.filter(u => configured.data.some(c => c.unit_id === u.id));
   const budgets = await Promise.all(units.map(async unit => ({ ...unit, budget: await loadWeeklyBudget(db, unit.id, reference) })))
   const requests: PendingExtra[] = []
-  if (units.length) for (let offset = 0; ; offset += 500) {
+  if (units.length) for (const source of ['op_extra_solicitacao', 'op_extra']) for (let offset = 0; ; offset += 500) {
     // Not limited to the selected/current week: old approvals must remain visible.
-    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, status, created_at, emergencial').in('unit_id', units.map(unit => unit.id)).or('status.eq.aguardando_diretoria,emergencial.eq.true').not('status', 'in', '(recusado,cancelado,pago)').order('id').range(offset, offset + 499)
+    let query = db.from(source).select('id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision').in('unit_id', units.map(unit => unit.id)).or('status.not.in.(recusado,cancelado,pago),and(emergencial.eq.true,mise_emergency_decision.is.null,status.eq.pago)').order('id').range(offset, offset + 499)
+    if (source === 'op_extra') query = query.is('solicitacao_id', null)
+    const result = await query
     if (result.error) throw new Error('Não foi possível consultar as solicitações pendentes de Extras.')
-    requests.push(...(result.data ?? []))
+    requests.push(...(result.data ?? []).map(item=>({...item,request_kind: source === 'op_extra_solicitacao' ? 'positions' as const : 'person' as const,created_at:item.mise_stage_at??item.created_at})))
     if ((result.data?.length ?? 0) < 500) break
   }
   return { alerts: extraAlerts(budgets, requests, now), warnings: budgets.flatMap(unit => unit.budget.avisos.map(warning => `${unit.name}: ${warning}`)) }

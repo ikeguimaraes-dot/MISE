@@ -1,13 +1,14 @@
+import {expectedDays} from '@/lib/operational-calendar'
 import { createServiceClient } from '@/lib/supabase/server'
 import { getMiseSession } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { PERIODO_LABEL } from '@/app/api/relatorio-diario/_schema'
-import { BotaoExcluirDia } from './_components/botao-excluir-dia'
 
 function getStatusDot(status: string, dataStr: string): { cor: string; label: string } {
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+  if (status === 'ausente') return {cor:'border border-ink-muted bg-transparent',label:'Não preenchido'}
   if (status === 'enviado' || status === 'auditado') return { cor: 'bg-fresh', label: status === 'auditado' ? 'Auditado' : 'Enviado' }
   if (dataStr === hoje) return { cor: 'bg-warn', label: 'Em aberto' }
   return { cor: 'bg-alert', label: 'Não enviado' }
@@ -55,7 +56,7 @@ export default async function RelatorioDiarioPage({
   const { data: unitsRaw } = await supabase
     .from('units')
     .select('id, name')
-    .eq('active', true)
+    .eq('active', true).neq('name','HOS')
 
   const units = (unitsRaw ?? []).sort((a, b) => {
     const ia = ORDEM_UNIDADES.indexOf(a.name)
@@ -118,6 +119,9 @@ export default async function RelatorioDiarioPage({
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
   const temHoje = relatorios?.some(r => r.data === hoje)
 
+  const calendar = new Map((relatorios ?? []).map(r=>[r.data,r]));
+  for(const data of expectedDays(sinceStr,hoje,horarioPadrao))if(!calendar.has(data))calendar.set(data,{id:`ausente-${data}`,data,status:'ausente'});
+  const days = [...calendar.values()].sort((a,b)=>b.data.localeCompare(a.data));
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between">
@@ -162,12 +166,12 @@ export default async function RelatorioDiarioPage({
       )}
 
       <div className="rounded-xl border border-edge bg-surface divide-y divide-edge">
-        {(relatorios?.length ?? 0) === 0 && (
+        {days.length === 0 && (
           <p className="px-5 py-8 text-center text-sm text-ink-subtle">
             Nenhum relatório nos últimos 30 dias.
           </p>
         )}
-        {relatorios?.map(r => {
+        {days.map(r => {
           const { cor, label } = getStatusDot(r.status, r.data)
           const rowsPorDia = periodosPorRel.get(r.id) ?? []
 
@@ -238,9 +242,7 @@ export default async function RelatorioDiarioPage({
                 <span className="text-xs text-ink-muted shrink-0">{label}</span>
                 <ChevronRight className="h-4 w-4 text-ink-faint shrink-0" />
               </Link>
-              {session.role === 'admin' && (
-                <BotaoExcluirDia unitId={activeUnitId} data={r.data} label={fmtDataCurta(r.data)} />
-              )}
+
             </div>
           )
         })}

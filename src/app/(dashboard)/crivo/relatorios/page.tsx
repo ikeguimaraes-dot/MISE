@@ -98,6 +98,7 @@ export default async function CrivoRelatoriosPage() {
         <p className="text-sm text-ink-muted">Evolução histórica por local e tipo de auditoria</p>
       </div>
 
+      <section className="rounded-xl border border-edge p-5 mb-6"><h2 className="font-semibold mb-3">Laudos e planos de ação</h2><div className="flex flex-col gap-3">{(execucoes??[]).map(ex=><Link key={ex.id} href={`/crivo/relatorios/${ex.id}`} className="text-sm underline">{(templates??[]).find(t=>t.id===ex.template_id)?.nome||'Auditoria'} · {(locais??[]).find(l=>l.id===ex.local_id)?.nome} · {(ex.concluido_em||ex.agendado_para||'').slice(0,10)}{ex.percentual===null?' · Descritivo':''}</Link>)}</div></section>
       {categoriasPresentes.length === 0 || todasDatas.length === 0 ? (
         <div className="rounded-xl border border-edge bg-surface p-10 text-center">
           <p className="text-sm text-ink-muted">Nenhuma auditoria concluída ainda.</p>

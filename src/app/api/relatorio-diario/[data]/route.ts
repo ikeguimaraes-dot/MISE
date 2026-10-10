@@ -53,13 +53,5 @@ export async function DELETE(
     return NextResponse.json({ error: 'Só admin pode excluir um relatório inteiro.' }, { status: 403 })
   }
 
-  const supabase = createServiceClient()
-  const { error } = await supabase
-    .from('op_relatorio_diario')
-    .delete()
-    .eq('unit_id', unit_id)
-    .eq('data', dataParam)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({error:'Relatórios preservam o histórico. Corrija os dados ou marque os períodos como não aplicáveis, com justificativa.'},{status:409})
 }

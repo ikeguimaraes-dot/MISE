@@ -1,3 +1,4 @@
+import { getMiseSession } from '@/lib/session'
 import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
@@ -5,6 +6,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const actorSession=await getMiseSession();if(!actorSession || actorSession.role!=='admin')return NextResponse.json({error:'Acesso restrito.'},{status:actorSession?403:401})
   const { id: template_id } = await params
   const body = await request.json()
 
@@ -38,6 +40,9 @@ export async function POST(
       opcoes: body.opcoes ?? null,
       ordem: nextOrdem,
       peso: body.peso ?? 1,
+      critico: body.critico ?? false,
+      topico_ordem: body.topico_ordem ?? null,
+      topico_nome: body.topico_nome ?? null,
       criterio_regramento: body.criterio_regramento?.trim() || null,
       requer_foto: body.requer_foto ?? 'nao',
     })

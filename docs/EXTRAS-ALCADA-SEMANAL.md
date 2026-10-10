@@ -9,7 +9,7 @@ Escopo confirmado por Henrique: atualizar a avaliação primeiro. Não ativar so
 - Percentual de `op_extra_alcada`: versão mais recente vigente na data do trabalho/referência. Não usa versão futura nem percentual padrão no código de produção. Configuração ausente resulta em teto zero e aviso, sem impedir a solicitação. Vigências duplicadas geram erro explícito.
 - Dias sem meta entram com zero e aviso com a quantidade. Nos últimos sete dias do mês, verifica os sete dias da semana na competência seguinte. HOS não ganha isenção implícita.
 - Consumo soma todos os estados, exceto recusado/cancelado, por casa e data de trabalho. Consultas paginadas para evitar truncar 1.000 registros.
-- Valor estimado + comissão passam a ser informados pelo solicitante. Cabe no saldo → RH; excede → `aguardando_diretoria` antes do RH. Aprovação cobre o valor registrado; aumento no RH passa por nova avaliação. A própria solicitação é excluída do consumo anterior nesse recálculo.
+- Valor estimado passa a ser informado pelo solicitante. Cabe no saldo → RH; excede → `aguardando_diretoria` antes do RH. Aprovação cobre o valor registrado; aumento no RH passa por nova avaliação. A própria solicitação é excluída do consumo anterior nesse recálculo.
 - Emergência permite informar pagamento demonstrativo sem esperar aprovação da diretoria e gera sinalização imediata na avaliação. Comprovante, regularização do RH e conferência do Financeiro continuam necessários. Estaff permanece com Financeiro.
 - Falha de consulta não é tratada como meta real zero: a tela mostra indisponibilidade; o registro normal continua possível e segue para análise da diretoria. Não mostra excesso calculado como fato quando não conseguiu consultar a fonte.
 

@@ -1,0 +1,635 @@
+"use client";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { Users, SlidersHorizontal, BarChart3, FlaskConical, ClipboardList, Plus, Bell, Inbox, MousePointer2, CalendarDays, Wallet } from "lucide-react";
+import {
+  ROLE_LABELS,
+  STATUS_LABELS,
+  ACTION_LABELS,
+  realActions,
+  validCpf,
+  type OperationalRole,
+  type RealExtra,
+} from "@/lib/extras/workflow";
+import { useWeeklyBudget } from "@/components/extras-evaluation/weekly-budget";
+import { usageLevel, weekDays } from "@/lib/extras/alcada";
+import "./extras-real.css";
+import { useDetailNavigation } from "./use-detail-navigation";
+import { ExtraPositions } from "./extras-positions";
+type Unit = { id: string; name: string };
+type Grant = { unit_id: string; role: OperationalRole };
+type Event = {
+  id: string;
+  actor_role: OperationalRole;
+  action: string;
+  note: string | null;
+  created_at: string;
+};
+const money = (n: number | null) => n === null ? "A definir" :
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+    n,
+  );
+const today = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(
+    new Date(),
+  );
+async function api(url: string, options?: RequestInit) {
+  const r = await fetch(url, { cache: "no-store", ...options });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "Não foi possível concluir.");
+  return data;
+}
+export function ExtrasReal({
+  units,
+  grants,
+  employeeId,
+  admin,
+  initialUnit,
+  initialExtra,
+  initialRequest,
+  initialDay,
+  notificationsPending = false,
+}: {
+  units: Unit[];
+  grants: Grant[];
+  employeeId: string;
+  admin: boolean;
+  initialUnit?: string;
+  initialExtra?: string;
+  initialRequest?: string;
+  initialDay?: string;
+  notificationsPending?: boolean;
+}) {
+  const [unit, setUnit] = useState(initialUnit || units[0].id),
+    [day, setDay] = useState(initialDay || today()),
+    [revision, setRevision] = useState(0);
+  const roles = grants.filter((g) => g.unit_id === unit).map((g) => g.role);
+  const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
+  const role = roles.includes(chosenRole) ? chosenRole : roles[0];
+  const [chosenView, setView] = useState<"positions" | "people" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
+  const view = chosenView ?? (["financeiro", "caixa"].includes(role) ? "people" : "positions");
+  const [items, setItems] = useState<RealExtra[]>([]),
+    [selected, setSelected] = useState<string | null>(initialExtra || null),
+    [detail, setDetail] = useState<{
+      item: RealExtra;
+      events: Event[];
+      cpf: string | null;
+    } | null>(null);
+  const {detailRef,listRef,returnToList}=useDetailNavigation(selected,!!detail);
+  const [query,setQuery]=useState("");
+  const [filtersOpen,setFiltersOpen]=useState(false);
+  const [error, setError] = useState(""),
+    [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(false),
+    [creating, setCreating] = useState(false),
+    [action, setAction] = useState("");
+  const [queue, setQueue] = useState(!initialExtra && !initialRequest);
+  const [hasMore, setHasMore] = useState(false);
+  const uploadedReceipt = useRef<{ key: string; id: string } | null>(null);
+  const pending = useRef<{ payload: string; key: string; id: string } | null>(
+    null,
+  );
+  const budgetState = useWeeklyBudget(
+      units.find((u) => u.id === unit),
+      day,
+      "review",
+    ),
+    budget = budgetState.budget;
+  const dates = weekDays(day),
+    from = dates[0],
+    to = dates[6];
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setItems([]);
+    if (view !== "people") return () => controller.abort();
+    api(`/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}&role=${role}&queue=${queue ? 1 : 0}`, {
+      signal: controller.signal,
+    })
+      .then((d) => {
+        setItems(d.items);
+        setHasMore(d.hasMore);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [unit, from, to, role, queue, revision, view]);
+  useEffect(() => {
+    setDetail(null);
+    setAction("");
+    if (!selected) return;
+    const controller = new AbortController();
+    api(`/api/extras/requests/${selected}`, { signal: controller.signal })
+      .then((d) => {
+        if (d.item.unit_id === unit) {setDetail(d); }
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e.message);
+      });
+    return () => controller.abort();
+  }, [selected, unit, revision]);
+  function refresh() {
+    setRevision((v) => v + 1);
+    budgetState.retry();
+  }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
+    const form = event.currentTarget;
+    const f = new FormData(form);
+    try {
+      const data: Record<string, unknown> = Object.fromEntries(f.entries());
+      delete data.file;
+      let url = "/api/extras/requests",
+        body: Record<string, unknown>;
+        if (!detail) throw new Error("Selecione uma solicitação.");
+        url += `/${detail.item.id}/actions`;
+        if (action === "preparar_rh") {
+          data.cpf = String(data.cpf).replace(/\D/g, "");
+          if (!validCpf(String(data.cpf)))
+            throw new Error(
+              "Confira o CPF: os dígitos verificadores não conferem.",
+            );
+          data.valor = Number(data.valor);
+        }
+        if (action === "informar_pagamento") {
+          const file = f.get("file");
+          if (!(file instanceof File) || !file.size)
+            throw new Error("Anexe o recibo assinado.");
+          if(file.size>4194304)throw new Error("Envie um recibo de até 4 MB.");
+          const fileKey = `${detail.item.id}|${detail.item.mise_version}|${file.name}|${file.size}|${file.lastModified}`;
+          if (uploadedReceipt.current?.key !== fileKey) {
+            const upload = new FormData();
+            upload.set("file", file);
+            const receipt = await api(
+              `/api/extras/requests/${detail.item.id}/receipts`,
+              { method: "POST", body: upload },
+            );
+            uploadedReceipt.current = { key: fileKey, id: receipt.id };
+          }
+          data.receipt_id = uploadedReceipt.current.id;
+        }
+        body = { role, action, version: detail.item.mise_version, data };
+      const signature = JSON.stringify({ url, body });
+      if (pending.current?.payload !== signature)
+        pending.current = {
+          payload: signature,
+          key: crypto.randomUUID(),
+          id: crypto.randomUUID(),
+        };
+      const result = await api(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...body,
+          command_id: pending.current.key,
+        }),
+      });
+      pending.current = null;
+      setSelected(result.id);
+      setCreating(false);
+      setAction("");
+      refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Falha ao registrar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const item = detail?.item,
+    actions = item ? realActions(item, role, employeeId) : [],
+    level = budget ? usageLevel(budget) : null;
+  return (
+    <div className="er">
+      <header className="er-heading">
+        <div>
+          <h1><Users size={21} aria-hidden="true" />Controle de Extras</h1>
+          <p>Solicitações, aprovações e pagamentos da casa.</p>
+        </div>
+        <details className="er-tools"><summary><SlidersHorizontal size={16} aria-hidden="true" />Ferramentas</summary><nav aria-label="Ferramentas de Extras">
+          {admin && <><Link href="/extras/acessos"><SlidersHorizontal size={14} aria-hidden="true" />Gerenciar acessos</Link><Link href={`/extras/solicitantes?unit_id=${unit}`}><Users size={14} aria-hidden="true" />Solicitantes</Link></>}
+          <Link href={`/extras/relatorios?unit_id=${unit}`}><BarChart3 size={14} aria-hidden="true" />Relatórios</Link>
+          {["rh", "financeiro", "caixa"].includes(role) && <Link href={`/extras/envio-caixa?unit_id=${unit}&data=${day}`}><ClipboardList size={14} aria-hidden="true" />Envio Caixa</Link>}
+          <Link href="/extras/avaliacao" className="er-link-quiet"><FlaskConical size={14} aria-hidden="true" />Avaliação</Link>
+        </nav></details>
+      </header>
+      {notificationsPending && <details className="er-notice">
+        <summary><Bell size={14} aria-hidden="true" /><span>Notificações externas pendentes de configuração</span><span className="er-notice-more">Detalhes</span></summary>
+        <p>Emergências e aprovações continuam disponíveis na Central de Alertas. Configure o canal para receber esses avisos também fora do MISE.</p>
+      </details>}
+      <div className="er-context-toolbar"><button type="button" className="er-filter-summary" aria-expanded={filtersOpen} aria-controls="extras-filters" onClick={()=>setFiltersOpen(v=>!v)}><span><strong>{units.find(u=>u.id===unit)?.name}</strong><small>{day.split("-").reverse().join("/")} · {ROLE_LABELS[role]}</small></span><SlidersHorizontal size={18} aria-hidden="true"/><span className="sr-only">Alterar casa, data ou papel</span></button>
+        {["lider", "caixa"].includes(role) && (
+          <button
+            className="er-primary"
+            disabled={busy}
+            onClick={() => {
+              setCreating(true);
+              setView("positions");
+              setError("");
+            }}
+          >
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar posições"}
+          </button>
+        )}
+      </div>
+      <div id="extras-filters" className="er-filters er-context-filters" data-expanded={filtersOpen}>
+        <label>
+          Casa
+          <select
+            aria-label="Casa"
+            value={unit}
+            disabled={busy}
+            onChange={(e) => {
+              setUnit(e.target.value);
+              setQuery("");
+              setSelected(null);
+              setCreating(false);
+            }}
+          >
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Data de referência
+          <input
+            type="date"
+            required
+            value={day}
+            disabled={busy}
+            onChange={(e) => {
+              if (e.target.value) setDay(e.target.value);
+            }}
+          />
+        </label>
+        <label>
+          Seu papel
+          <select
+            aria-label="Seu papel"
+            value={role}
+            disabled={busy}
+            onChange={(e) => {
+              setRole(e.target.value as OperationalRole);
+              setView(null);
+              setQuery("");
+              setSelected(null);
+              setCreating(false);
+              setAction("");
+            }}
+          >
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABELS[r]}
+              </option>
+            ))}
+          </select>
+        </label>
+
+      </div>
+      <section className="er-budget" aria-label="Alçada semanal">
+        <div className="er-budget-heading"><span><Wallet size={15} aria-hidden="true" />Alçada semanal</span><strong><CalendarDays size={13} aria-hidden="true" />
+           {from.split("-").reverse().slice(0, 2).join("/")}–
+          {to.split("-").reverse().slice(0, 2).join("/")}
+        </strong></div>
+        {budget ? (
+          <>
+            <div className="er-values">
+              <span>
+                Alçada <b><span className="er-currency">R$</span> {money(budget.teto / 100)?.replace(/R\$\s*/, "")}</b>
+              </span>
+              <span>
+                Usado <b><span className="er-currency">R$</span> {money(budget.gasto / 100)?.replace(/R\$\s*/, "")}</b>
+              </span>
+              <span className="er-balance">
+                Saldo disponível <b><span className="er-currency">R$</span> {money(budget.saldo / 100)?.replace(/R\$\s*/, "")}</b>
+              </span>
+            </div>
+            <div className="er-budget-meter"><progress
+              aria-label="Consumo da alçada"
+              className={`is-${level?.tone}`}
+              max={100}
+              value={Math.min(100, level?.percentage ?? 100)}
+            />
+            <small>
+              {level?.percentage ?? "Sem teto"}
+              {level?.percentage !== null ? "%" : ""} ·{" "}
+              {budget.percentual == null ? "Sem configuração" : `${budget.percentual}% da meta`} · saldo não acumula
+            </small></div>
+            {budget.avisos.map((a) => (
+              <p key={a} role="status">
+                {a}
+              </p>
+            ))}
+          </>
+        ) : (
+          <p>
+            {budgetState.error || "Consultando alçada…"}{" "}
+            {budgetState.error && (
+              <button onClick={budgetState.retry}>Tentar novamente</button>
+            )}
+          </p>
+        )}
+      </section>
+      {error && (
+        <p className="er-error" role="alert">
+          {error}{" "}
+          <button
+            onClick={() => {
+              setError("");
+              refresh();
+            }}
+          >
+            Recarregar
+          </button>
+        </p>
+      )}
+<div className="er-controls">
+      <div className="er-queue-toolbar"><div className="er-view-switch" role="group" aria-label="Pedidos ou pessoas"><button aria-pressed={view === "positions"} onClick={() => {setView("positions"); setCreating(false);}}>Pedidos de posições</button><button aria-pressed={view === "people"} onClick={() => {setView("people"); setCreating(false);}}>Pessoas / pagamentos</button></div></div>
+      <div className="er-queue-toolbar">
+        <div className="er-view-switch" role="group" aria-label="Visualização das solicitações">
+          <button type="button" aria-pressed={queue} onClick={() => setQueue(true)}>Minha fila</button>
+          <button type="button" aria-pressed={!queue} onClick={() => setQueue(false)}>Histórico da semana</button>
+        </div>
+        <span>{queue ? "Pendências de todas as semanas" : "Solicitações da semana selecionada"}</span>
+      </div>
+</div>
+
+      {view === "positions" ? <ExtraPositions key={`${unit}-${role}`} unit={units.find(u => u.id === unit)!} day={day} role={role} employeeId={employeeId} queue={queue} creating={creating} initialRequest={initialRequest} onClose={() => setCreating(false)} onChanged={workDay => {if(workDay) setDay(workDay);refresh();}} onPerson={id => {setSelected(id);setView("people");setQueue(false);}} /> : (
+        <div className="er-grid" data-detail-open={!!selected}>
+          <section ref={listRef} tabIndex={-1} className="er-panel er-list" aria-label="Lista de pessoas">
+            <div className="er-list-heading"><h2>Pessoas e pagamentos</h2>
+            <span className="er-count">
+              {loading
+                ? "Carregando…"
+                : `${items.length} registros ${queue ? "na sua fila" : "nesta semana"}`}
+            </span></div>
+            <label className="er-list-search">Buscar nesta lista<input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Pessoa, solicitante ou setor" /></label>
+            {!loading && !items.length && (
+              <div className="er-empty"><span className="er-empty-icon"><Inbox size={22} aria-hidden="true" /></span>
+                <h3>{queue ? "Nenhuma solicitação pendente" : "Nenhuma solicitação nesta semana"}</h3>
+                <p>{queue ? "As solicitações que precisam da sua ação aparecerão aqui." : "Os registros da casa aparecerão neste histórico."}</p>
+                {queue && <button type="button" className="er-empty-action" onClick={() => setQueue(false)}>Consultar histórico</button>}
+              </div>
+            )}
+            {!loading && !!items.length && !items.some(e => `${e.nome||e.funcao} ${e.setor} ${e.solicitante_nome||""}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) && <p className="er-search-empty" role="status">Nenhuma pessoa encontrada nesta lista.</p>}
+            {items.filter(e => `${e.nome||e.funcao} ${e.setor} ${e.solicitante_nome||""}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))).map((e) => (
+              <button
+                key={e.id}
+                disabled={busy}
+                className={`er-request ${selected === e.id ? "selected" : ""}`}
+                aria-pressed={selected === e.id}
+                onClick={() => setSelected(e.id)}
+              >
+                <small>
+                  {STATUS_LABELS[e.status] || e.status}
+                  {e.emergencial ? " · Emergencial" : ""}
+                </small>
+                <strong>{e.nome || e.funcao}</strong>
+                <span>
+                  {e.setor} · {e.data_trabalho.split("-").reverse().join("/")}
+                </span>
+                <span className="er-requester">Solicitante: {e.solicitante_nome || "Não informado"}</span>
+                <b>{money(e.total)}</b>
+              </button>
+            ))}
+            {hasMore && (
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const d = await api(
+                      `/api/extras/requests?unit_id=${unit}&from=${from}&to=${to}&role=${role}&queue=${queue ? 1 : 0}&offset=${items.length}`,
+                    );
+                    setItems((prev) => [...prev, ...d.items]);
+                    setHasMore(d.hasMore);
+                  } catch (e) {
+                    setError((e as Error).message);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Carregar mais solicitações
+              </button>
+            )}
+          </section>
+          <section ref={detailRef} tabIndex={-1} className={`er-panel er-detail ${!item ? "er-detail-empty" : ""}`} aria-label="Detalhes da solicitação">
+            <button type="button" className="er-mobile-back" onClick={()=>returnToList(()=>{setSelected(null);setAction("");})}>← Voltar à lista de pessoas</button>
+            {item ? (
+              <>
+                <p className="er-eyebrow">
+                  {STATUS_LABELS[item.status] || item.status}
+                </p>
+                <h2>{item.nome || "Pessoa a definir pelo RH"}</h2>
+                <p>
+                  {item.funcao} · {item.setor}
+                </p>
+                <p>
+                  {item.data_trabalho.split("-").reverse().join("/")} ·{" "}
+                  {item.periodo}
+                </p>
+                <div className="er-declared-requester"><span>Solicitante</span><strong>{item.solicitante_nome || "Não informado no registro"}</strong><small>Nome autodeclarado · não é identificação autenticada</small></div>
+                <blockquote>{item.motivo_detalhe}</blockquote>
+                <div className="er-values">
+                  <span>
+                    Pagadora{" "}
+                    <b>
+                      {item.pagadora === "terceirizada"
+                        ? "Estaff / terceirizada"
+                        : "Casa"}
+                    </b>
+                  </span>
+                  <span>
+                    Total <b>{money(item.total)}</b>
+                  </span>
+                </div>
+                {item.solicitacao_id && <Link href={`/extras?unit_id=${unit}&solicitacao_id=${item.solicitacao_id}&data=${item.data_trabalho}`}>Abrir pedido de posições</Link>}
+                {!item.mise_managed && (
+                  <p>
+                    Registro de outro fluxo. Alterações são feitas no sistema de
+                    origem.
+                  </p>
+                )}
+                {detail?.cpf && ["rh", "financeiro", "caixa"].includes(role) && <p>CPF: {detail.cpf}</p>}
+                {item.emergencial && (
+                  <p>
+                    Emergência registrada. Diretoria: {item.mise_emergency_decision === "aprovado" ? "aprovada" : item.mise_emergency_decision === "nao_ratificado" ? "não aprovada; pagamento preservado no histórico" : "aprovação posterior pendente"}.
+                  </p>
+                )}
+                {item.mise_receipt_id && ["rh", "financeiro", "caixa"].includes(role) && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const r = await api(
+                          `/api/extras/requests/${item.id}/receipts`,
+                        );
+                        window.open(r.url, "_blank", "noopener,noreferrer");
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}
+                  >
+                    Abrir recibo
+                  </button>
+                )}
+                {!action ? (
+                  <div className="er-buttons">
+                    {actions.map((a) => (
+                      <button
+                        key={a}
+                        className={["preparar_rh","reservar","informar_pagamento","aprovar","conferir"].includes(a)?"er-primary":""}
+                        disabled={busy}
+                        onClick={() => setAction(a)}
+                      >
+                        {ACTION_LABELS[a]}
+                      </button>
+                    ))}
+                    {!actions.length && (
+                      <p>
+                        Nenhuma ação disponível para {ROLE_LABELS[role]} nesta
+                        etapa.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <form
+                    key={`${item.id}-${action}-${item.mise_version}`}
+                    className="er-form"
+                    onSubmit={submit}
+                  >
+                    <h3 className="er-wide">{ACTION_LABELS[action]}</h3>
+                    {action === "preparar_rh" && (
+                      <>
+                        <label>
+                          Nome
+                          <input
+                            name="nome"
+                            defaultValue={item.nome || ""}
+                            required
+                          />
+                        </label>
+                        <label>
+                          CPF
+                          <input
+                            name="cpf"
+                            defaultValue={detail?.cpf || ""}
+                            inputMode="numeric"
+                            required
+                            maxLength={14}
+                          />
+                        </label>
+                        <label>
+                          Diária
+                          <input
+                            name="valor"
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            defaultValue={item.valor ?? ""}
+                            readOnly={item.status === "pagamento_informado"}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Pagadora
+                          <select name="pagadora" defaultValue={item.pagadora}>
+                            {(item.status === "pagamento_informado"
+                              ? [item.pagadora]
+                              : ["casa", "terceirizada"]
+                            ).map((p) => (
+                              <option key={p} value={p}>
+                                {p === "casa"
+                                  ? "Casa"
+                                  : "Estaff / terceirizada"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </>
+                    )}
+                    {action === "informar_pagamento" && (
+                      <>
+                        <label>
+                          Data do pagamento
+                          <input
+                            name="pago_em"
+                            type="date"
+                            defaultValue={today()}
+                            max={today()}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Recibo assinado (até 4 MB)
+                          <input
+                            name="file"
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png"
+                            required
+                          />
+                        </label>
+                      </>
+                    )}
+                    <label className="er-wide">
+                      {["aprovar", "recusar", "cancelar", "ratificar_emergencia", "nao_ratificar_emergencia"].includes(action)
+                        ? "Justificativa obrigatória"
+                        : "Observação"}
+                      <textarea
+                        name="note"
+                        required={["aprovar", "recusar", "cancelar", "ratificar_emergencia", "nao_ratificar_emergencia"].includes(
+                          action,
+                        )}
+                        maxLength={2000}
+                      />
+                    </label>
+                    <div className="er-wide er-buttons">
+                      <button disabled={busy}>
+                        {busy ? "Salvando…" : "Confirmar"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setAction("")}
+                      >
+                        Voltar
+                      </button>
+                    </div>
+                  </form>
+                )}
+                <details className="er-history-details"><summary>Histórico do processo</summary>
+                <ol className="er-history">
+                  {detail.events.map((e) => (
+                    <li key={e.id}>
+                      <strong>
+                        {ACTION_LABELS[e.action] || "Solicitação registrada"}
+                      </strong>
+                      <p>
+                        {ROLE_LABELS[e.actor_role]} ·{" "}
+                        {new Date(e.created_at).toLocaleString("pt-BR")}
+                      </p>
+                      {e.note && <p>{e.note}</p>}
+                    </li>
+                  ))}
+                </ol></details>
+              </>
+            ) : (
+              <div className="er-empty"><span className="er-empty-icon"><MousePointer2 size={22} aria-hidden="true" /></span>
+                <h3>{selected ? "Carregando detalhes…" : "Tudo sobre a solicitação, aqui"}</h3>
+                <p>Selecione um registro ao lado para consultar os dados, acompanhar o histórico e realizar a próxima etapa.</p>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
