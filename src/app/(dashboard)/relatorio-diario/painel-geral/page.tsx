@@ -73,7 +73,7 @@ export default async function PainelGeralPage({
   const supabase = createServiceClient()
 
   const { data: unitsRaw } = await supabase.from('units').select('id, name').eq('active', true)
-  const units = (unitsRaw ?? []).sort((a, b) => {
+  const units = (unitsRaw ?? []).filter(u=>u.name.trim().toUpperCase()!=='HOS').sort((a, b) => {
     const ia = ORDEM_UNIDADES.indexOf(a.name)
     const ib = ORDEM_UNIDADES.indexOf(b.name)
     if (ia === -1 && ib === -1) return a.name.localeCompare(b.name)
@@ -185,6 +185,8 @@ export default async function PainelGeralPage({
     fatAntMap.set(rel.unit_id, calcFaturamento(periodosFin.get(rel.id) ?? []))
   }
 
+  const dailyExtras = await supabase.schema('mise').rpc('extra_daily_cost', { p_day: dataParam });
+  const extraMap = new Map<string, {custo:number;sem_valor:number}>((dailyExtras.data ?? []).map((e: {unit_id:string;custo:number;sem_valor:number}) => [e.unit_id,e]));
   return (
     <div className="p-6 space-y-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between">
@@ -214,6 +216,7 @@ export default async function PainelGeralPage({
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {dailyExtras.error && <p role="alert">Custo de extras indisponível neste momento.</p>}
         {units.map(u => {
           const rel = relatorios?.find(r => r.unit_id === u.id)
           const { cor, label } = getStatusDot(rel?.status ?? null, dataParam)
@@ -241,12 +244,14 @@ export default async function PainelGeralPage({
             return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
           })
 
+          const extras = extraMap.get(u.id);
           return (
             <Link
               key={u.id}
               href={`/relatorio-diario/${dataParam}?unit_id=${u.id}`}
               className="rounded-xl border border-edge bg-surface p-4 hover:bg-surface-raised/50 transition-colors"
             >
+              <p className="text-sm text-ink-muted">Extras do dia: {dailyExtras.error ? 'indisponível' : brl(Number(extras?.custo ?? 0))}{extras?.sem_valor ? ` · ${extras.sem_valor} valor(es) a definir` : ''}</p>
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-ink">{u.name}</span>
                 <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${cor}`} />

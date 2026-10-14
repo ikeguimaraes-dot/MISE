@@ -32,7 +32,7 @@ async function getGestorSession(): Promise<MiseSession | null> {
       .eq('id', employee.role_id)
       .single()
     if (roleData) {
-      const perms = roleData.permissions as string[]
+      const perms = Array.isArray(roleData.permissions) ? roleData.permissions as string[] : []
       if (perms.includes('*') || roleData.name === 'founder') role = 'admin'
     }
   }

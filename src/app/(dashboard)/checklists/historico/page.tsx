@@ -1,3 +1,4 @@
+import {checklistPageContext} from '@/lib/checklist-page-access'
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ArrowLeft, History } from 'lucide-react'
@@ -17,14 +18,19 @@ function fmtDate(iso: string) {
 }
 
 export default async function ChecklistHistoricoPage() {
-  const supabase = createServiceClient()
+  const ctx=await checklistPageContext(),supabase=ctx.db;
+  const ritmo=await supabase.schema('mise').from('checklist_templates').select('id').eq('modulo','RITMO');
+  if(ritmo.error)throw new Error('Histórico indisponível.');
+  let execQuery=supabase.schema('mise').from('checklist_executions').select('*').eq('status','concluido').in('template_id',ritmo.data.map(t=>t.id)).order('concluido_em',{ascending:false}).limit(200);
+  if(ctx.session.role!=='admin')execQuery=execQuery.eq('unit_id',ctx.unitId);
+
 
   const [
     { data: execucoes },
     { data: templates },
     { data: units },
   ] = await Promise.all([
-    supabase.schema('mise').from('checklist_executions').select('*').eq('status', 'concluido').order('concluido_em', { ascending: false }).limit(200),
+    execQuery,
     supabase.schema('mise').from('checklist_templates').select('id, nome'),
     supabase.from('units').select('id, name'),
   ])

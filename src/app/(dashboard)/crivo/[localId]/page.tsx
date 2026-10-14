@@ -74,7 +74,7 @@ export default async function CrivoLocalPage({
   const [{ data: local }, { data: templates }] = await Promise.all([
     supabase.schema('mise').from('crivo_locais').select('id, nome, unit_id').eq('id', localId).single(),
     supabase.schema('mise').from('checklist_templates')
-      .select('id, categoria')
+      .select('id, nome, categoria')
       .eq('modulo', 'CRIVO')
       .eq('ativo', true),
   ])
@@ -82,7 +82,10 @@ export default async function CrivoLocalPage({
   if (!local) notFound()
 
   const templateIds = (templates ?? []).map(t => t.id)
-  const catMap = new Map((templates ?? []).map(t => [t.id, t.categoria as string | null]))
+  const catMap = new Map((templates ?? []).map(t => [
+    t.id,
+    (t.nome as string | null) ?? CATEGORIA_LABEL[(t.categoria as string | null) ?? ''] ?? (t.categoria as string | null),
+  ]))
 
   const { data: execucoesRaw } = templateIds.length
     ? await supabase.schema('mise').from('checklist_executions')
@@ -111,7 +114,8 @@ export default async function CrivoLocalPage({
             <h1 className="text-xl font-bold text-ink">{local.nome}</h1>
             <p className="text-sm text-ink-muted">Histórico de visitas</p>
           </div>
-          <AgendarVisita localId={localId} />
+          <Link href={`/crivo/${localId}/equipamentos`} className="inline-flex min-h-11 items-center rounded-lg border border-edge px-4 text-sm">Equipamentos</Link>
+              <AgendarVisita localId={localId} />
         </div>
       </div>
 
@@ -144,7 +148,7 @@ export default async function CrivoLocalPage({
                     <div key={ex.id} className="flex items-center justify-between px-4 py-3 gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-ink">
-                          {CATEGORIA_LABEL[ex.categoria ?? ''] ?? ex.categoria ?? 'Auditoria'}
+                          {ex.categoria ?? 'Auditoria'}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_COR[ex.status] ?? 'bg-edge/40 text-ink-muted'}`}>
@@ -157,6 +161,7 @@ export default async function CrivoLocalPage({
                           )}
                         </div>
                       </div>
+                      {ex.status === 'concluido' && <Link href={`/crivo/relatorios/${ex.id}`} className="text-sm text-ember underline">Laudo e ações</Link>}
                       {ex.status !== 'concluido' && (
                         <Link
                           href={`/crivo/execucao/${ex.id}`}

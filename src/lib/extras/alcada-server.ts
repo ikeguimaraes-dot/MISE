@@ -1,4 +1,6 @@
 import 'server-only'
+import {loadLeadRows} from './anticipation-server'
+import {leadMix} from './anticipation'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { calcWeeklyBudget, extraAlerts, weekDays, type Spend, type PendingExtra } from './alcada'
 
@@ -14,7 +16,7 @@ export async function loadWeeklyBudget(db: SupabaseClient, unitId: string, refer
   const extras: Spend[] = []
   // Never silently truncate weekly spending to PostgREST's default row limit.
   for (let offset = 0; ; offset += 500) {
-    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, total, status').eq('unit_id', unitId).gte('data_trabalho', days[0]).lte('data_trabalho', days[6]).order('id').range(offset, offset + 499)
+    const result = await db.schema('mise').from('extra_allowance_spend').select('id, unit_id, data_trabalho, total, status').eq('unit_id', unitId).gte('data_trabalho', days[0]).lte('data_trabalho', days[6]).order('id').range(offset, offset + 499)
     if (result.error) throw new Error('Não foi possível consultar o consumo da alçada.')
     extras.push(...(result.data ?? []))
     if ((result.data?.length ?? 0) < 500) break
@@ -35,14 +37,25 @@ export async function loadWeeklyBudget(db: SupabaseClient, unitId: string, refer
   return budget
 }
 export async function loadExtraAlerts(db: SupabaseClient, units: { id: string; name: string }[], reference: string, now = new Date()) {
+  const configured = await db.from('op_extra_alcada').select('unit_id');
+  if(configured.error) throw new Error('Configuração de Extras indisponível.');
+  units = units.filter(u => configured.data.some(c => c.unit_id === u.id));
   const budgets = await Promise.all(units.map(async unit => ({ ...unit, budget: await loadWeeklyBudget(db, unit.id, reference) })))
   const requests: PendingExtra[] = []
-  if (units.length) for (let offset = 0; ; offset += 500) {
+  if (units.length) for (const source of ['op_extra_solicitacao', 'op_extra']) for (let offset = 0; ; offset += 500) {
     // Not limited to the selected/current week: old approvals must remain visible.
-    const result = await db.from('op_extra').select('id, unit_id, data_trabalho, status, created_at, emergencial').in('unit_id', units.map(unit => unit.id)).or('status.eq.aguardando_diretoria,emergencial.eq.true').not('status', 'in', '(recusado,cancelado,pago)').order('id').range(offset, offset + 499)
+    let query = (source==='op_extra_solicitacao'?db.schema('mise').from('extra_request_summary'):db.from(source)).select(source==='op_extra_solicitacao'?'id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision, rh_pendente':'id, unit_id, data_trabalho, status, created_at, mise_stage_at, emergencial, mise_emergency_decision, solicitacao_id').in('unit_id', units.map(unit => unit.id)).or('status.not.in.(recusado,cancelado,pago),and(emergencial.eq.true,mise_emergency_decision.is.null,status.eq.pago)').order('id').range(offset, offset + 499)
+    if (source === 'op_extra_solicitacao') query=query.or('rh_pendente.eq.true,status.eq.aguardando_diretoria,and(emergencial.eq.true,mise_emergency_decision.is.null)')
+    const result = await query
     if (result.error) throw new Error('Não foi possível consultar as solicitações pendentes de Extras.')
-    requests.push(...(result.data ?? []))
+    requests.push(...(result.data ?? []).map(item=>({...item,emergencial:source==='op_extra'&&'solicitacao_id' in item&&item.solicitacao_id?false:item.emergencial,request_kind: source === 'op_extra_solicitacao' ? 'positions' as const : 'person' as const,created_at:item.mise_stage_at??item.created_at})))
     if ((result.data?.length ?? 0) < 500) break
   }
-  return { alerts: extraAlerts(budgets, requests, now), warnings: budgets.flatMap(unit => unit.budget.avisos.map(warning => `${unit.name}: ${warning}`)) }
+  const alerts=extraAlerts(budgets,requests,now)
+  const threshold=process.env.EXTRAS_REACTIVE_THRESHOLD_PERCENT??'80'
+  if(threshold!==undefined&&Number.isFinite(Number(threshold))&&Number(threshold)>=0&&Number(threshold)<=100){
+   const days=weekDays(reference),rows=await loadLeadRows(db,units.map(u=>u.id),days[0],days[6])
+   for(const unit of units){const mix=leadMix(rows.filter(r=>r.unit_id===unit.id));if(mix.reactivePct!==null&&mix.reactivePct>Number(threshold))alerts.push({id:`extras-reativo-${unit.id}-${days[0]}`,modulo:'EXTRAS',unidade:unit.name,severidade:'atencao',titulo:'Semana com excesso de solicitações reativas',descricao:`${mix.reactivePct.toFixed(1)}% reativas; limite configurado de ${threshold}%. ${mix.total} solicitações na semana.`,data:days[0],href:`/extras/relatorios?unit_id=${unit.id}&ano=${reference.slice(0,4)}`})}
+  }
+  return { alerts, warnings: budgets.flatMap(unit => unit.budget.avisos.map(warning => `${unit.name}: ${warning}`)) }
 }

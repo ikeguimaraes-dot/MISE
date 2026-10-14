@@ -5,8 +5,8 @@ export type Status = 'aguardando_diretoria' | 'aprovado_rh' | 'solicitado' | 'ag
 export type Action = 'aprovar_emergencia' | 'aprovar_operacao' | 'preparar_rh' | 'reservar' | 'informar' | 'regularizar' | 'conferir' | 'recusar' | 'cancelar'
 export type Extra = {
   workflow?: 'weekly'; approvedAmount?: number; excess?: number;
-  id: string; unit: string; day: string; period: string; sequence: number; sector: string; job: string; reason: string; detail: string;
-  requester: string; name: string; value: number; commission: number; payer: 'Casa' | 'Estaff'; identityChecked: boolean;
+  id: string; unit: string; day: string; period: string; sector: string; job: string; reason: string; detail: string;
+  requester: string; name: string; value: number; payer: 'Casa' | 'Estaff'; identityChecked: boolean;
   emergency: boolean; emergencyApproved: boolean; rhComplete: boolean; receipt: boolean; status: Status;
   stageAt: string; history: { at: string; actor: Role | 'Ike' | 'Sistema'; text: string }[];
 }
@@ -20,7 +20,7 @@ export function parseMoney(value: string): number {
   if (!/^\d+(?:\.\d{3})*(?:,\d{1,2})?$/.test(clean)) return NaN
   return Math.round(Number(clean.replaceAll('.', '').replace(',', '.')) * 100)
 }
-export function total(item: Extra) { return item.value + item.commission }
+export function total(item: Extra) { return item.value }
 export function isActive(item: Extra) { return item.status !== 'cancelado' && item.status !== 'recusado' }
 export function actionsFor(item: Extra, role: Role): Action[] {
   if (!isActive(item) || item.status === 'pago') return []
@@ -60,11 +60,11 @@ export function transition(item: Extra, role: Role, action: Action, patch: Parti
   const next: Extra = { ...item }
   if (action === 'preparar_rh' || action === 'regularizar') {
     if (!patch.name?.trim() || !patch.identityChecked) throw new Error('Informe o nome de exemplo e confirme a identificação demonstrativa.')
-    if (!Number.isSafeInteger(patch.value) || patch.value! <= 0 || !Number.isSafeInteger(patch.commission) || patch.commission! < 0) throw new Error('Informe valor positivo e comissão válida, em reais.')
+    if (!Number.isSafeInteger(patch.value) || patch.value! <= 0) throw new Error('Informe valor positivo, em reais.')
     if (patch.payer !== 'Casa' && patch.payer !== 'Estaff') throw new Error('Selecione a pagadora.')
-    if (item.status === 'informado' && (patch.value !== item.value || patch.commission !== item.commission || patch.payer !== item.payer)) throw new Error('O pagamento já foi informado. Valores e pagadora não podem ser alterados.')
-    if (item.emergencyApproved && (patch.value !== item.value || patch.commission !== item.commission || patch.payer !== item.payer)) throw new Error('Preserve o valor e a pagadora autorizados pelo Diretor de Operação.')
-    Object.assign(next, { name: patch.name.trim(), identityChecked: true, value: patch.value, commission: patch.commission, payer: patch.payer, rhComplete: true })
+    if (item.status === 'informado' && (patch.value !== item.value || patch.payer !== item.payer)) throw new Error('O pagamento já foi informado. Valores e pagadora não podem ser alterados.')
+    if (item.emergencyApproved && (patch.value !== item.value || patch.payer !== item.payer)) throw new Error('Preserve o valor e a pagadora autorizados pelo Diretor de Operação.')
+    Object.assign(next, { name: patch.name.trim(), identityChecked: true, value: patch.value, payer: patch.payer, rhComplete: true })
     if (action === 'preparar_rh') {
       if (item.workflow === 'weekly') {
         if (!budget) throw new Error('Recalcule a alçada antes de completar o cadastro.')
@@ -101,13 +101,13 @@ export function transition(item: Extra, role: Role, action: Action, patch: Parti
 
 export function samples(today: string, weekly = false): Extra[] {
   const at = `${today}T09:00:00-03:00`
-  const base: Extra = { id: 'EX-101', unit: 'Meet & Eat', day: today, period: 'Almoço', sequence: 1, sector: 'Cozinha Meet', job: 'Auxiliar de cozinha', reason: 'Folga', detail: 'Cobertura do almoço · exemplo', requester: 'Líder · demonstração', name: '', value: 0, commission: 0, payer: 'Casa', identityChecked: false, emergency: false, emergencyApproved: false, rhComplete: false, receipt: false, status: 'solicitado', stageAt: at, history: [{ at, actor: 'Líder', text: 'Solicitação criada · dados de exemplo' }] }
-  const awaiting = transition({ ...base, id: 'EX-102', sector: 'Salão', job: 'Garçom', period: 'Jantar' }, 'RH', 'preparar_rh', { name: 'Pessoa exemplo A', value: 15000, commission: 3000, identityChecked: true, payer: 'Casa' }, '', at)
+  const base: Extra = { id: 'EX-101', unit: 'Meet & Eat', day: today, period: 'Almoço', sector: 'Cozinha Meet', job: 'Auxiliar de cozinha', reason: 'Folga', detail: 'Cobertura do almoço · exemplo', requester: 'Líder · demonstração', name: '', value: 0, payer: 'Casa', identityChecked: false, emergency: false, emergencyApproved: false, rhComplete: false, receipt: false, status: 'solicitado', stageAt: at, history: [{ at, actor: 'Líder', text: 'Solicitação criada · dados de exemplo' }] }
+  const awaiting = transition({ ...base, id: 'EX-102', sector: 'Salão', job: 'Garçom', period: 'Jantar' }, 'RH', 'preparar_rh', { name: 'Pessoa exemplo A', value: 15000, identityChecked: true, payer: 'Casa' }, '', at)
   const approved = transition(awaiting, 'Diretor de Operação', 'aprovar_operacao', {}, 'Cobertura aprovada · demonstração', at)
-  const reserved = transition({ ...approved, id: 'EX-103', sector: 'Bar', job: 'Bartender', name: 'Pessoa exemplo B', commission: 0 }, 'Financeiro', 'reservar', {}, '', at)
+  const reserved = transition({ ...approved, id: 'EX-103', sector: 'Bar', job: 'Bartender', name: 'Pessoa exemplo B' }, 'Financeiro', 'reservar', {}, '', at)
   const reported = transition({ ...reserved, id: 'EX-104', name: 'Pessoa exemplo C', sector: 'Portaria', job: 'Porteiro', value: 18000 }, 'Caixa', 'informar', { receipt: true }, '', at)
   const emergency = { ...base, id: 'EX-105', name: 'Pessoa exemplo D', value: 16000, emergency: true, reason: 'Falta / atestado', detail: 'Ausência informada no dia. Aguardando autorização prévia.', history: [{ at, actor: 'Caixa' as Role, text: 'Demanda emergencial registrada · aguarda Diretor de Operação' }] }
-  const thirdParty = { ...approved, id: 'EX-106', unit: 'Match Point', sector: 'Limpeza', job: 'Auxiliar de limpeza', name: 'Pessoa exemplo E', payer: 'Estaff' as const, value: 15000, commission: 0 }
+  const thirdParty = { ...approved, id: 'EX-106', unit: 'Match Point', sector: 'Limpeza', job: 'Auxiliar de limpeza', name: 'Pessoa exemplo E', payer: 'Estaff' as const, value: 15000 }
   if (weekly) return [
     { ...base, workflow: 'weekly', value: 15000 },
     { ...base, id: 'EX-102', workflow: 'weekly', value: 510000, status: 'aguardando_diretoria', detail: 'Exemplo de pedido acima da alçada. Diretoria decide antes do RH.', history: [{ at, actor: 'Líder', text: 'Solicitação acima da alçada · aguarda diretoria' }] },

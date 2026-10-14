@@ -1,6 +1,9 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { PinLoginClient } from './_components/pin-login-client'
 
+// Employee/PIN availability changes independently of application deployments.
+export const dynamic = 'force-dynamic'
+
 export default async function PinLoginPage() {
   const supabase = createServiceClient()
 

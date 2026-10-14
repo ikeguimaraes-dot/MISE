@@ -13,21 +13,17 @@ export async function canAccessUnit(unitId: string): Promise<AuthResult> {
     return { ok: false, status: 403, message: 'Cozinheiros não têm acesso ao relatório diário.' }
   }
 
-  if (session.role === 'admin') {
-    return { ok: true, employeeId: session.employeeId, role: 'admin' }
-  }
-
-  // gerente: verificar se o unit_id corresponde à unidade do funcionário
+  // Revalidate active employee even when the session has an administrative role.
   const supabase = createServiceClient()
   const { data: emp } = await supabase
     .from('employees')
-    .select('unit_id')
+    .select('unit_id,ativo')
     .eq('id', session.employeeId)
     .single()
 
-  if (!emp || emp.unit_id !== unitId) {
+  if (!emp?.ativo || (session.role !== 'admin' && emp.unit_id !== unitId)) {
     return { ok: false, status: 403, message: 'Sem permissão para esta unidade.' }
   }
 
-  return { ok: true, employeeId: session.employeeId, role: 'gerente' }
+  return { ok: true, employeeId: session.employeeId, role: session.role }
 }

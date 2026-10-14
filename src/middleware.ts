@@ -22,7 +22,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Machine-to-machine routes authenticate with their own Bearer token.
-  if (request.nextUrl.pathname.startsWith('/api/integrations/kph/')) {
+  if (
+    request.nextUrl.pathname.startsWith('/api/integrations/kph/') ||
+    (request.method === 'GET' && request.nextUrl.pathname === '/api/extras/notifications')
+  ) {
     return NextResponse.next()
   }
 

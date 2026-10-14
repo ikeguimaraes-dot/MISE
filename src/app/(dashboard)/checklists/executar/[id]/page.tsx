@@ -1,19 +1,12 @@
+import {checklistPageExecution} from '@/lib/checklist-page-access'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { ExecucaoClient } from './_components/execucao-client'
 
 export default async function ExecutarChecklistPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: executionId } = await params
-  const supabase = createServiceClient()
+  const {db:supabase,execution:execucao}=await checklistPageExecution(executionId,true);
 
-  const { data: execucao, error } = await supabase
-    .schema('mise')
-    .from('checklist_executions')
-    .select('*')
-    .eq('id', executionId)
-    .single()
-
-  if (error || !execucao) notFound()
   if (execucao.status === 'concluido') {
     // Already done - redirect to report
     const { redirect } = await import('next/navigation')
@@ -30,7 +23,7 @@ export default async function ExecutarChecklistPage({ params }: { params: Promis
   const { data: items } = await supabase
     .schema('mise')
     .from('checklist_template_items')
-    .select('*')
+    .select('*').eq('ativo',true)
     .eq('template_id', execucao.template_id)
     .order('ordem')
 

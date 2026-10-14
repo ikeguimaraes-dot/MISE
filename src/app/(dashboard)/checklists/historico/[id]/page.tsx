@@ -1,3 +1,4 @@
+import {checklistPageExecution} from '@/lib/checklist-page-access'
 import { createServiceClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -36,16 +37,8 @@ function renderResposta(resposta: Record<string, unknown> | null, tipo: string, 
 
 export default async function ChecklistExecucaoRelatorioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = createServiceClient()
+  const {db:supabase,execution:execucao}=await checklistPageExecution(id,false);
 
-  const { data: execucao, error } = await supabase
-    .schema('mise')
-    .from('checklist_executions')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (error || !execucao) notFound()
 
   const [
     { data: template },

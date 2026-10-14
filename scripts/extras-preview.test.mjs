@@ -6,7 +6,7 @@ const fixtures = () => samples('2026-10-02')
 test('normal flow requires each role and Finance confirmation after receipt', () => {
   let item = fixtures()[0]
   assert.throws(() => transition(item, 'Caixa', 'informar', { receipt: true }))
-  item = transition(item, 'RH', 'preparar_rh', { name: 'Exemplo', value: 15000, commission: 3050, payer: 'Casa', identityChecked: true })
+  item = transition(item, 'RH', 'preparar_rh', { name: 'Exemplo', value: 15000, payer: 'Casa', identityChecked: true })
   assert.throws(() => transition(item, 'Caixa', 'informar', { receipt: true }))
   assert.equal(item.status, 'aguardando_diretor')
   assert.throws(() => transition(item, 'Financeiro', 'reservar'))
@@ -21,7 +21,7 @@ test('normal flow requires each role and Finance confirmation after receipt', ()
   item = transition(item, 'Financeiro', 'conferir')
   assert.equal(item.status, 'pago')
   assert.equal(item.history.length, 6)
-  assert.equal(money(item.value + item.commission), 'R$\u00a0180,50')
+  assert.equal(money(item.value), 'R$\u00a0150,00')
   for (const role of ['Líder', 'RH', 'Financeiro', 'Caixa', 'Diretor de Operação']) assert.deepEqual(actionsFor(item, role), [])
 })
 test('emergency needs PRIOR approval, then RH regularization and Finance confirmation', () => {
@@ -32,8 +32,8 @@ test('emergency needs PRIOR approval, then RH regularization and Finance confirm
   item = transition(item, 'Diretor de Operação', 'aprovar_emergencia', {}, 'Cobertura aprovada previamente')
   item = transition(item, 'Caixa', 'informar', { receipt: true })
   assert.throws(() => transition(item, 'Financeiro', 'conferir'))
-  assert.throws(() => transition(item, 'RH', 'regularizar', { name: item.name, value: 99999, commission: 0, identityChecked: true, payer: 'Casa' }))
-  item = transition(item, 'RH', 'regularizar', { name: item.name, value: item.value, commission: item.commission, identityChecked: true, payer: 'Casa' })
+  assert.throws(() => transition(item, 'RH', 'regularizar', { name: item.name, value: 99999, identityChecked: true, payer: 'Casa' }))
+  item = transition(item, 'RH', 'regularizar', { name: item.name, value: item.value, identityChecked: true, payer: 'Casa' })
   item = transition(item, 'Financeiro', 'conferir')
   assert.equal(item.status, 'pago')
   assert.equal(item.emergency, true)
@@ -48,8 +48,8 @@ test('Estaff does not enter the cashier payment path', () => {
 })
 test('invalid values and missing identity cannot pass RH', () => {
   const item = fixtures()[0]
-  for (const value of [NaN, -1, 0, Infinity, 150.5]) assert.throws(() => transition(item, 'RH', 'preparar_rh', { name: 'Exemplo', value, commission: 0, payer: 'Casa', identityChecked: true }))
-  assert.throws(() => transition(item, 'RH', 'preparar_rh', { name: 'Exemplo', value: 15000, commission: 0, payer: 'Casa', identityChecked: false }))
+  for (const value of [NaN, -1, 0, Infinity, 150.5]) assert.throws(() => transition(item, 'RH', 'preparar_rh', { name: 'Exemplo', value, payer: 'Casa', identityChecked: true }))
+  assert.throws(() => transition(item, 'RH', 'preparar_rh', { name: 'Exemplo', value: 15000, payer: 'Casa', identityChecked: false }))
 })
 test('cancellation and refusal require a reason and preserve the audit trail', () => {
   const item = fixtures()[0]

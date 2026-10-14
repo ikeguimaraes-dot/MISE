@@ -1,10 +1,15 @@
+import {checklistPageContext} from '@/lib/checklist-page-access'
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { ClipboardCheck, Plus } from 'lucide-react'
 import { TemplateCard } from './_components/template-card'
 
 export default async function ChecklistsPage() {
-  const supabase = createServiceClient()
+  const ctx=await checklistPageContext(),supabase=ctx.db;
+  let templateQuery=supabase.schema('mise').from('checklist_templates').select('*').eq('ativo',true).eq('modulo','RITMO').order('nome');
+  let execQuery=supabase.schema('mise').from('checklist_executions').select('template_id,percentual,concluido_em').eq('status','concluido').order('concluido_em',{ascending:false});
+  if(ctx.session.role!=='admin'){templateQuery=templateQuery.or(`unit_id.eq.${ctx.unitId},unit_id.is.null`);execQuery=execQuery.eq('unit_id',ctx.unitId);}
+
 
   const [
     { data: templates, error: errTemplates },
@@ -12,9 +17,9 @@ export default async function ChecklistsPage() {
     { data: lastExecs, error: errExecs },
     { data: units, error: errUnits },
   ] = await Promise.all([
-    supabase.schema('mise').from('checklist_templates').select('*').eq('ativo', true).eq('modulo', 'RITMO').order('nome'),
-    supabase.schema('mise').from('checklist_template_items').select('template_id', { count: 'exact' }),
-    supabase.schema('mise').from('checklist_executions').select('template_id, percentual, concluido_em').eq('status', 'concluido').order('concluido_em', { ascending: false }),
+    templateQuery,
+    supabase.schema('mise').from('checklist_template_items').select('template_id', { count: 'exact' }).eq('ativo',true),
+    execQuery,
     supabase.from('units').select('id, name').eq('active', true),
   ])
 
@@ -49,13 +54,13 @@ export default async function ChecklistsPage() {
           </h1>
           <p className="mt-1 text-sm text-ink-muted">Checklists operacionais — substitui o Checkbits</p>
         </div>
-        <Link
+        {ctx.session.role==='admin'&&<Link
           href="/checklists/novo"
           className="flex items-center gap-2 rounded-md bg-ember px-4 py-2 text-sm font-medium text-ember-ink hover:bg-ember-hover transition-colors"
         >
           <Plus className="h-4 w-4" />
           Novo Checklist
-        </Link>
+        </Link>}
       </div>
 
       {!templates || templates.length === 0 ? (
