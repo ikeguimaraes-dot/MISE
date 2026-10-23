@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Check, ClipboardCheck
 import { navigationGroups, workspaceHref, type WorkspaceRole } from './navigation'
 
 const modules = [
+  { name: 'Eventos', eyebrow: 'EVENTOS', description: 'Planeje e acompanhe as ordens de serviço.', href: '/eventos', icon: CalendarDays, action: 'Acessar eventos', color: 'purple' },
   { name: 'Etiquetas', eyebrow: 'IDENTIFICAÇÃO', description: 'Da preparação à mesa, tudo identificado.', href: '/etiquetas', icon: Tag, action: 'Emitir etiqueta', color: 'orange' },
   { name: 'Validades', eyebrow: 'SEGURANÇA ALIMENTAR', description: 'O próximo vencimento merece sua atenção.', href: '/validades', icon: Clock3, action: 'Conferir validades', color: 'green' },
   { name: 'Checklists', eyebrow: 'RITMO', description: 'O padrão da casa, em cada detalhe.', href: '/checklists', icon: ClipboardCheck, action: 'Acessar rotinas', color: 'blue' },

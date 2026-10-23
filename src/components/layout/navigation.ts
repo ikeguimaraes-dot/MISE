@@ -1,4 +1,4 @@
-import { House, LayoutDashboard, Tag, Clock3, ClipboardCheck, BookOpen, ShieldCheck, Bell, Package, FolderTree, Users, UserCheck, Printer, KeyRound, FileChartColumn, ChefHat, PackageCheck, ClipboardList, type LucideIcon } from 'lucide-react'
+import { CalendarDays, House, LayoutDashboard, Tag, Clock3, ClipboardCheck, BookOpen, ShieldCheck, Bell, Package, FolderTree, Users, UserCheck, Printer, KeyRound, FileChartColumn, ChefHat, PackageCheck, ClipboardList, type LucideIcon } from 'lucide-react'
 
 export type WorkspaceRole = 'admin' | 'gerente' | 'cozinheiro'
 export type NavigationItem = { href: string; label: string; description: string; icon: LucideIcon; access?: 'gestor' | 'admin'; upcoming?: boolean; parent?: string }
@@ -10,6 +10,7 @@ export const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     { href: '/alertas', label: 'Central de alertas', description: 'Pontos de atenção da operação', icon: Bell, access: 'admin' },
   ] },
   { label: 'Operação', items: [
+    { href: '/eventos', label: 'Eventos', description: 'Ordens de serviço e gestão de eventos', icon: CalendarDays },
     { href: '/etiquetas', label: 'Etiquetas', description: 'Identificação e rastreabilidade', icon: Tag },
     { href: '/validades', label: 'Validades', description: 'Controle de vencimentos', icon: Clock3 },
     { href: '/checklists', label: 'Checklists', description: 'RITMO · rotinas e conferências', icon: ClipboardCheck },
