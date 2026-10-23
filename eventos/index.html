@@ -929,10 +929,10 @@
           <div id="os-resumo"
             style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center">
             <div style="flex:1;min-width:200px">
-              <div id="resumo-nome" style="font-family:'Playfair Display',serif;font-size:20px;color:var(--gold)">—
-              </div>
+              <div id="resumo-casa" style="font-family:'Playfair Display',serif;font-size:20px;color:var(--gold)">Casa não definida</div>
               <div id="resumo-espaco" style="font-size:12px;color:var(--text-muted);margin-top:2px">Espaço não definido
               </div>
+              <div id="resumo-nome" style="display:none;font-size:12px;color:var(--text-muted);margin-top:4px"></div>
             </div>
             <div style="display:flex;gap:24px;flex-wrap:wrap">
               <div style="text-align:center">
@@ -978,10 +978,12 @@
                     </select>
                   </div>
                   <div class="field">
-                    <label for="f-espacos">Ambiente</label>
-                    <select id="f-espacos" disabled>
-                      <option value="">Selecione a casa primeiro</option>
-                    </select>
+                    <label id="ambientes-label">Ambientes</label>
+                    <input type="hidden" id="f-espacos">
+                    <div id="f-ambientes" role="group" aria-labelledby="ambientes-label"
+                      style="display:flex;flex-wrap:wrap;gap:10px 18px;min-height:42px;align-items:center">
+                      <span style="color:var(--text-muted);font-size:13px">Selecione a casa primeiro</span>
+                    </div>
                   </div>
                 </div>
                 <div class="field-row col2" style="margin-bottom:14px">
@@ -1978,18 +1980,39 @@
       'Frêneze': ['Salão Térreo', 'Sala 33', 'Deck'],
     };
 
+    function sincronizarAmbientes() {
+      const selecionados = Array.from(document.querySelectorAll('#f-ambientes input:checked'), input => input.value);
+      document.getElementById('f-espacos').value = selecionados.join('\n');
+      atualizarResumo();
+    }
+
     function atualizarAmbientes(valorSalvo = '') {
       const casa = document.getElementById('f-casa').value;
-      const select = document.getElementById('f-espacos');
+      const container = document.getElementById('f-ambientes');
       const ambientes = AMBIENTES_POR_CASA[casa] || [];
-      select.replaceChildren(new Option(casa ? 'Selecione o ambiente' : 'Selecione a casa primeiro', ''));
-      ambientes.forEach(ambiente => select.add(new Option(ambiente, ambiente)));
-      if (valorSalvo && !ambientes.includes(valorSalvo)) {
-        select.add(new Option(valorSalvo + ' (registro anterior)', valorSalvo));
+      const salvos = valorSalvo.split(/\r?\n/).map(valor => valor.trim()).filter(Boolean);
+      container.replaceChildren();
+      if (!casa) {
+        const aviso = document.createElement('span');
+        aviso.textContent = 'Selecione a casa primeiro';
+        container.append(aviso);
+      } else {
+        [...new Set([...ambientes, ...salvos])].forEach(ambiente => {
+          const label = document.createElement('label');
+          label.style.cssText = 'display:flex;align-items:center;gap:8px;margin:0;font-size:13px;text-transform:none;letter-spacing:normal;cursor:pointer';
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.value = ambiente;
+          input.checked = salvos.includes(ambiente);
+          input.style.cssText = 'width:16px;height:16px;margin:0;accent-color:var(--gold)';
+          input.addEventListener('change', sincronizarAmbientes);
+          const texto = document.createElement('span');
+          texto.textContent = ambiente + (ambientes.includes(ambiente) ? '' : ' (registro anterior)');
+          label.append(input, texto);
+          container.append(label);
+        });
       }
-      select.value = valorSalvo;
-      select.disabled = !casa;
-      atualizarResumo();
+      sincronizarAmbientes();
     }
 
     function resetForm() {
@@ -2175,7 +2198,8 @@
     // ══════════════════════════════════════════════════════════════════════
     // ── RESUMO AO VIVO ──
     function atualizarResumo() {
-      const nome = document.getElementById('f-nome')?.value || '—';
+      const nome = document.getElementById('f-nome')?.value || '';
+      const casa = document.getElementById('f-casa')?.value || 'Casa não definida';
       const espaco = document.getElementById('f-espacos')?.value || 'Espaço não definido';
       const dataRaw = document.getElementById('f-data-inicio')?.value;
       const hrIni = document.getElementById('f-hora-inicio')?.value || '—';
@@ -2192,8 +2216,10 @@
         diaFmt = DIAS[WEEKDAY_MAP[wdShort] ?? d.getDay()];
       }
 
-      document.getElementById('resumo-nome').textContent = nome || '—';
-      document.getElementById('resumo-espaco').textContent = espaco.split('\n')[0] || 'Espaço não definido';
+      document.getElementById('resumo-casa').textContent = casa;
+      document.getElementById('resumo-nome').textContent = nome;
+      document.getElementById('resumo-nome').style.display = nome ? 'block' : 'none';
+      document.getElementById('resumo-espaco').textContent = espaco.split('\n').join(' • ');
       document.getElementById('resumo-data').textContent = dataFmt;
       document.getElementById('resumo-dia').textContent = diaFmt;
       document.getElementById('resumo-horario').textContent = `${hrIni} → ${hrFim}`;

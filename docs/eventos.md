@@ -46,7 +46,9 @@ Não copie a pasta `eventos` para `public`: o acesso deve passar pela sessão.
 ## Casas e ambientes
 
 O formulário oferece Meet, Match, Madonna e Frêneze, com ambientes dependentes
-da casa. O ambiente usa a coluna existente `espacos`, sem migração de banco.
+da casa. Caixas de seleção permitem combinar espaços na mesma O.S. O cabeçalho
+mostra a casa acima de todos os espaços selecionados. Os ambientes são gravados
+separados por quebras de linha. O campo usa a coluna existente `espacos`, sem migração de banco.
 Textos de espaços de O.S. antigas são preservados ao editar. O dashboard permite
 filtrar a consulta e os indicadores por casa, com opção de todas as casas.
 

@@ -74,12 +74,18 @@ function eventosFunction(start, end, globals) {
   return context
 }
 
-test('ambientes seguem a casa, preservam registros antigos e limpam ao trocar de casa', () => {
+test('ambientes permitem seleção múltipla, preservam registros antigos e limpam ao trocar casa', () => {
+  const element = () => ({ children: [], style: {}, append(...children) { this.children.push(...children) }, replaceChildren() { this.children = [] }, addEventListener() {} })
   const casa = { value: 'MEET & EAT' }
-  const select = { options: [], value: '', replaceChildren(...options) { this.options = options }, add(option) { this.options.push(option) } }
+  const hidden = { value: '' }
+  const container = element()
+  const inputs = () => container.children.flatMap(label => label.children).filter(node => node.type === 'checkbox')
   const context = eventosFunction('    const AMBIENTES_POR_CASA', '    function resetForm()', {
-    document: { getElementById: id => id === 'f-casa' ? casa : select },
-    Option: function(text, value) { this.text = text; this.value = value },
+    document: {
+      getElementById: id => ({ 'f-casa': casa, 'f-espacos': hidden, 'f-ambientes': container })[id],
+      createElement: element,
+      querySelectorAll: () => inputs().filter(input => input.checked),
+    },
     atualizarResumo() {},
   })
   for (const [house, expected] of Object.entries({
@@ -89,18 +95,40 @@ test('ambientes seguem a casa, preservam registros antigos e limpam ao trocar de
   })) {
     casa.value = house
     context.atualizarAmbientes()
-    assert.deepEqual(select.options.slice(1).map(o => o.value), expected)
+    assert.deepEqual(inputs().map(o => o.value), expected)
   }
+  inputs()[0].checked = true
+  inputs()[2].checked = true
+  context.sincronizarAmbientes()
+  assert.equal(hidden.value, 'Salão Térreo\nDeck')
+  context.atualizarAmbientes(hidden.value)
+  assert.deepEqual(inputs().filter(o => o.checked).map(o => o.value), ['Salão Térreo', 'Deck'])
+  inputs()[0].checked = false
+  context.sincronizarAmbientes()
+  assert.equal(hidden.value, 'Deck')
   context.atualizarAmbientes('Espaço antigo / área reservada')
-  assert.equal(select.value, 'Espaço antigo / área reservada')
-  assert.ok(select.options.some(o => o.value === select.value))
+  assert.equal(hidden.value, 'Espaço antigo / área reservada')
   casa.value = 'Match'
   context.atualizarAmbientes()
-  assert.equal(select.value, '')
-  assert.equal(select.options.length, 2)
+  assert.equal(hidden.value, '')
+  assert.equal(inputs().length, 1)
   casa.value = ''
   context.atualizarAmbientes()
-  assert.equal(select.disabled, true)
+  assert.equal(inputs().length, 0)
+  assert.equal(hidden.value, '')
+})
+
+test('cabeçalho mostra a casa e todos os ambientes selecionados', () => {
+  const elements = Object.fromEntries(['f-nome', 'f-casa', 'f-espacos', 'resumo-nome', 'resumo-casa', 'resumo-espaco', 'resumo-data', 'resumo-dia', 'resumo-horario', 'resumo-pax'].map(id => [id, { style: {} }]))
+  elements['f-casa'].value = 'MEET & EAT'
+  elements['f-espacos'].value = 'Salão Térreo\nRooftop'
+  const context = eventosFunction('    function atualizarResumo()', '    // Verificar sessão ao carregar', {
+    document: { getElementById: id => elements[id] },
+  })
+  context.atualizarResumo()
+  assert.equal(elements['resumo-casa'].textContent, 'MEET & EAT')
+  assert.equal(elements['resumo-espaco'].textContent, 'Salão Térreo • Rooftop')
+  assert.equal(elements['resumo-nome'].style.display, 'none')
 })
 
 test('dashboard filtra a consulta por casa e atualiza os indicadores e a tabela', async () => {
