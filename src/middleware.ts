@@ -21,6 +21,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Eventos validates the MISE session in each handler and returns JSON on expiry.
+  if (['/api/eventos/session', '/api/eventos/data'].includes(request.nextUrl.pathname)) {
+    return NextResponse.next()
+  }
+
   // Machine-to-machine routes authenticate with their own Bearer token.
   if (
     request.nextUrl.pathname.startsWith('/api/integrations/kph/') ||
