@@ -65,3 +65,65 @@ test('HTML importado contém JavaScript válido e nenhum JWT de serviço', () =>
     assert.notEqual(JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString()).role, 'service_role')
   }
 })
+
+function eventosFunction(start, end, globals) {
+  const html = fs.readFileSync(new URL('../eventos/index.html', import.meta.url), 'utf8')
+  const source = html.slice(html.indexOf(start), html.indexOf(end, html.indexOf(start)))
+  const context = vm.createContext(globals)
+  vm.runInContext(source, context)
+  return context
+}
+
+test('ambientes seguem a casa, preservam registros antigos e limpam ao trocar de casa', () => {
+  const casa = { value: 'MEET & EAT' }
+  const select = { options: [], value: '', replaceChildren(...options) { this.options = options }, add(option) { this.options.push(option) } }
+  const context = eventosFunction('    const AMBIENTES_POR_CASA', '    function resetForm()', {
+    document: { getElementById: id => id === 'f-casa' ? casa : select },
+    Option: function(text, value) { this.text = text; this.value = value },
+    atualizarResumo() {},
+  })
+  for (const [house, expected] of Object.entries({
+    'MEET & EAT': ['Salão Térreo', 'Bar Secreto', 'Rooftop'],
+    Match: ['Salão Térreo'], 'MADONNA CUCINA': ['Salão Térreo', 'Superior'],
+    'Frêneze': ['Salão Térreo', 'Sala 33', 'Deck'],
+  })) {
+    casa.value = house
+    context.atualizarAmbientes()
+    assert.deepEqual(select.options.slice(1).map(o => o.value), expected)
+  }
+  context.atualizarAmbientes('Espaço antigo / área reservada')
+  assert.equal(select.value, 'Espaço antigo / área reservada')
+  assert.ok(select.options.some(o => o.value === select.value))
+  casa.value = 'Match'
+  context.atualizarAmbientes()
+  assert.equal(select.value, '')
+  assert.equal(select.options.length, 2)
+  casa.value = ''
+  context.atualizarAmbientes()
+  assert.equal(select.disabled, true)
+})
+
+test('dashboard filtra a consulta por casa e atualiza os indicadores e a tabela', async () => {
+  const elements = { 'dashboard-casa': { value: 'Match' } }
+  for (const id of ['stat-total', 'stat-confirmados', 'stat-rascunhos', 'stat-realizados']) elements[id] = {}
+  const events = [{ casa: 'Match', status: 'confirmado' }, { casa: 'Frêneze', status: 'rascunho' }]
+  let rendered
+  const context = eventosFunction('    async function loadDashboard()', '    async function loadEventos()', {
+    document: { getElementById: id => elements[id] },
+    SBQuery: class {
+      eq(key, value) { this.house = value; return this }
+      order() { return this }
+      async get() { return { data: events.filter(e => !this.house || e.casa === this.house) } }
+    },
+    renderEventosTable(id, rows) { rendered = rows },
+  })
+  await context.loadDashboard()
+  assert.equal(elements['stat-total'].textContent, 1)
+  assert.equal(elements['stat-confirmados'].textContent, 1)
+  assert.equal(elements['stat-rascunhos'].textContent, 0)
+  assert.deepEqual(rendered, [events[0]])
+  elements['dashboard-casa'].value = ''
+  await context.loadDashboard()
+  assert.equal(elements['stat-total'].textContent, 2)
+  assert.deepEqual(rendered, events)
+})

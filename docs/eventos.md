@@ -53,3 +53,10 @@ npm run build
 Para validar o fluxo completo, entrar no MISE, abrir Eventos e autenticar com
 uma conta existente de Eventos. Conferir listagem, formulário, impressão e,
 para administradores dos dois sistemas, gerenciamento de usuários.
+
+## Casas e ambientes
+
+O formulário oferece Meet, Match, Madonna e Frêneze, com ambientes dependentes
+da casa. O ambiente usa a coluna existente `espacos`, sem migração de banco.
+Textos de espaços de O.S. antigas são preservados ao editar. O dashboard permite
+filtrar a consulta e os indicadores por casa, com opção de todas as casas.

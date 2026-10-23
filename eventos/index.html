@@ -845,6 +845,16 @@
             <div class="page-title">Dashboard</div>
             <div class="page-sub">Visão geral dos eventos Grupo HOS</div>
           </div>
+          <div class="field" style="max-width:300px;margin-bottom:20px">
+            <label for="dashboard-casa">Casa</label>
+            <select id="dashboard-casa" onchange="loadDashboard()">
+              <option value="">Todas as casas</option>
+              <option>MEET &amp; EAT</option>
+              <option>Match</option>
+              <option>MADONNA CUCINA</option>
+              <option>Frêneze</option>
+            </select>
+          </div>
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-label">Total de Eventos</div>
@@ -892,6 +902,8 @@
               <option value="">Todas as casas</option>
               <option>MEET & EAT</option>
               <option>MADONNA CUCINA</option>
+              <option>Match</option>
+              <option>Frêneze</option>
             </select>
             <select id="filtro-status" onchange="aplicarFiltros()"
               style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px">
@@ -1001,6 +1013,8 @@
               <select id="modal-casa">
                 <option>MEET & EAT</option>
                 <option>MADONNA CUCINA</option>
+                <option>Match</option>
+                <option>Frêneze</option>
                 <option>Todas</option>
               </select>
             </div>
@@ -1117,11 +1131,22 @@
                 <div class="field-row col2" style="margin-bottom:14px">
                   <div class="field">
                     <label>Casa</label>
-                    <select id="f-casa">
+                    <select id="f-casa" onchange="atualizarAmbientes()">
+                      <option value="">Selecione a casa</option>
                       <option>MEET & EAT</option>
                       <option>MADONNA CUCINA</option>
+                      <option>Match</option>
+                      <option>Frêneze</option>
                     </select>
                   </div>
+                  <div class="field">
+                    <label for="f-espacos">Ambiente</label>
+                    <select id="f-espacos" disabled>
+                      <option value="">Selecione a casa primeiro</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-row col2" style="margin-bottom:14px">
                   <div class="field">
                     <label>Tipo de Evento</label>
                     <select id="f-tipo">
@@ -1395,11 +1420,6 @@
               </div>
               <div class="section-body">
                 <div class="field-row col2" style="margin-bottom:14px">
-                  <div class="field">
-                    <label>Espaços Utilizados</label>
-                    <textarea id="f-espacos" rows="2"
-                      placeholder="Ex: MEET - Rooftop&#10;MEET - Bar Secreto"></textarea>
-                  </div>
                   <div class="field">
                     <label>Acesso de Entrada</label>
                     <select id="f-acesso">
@@ -1746,8 +1766,11 @@
     // ══════════════════════════════════════════════════════════════════════
     async function loadDashboard() {
       const q = new SBQuery('eventos');
-      q.order('data_inicio', { ascending: false }).limit(50);
+      const casa = document.getElementById('dashboard-casa').value;
+      if (casa) q.eq('casa', casa);
+      q.order('data_inicio', { ascending: false });
       const { data, error } = await q.get();
+      if (document.getElementById('dashboard-casa').value !== casa) return;
       if (error) { document.getElementById('dashboard-table-body').innerHTML = `<div class="loading">Erro: ${error}</div>`; return; }
 
       todosEventos = data || [];
@@ -1916,6 +1939,10 @@
       const nome = document.getElementById('f-nome').value.trim();
       if (!nome) { showOSAlert("Informe o nome do evento.", "error"); return; }
 
+      if (!document.getElementById('f-casa').value || !document.getElementById('f-espacos').value) {
+        showOSAlert('Selecione a casa e o ambiente.', 'error'); return;
+      }
+
       const brigada = getBrigadaData();
       const menuBar = getMenuData('menu-bar-body');
       const barInfo = document.getElementById('f-bar-info').value;
@@ -2026,6 +2053,7 @@
         </div>
         <div class="os-meta">
           <div class="os-meta-item">Casa: <strong>${e.casa || '—'}</strong></div>
+          <div class="os-meta-item">Ambiente: <strong>${String(e.espacos || '—').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]))}</strong></div>
           <div class="os-meta-item">Data: <strong>${e.data_inicio ? new Date(e.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'}</strong></div>
           <div class="os-meta-item">Horário: <strong>${e.hora_inicio || '—'} → ${e.hora_termino || '—'}</strong></div>
           <div class="os-meta-item">Pax: <strong>${e.num_convidados || '—'}</strong></div>
@@ -2037,7 +2065,7 @@
         <div class="info-grid">
           ${infoItem('Tema', e.tema)} ${infoItem('Contato', e.contato)}
           ${infoItem('Pagamento', e.situacao_pagamento)} ${infoItem('Comercial', e.responsavel_comercial)}
-          ${infoItem('Operacional', e.responsavel_operacional)} ${infoItem('Espaços', e.espacos)}
+          ${infoItem('Operacional', e.responsavel_operacional)} ${infoItem('Ambiente', e.espacos)}
         </div>
         ${e.briefing_cliente ? `<div style="margin-top:12px;padding:12px;background:var(--surface2);border-radius:6px;font-size:13px;color:var(--text-muted)">${e.briefing_cliente}</div>` : ''}
       `)}
@@ -2156,7 +2184,7 @@
       document.getElementById('f-operacional').value = e.responsavel_operacional || '';
       document.getElementById('f-status').value = e.status || 'confirmado';
       document.getElementById('f-briefing').value = e.briefing_cliente || '';
-      document.getElementById('f-espacos').value = e.espacos || '';
+      atualizarAmbientes(e.espacos || '');
       document.getElementById('f-acesso').value = e.acesso_entrada || '';
       document.getElementById('f-acesso-obs').value = e.acesso_obs || '';
       document.getElementById('f-mobiliario').value = e.mobiliario || '';
@@ -2202,6 +2230,27 @@
     // ══════════════════════════════════════════════════════════════════════
     // UTILITIES
     // ══════════════════════════════════════════════════════════════════════
+    const AMBIENTES_POR_CASA = {
+      'MEET & EAT': ['Salão Térreo', 'Bar Secreto', 'Rooftop'],
+      'Match': ['Salão Térreo'],
+      'MADONNA CUCINA': ['Salão Térreo', 'Superior'],
+      'Frêneze': ['Salão Térreo', 'Sala 33', 'Deck'],
+    };
+
+    function atualizarAmbientes(valorSalvo = '') {
+      const casa = document.getElementById('f-casa').value;
+      const select = document.getElementById('f-espacos');
+      const ambientes = AMBIENTES_POR_CASA[casa] || [];
+      select.replaceChildren(new Option(casa ? 'Selecione o ambiente' : 'Selecione a casa primeiro', ''));
+      ambientes.forEach(ambiente => select.add(new Option(ambiente, ambiente)));
+      if (valorSalvo && !ambientes.includes(valorSalvo)) {
+        select.add(new Option(valorSalvo + ' (registro anterior)', valorSalvo));
+      }
+      select.value = valorSalvo;
+      select.disabled = !casa;
+      atualizarResumo();
+    }
+
     function resetForm() {
       editingId = null;
       document.getElementById('os-form-title').textContent = 'Nova Ordem de Serviço';
@@ -2214,6 +2263,7 @@
           const el = document.getElementById(id);
           if (el) el.value = '';
         });
+      atualizarAmbientes();
       document.getElementById('brigada-body').innerHTML = '';
       BRIGADA_PADRÃO.forEach(b => addBrigadaRow(b));
       document.getElementById('menu-bar-body').innerHTML = '';
