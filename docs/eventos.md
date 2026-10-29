@@ -4,26 +4,30 @@ Aplicação importada de `https://github.com/grupomeeteat-lang/hos-oseventos.git
 commit `2fbdf0e5a8b37a74991f69ea21f322ccdbf01ac1`, na pasta `eventos/`.
 O código está incorporado ao repositório do MISE, sem submódulo Git.
 
-## Acesso integrado
+## Interface nativa
 
-O menu e o cartão inicial abrem `/eventos`. A página e `/api/eventos/app`
-exigem sessão do MISE. O HTML consulta `/api/eventos/session` e abre diretamente
-o dashboard, usando o nome e o nível da pessoa autenticada no MISE, inclusive
-para sessões de PIN. Não há segundo login nem dependência de conta em Eventos.
+O menu e o cartão inicial abrem `/eventos`, renderizado em React dentro do layout
+MISE, sem iframe, segundo menu ou login separado. A listagem reúne busca, filtros
+por casa/status, indicadores, consulta, criação, edição, exclusão e impressão.
+Os formulários preservam ambientes antigos, brigada, menus e anexos.
 
-As leituras e alterações de O.S. passam por `/api/eventos/data`. Cada requisição
-valida novamente a sessão e as permissões no servidor:
+As leituras e alterações de O.S. passam por `/api/eventos/data`, com sessão e
+permissões verificadas no servidor: administrador pode consultar/criar/editar/excluir;
+gerente pode consultar/criar/editar; cozinheiro pode consultar e imprimir.
+A autoria é definida pela sessão. As rotas HTML e de sessão legadas permanecem
+por compatibilidade, mas não são carregadas pela página nativa.
 
-- Administrador: consultar, criar, editar e excluir O.S.
-- Gerente: consultar, criar e editar O.S.
-- Cozinheiro/equipe operacional: consultar e imprimir.
+## Valores financeiros
 
-A API acessa somente a tabela `eventos`, aceita filtros limitados e exige o ID
-para editar/excluir. A autoria de novas O.S. vem da sessão, não do navegador.
-Usuários e acessos são administrados no MISE. O atalho “Equipe no MISE” leva ao
-cadastro existente. Contas e senhas antigas do sistema independente não foram
-alteradas. A rota administrativa legada `/api/eventos/admin` permanece restrita
-à dupla autorização anterior, mas não participa mais da interface integrada.
+Cada O.S. tem `custo_evento` e `valor_cobrado`, ambos `numeric(12,2)` opcionais,
+em reais. Estão disponíveis no cadastro, edição, consulta, impressão e em duas
+colunas da listagem. Ausência aparece como “Não informado”; zero é R$ 0,00.
+O formulário aceita valores brasileiros, por exemplo `1.250,50`. A API e o banco
+rejeitam valores negativos; a API rejeita mais de duas casas decimais.
+
+A migração está em `eventos/supabase/migrations/20261029190936_eventos_valores.sql`
+e foi aplicada ao projeto de **Eventos** `rpavxnjchfmeiacnumpk`. Não aplicar essa
+migração ao projeto principal do MISE. Registros existentes não foram alterados.
 
 ## Configuração
 
@@ -36,7 +40,7 @@ EVENTOS_SUPABASE_SERVICE_ROLE_KEY=<chave de serviço do projeto de eventos>
 
 A chave nunca deve usar prefixo `NEXT_PUBLIC_`. Agora ela é necessária para todas
 as consultas de Eventos. O servidor acessa o projeto `rpavxnjchfmeiacnumpk`;
-nenhuma tabela foi migrada ou alterada. O navegador não recebe a chave nem um
+os registros continuam no banco de Eventos, com as duas novas colunas financeiras. O navegador não recebe a chave nem um
 token de autenticação do sistema antigo. Respostas de sessão e dados não são
 armazenadas em cache.
 
@@ -71,3 +75,16 @@ npm run build
 Validar no navegador: entrar no MISE, abrir Eventos sem novo login, conferir
 listagem, filtro de casas, criação/edição conforme o perfil e impressão.
 Sessão expirada deve impedir novas consultas e pedir a entrada no MISE.
+
+## Verificação desta alteração
+
+- 21 testes de Eventos aprovados; TypeScript e build com Webpack aprovados.
+- Prévia isolada no navegador: edição, salvamento, reabertura e colunas monetárias,
+  incluindo custo zero e preservação das informações gerais do menu.
+- Consulta ao banco confirmou 58 OS e ambas as novas colunas sem valores iniciais.
+- Teste de escrita em registro real foi bloqueado pela revisão automática e não
+  executado; a validação de escrita utilizou API simulada e testes unitários.
+- Advisor apontou condição preexistente: `public.eventos` sem RLS. A integração
+  MISE valida acesso no servidor, mas isso não protege acesso direto ao banco.
+  Revisar as integrações legadas e habilitar RLS antes de inserir dados financeiros
+  confidenciais. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public

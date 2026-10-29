@@ -3,7 +3,7 @@ import { getMiseSession } from '@/lib/session'
 export const dynamic = 'force-dynamic'
 const endpoint = 'https://rpavxnjchfmeiacnumpk.supabase.co/rest/v1/eventos'
 const fields = new Set([
-  'status', 'casa', 'espacos', 'tipo_evento', 'tema', 'nome_evento', 'contato',
+  'custo_evento', 'valor_cobrado', 'status', 'casa', 'espacos', 'tipo_evento', 'tema', 'nome_evento', 'contato',
   'situacao_pagamento', 'responsavel_comercial', 'responsavel_operacional',
   'data_inicio', 'hora_inicio', 'hora_termino', 'num_convidados', 'briefing_cliente',
   'acesso_entrada', 'acesso_obs', 'mobiliario', 'mobiliario_obs', 'fotografia',
@@ -48,6 +48,13 @@ async function handle(request: Request) {
       if (!input || typeof input !== 'object' || Array.isArray(input)) return fail('Dados inválidos.', 400)
       body = Object.fromEntries(Object.entries(input).filter(([name]) => fields.has(name)))
       if (!Object.keys(body).length) return fail('Informe os dados da O.S.', 400)
+      for (const field of ['custo_evento', 'valor_cobrado']) {
+        const value = body[field]
+        if (value !== undefined && value !== null && (
+          typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 9999999999.99 ||
+          Math.abs(value * 100 - Math.round(value * 100)) > 0.0001
+        )) return fail('Informe custo e valor cobrado válidos, não negativos e com até duas casas decimais.', 400)
+      }
       if (method === 'POST') {
         if (typeof body.nome_evento !== 'string' || !body.nome_evento.trim()) return fail('Informe o nome do evento.', 400)
         body.criado_por = session.employeeName

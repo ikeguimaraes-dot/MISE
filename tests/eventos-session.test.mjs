@@ -105,3 +105,35 @@ test('HTML entra automaticamente com MISE e não pede credenciais de Eventos', a
   assert.equal(elements['screen-app'].style.display, 'none')
   assert.equal(elements['login-error'].textContent, 'Sessão expirada')
 })
+
+test('valores financeiros aceitam zero, centavos e ausência sem perder campos operacionais', async () => {
+  for (const method of ['POST', 'PATCH']) {
+    for (const value of [null, 0, 1250.5, 9999999999.99]) {
+      const { route: api, calls } = route('data')
+      const body = { nome_evento: 'Evento', custo_evento: value, valor_cobrado: value, menu_bar: [{ servico: '_info', descritivo: 'Manter serviço' }] }
+      assert.equal((await api[method](request(method, method === 'PATCH' ? '?id=eq.1' : '', body))).status, 200)
+      const saved = JSON.parse(calls[0].options.body)
+      assert.equal(saved.custo_evento, value)
+      assert.equal(saved.valor_cobrado, value)
+      assert.deepEqual(saved.menu_bar, body.menu_bar)
+    }
+  }
+})
+
+test('API rejeita valores negativos, inválidos, fora do limite ou com frações de centavo', async () => {
+  for (const field of ['custo_evento', 'valor_cobrado']) {
+    for (const value of [-1, '1.250,50', '', true, {}, 0.001, 10000000000]) {
+      const { route: api, calls } = route('data')
+      assert.equal((await api.PATCH(request('PATCH', '?id=eq.1', { [field]: value }))).status, 400)
+      assert.equal(calls.length, 0)
+    }
+  }
+})
+
+test('edições parciais não apagam valores financeiros anteriores', async () => {
+  const { route: api, calls } = route('data')
+  await api.PATCH(request('PATCH', '?id=eq.1', { status: 'pago' }))
+  const saved = JSON.parse(calls[0].options.body)
+  assert.equal(Object.hasOwn(saved, 'custo_evento'), false)
+  assert.equal(Object.hasOwn(saved, 'valor_cobrado'), false)
+})
