@@ -11,6 +11,12 @@ MISE, sem iframe, segundo menu ou login separado. A listagem reúne busca, filtr
 por casa/status, indicadores, consulta, criação, edição, exclusão e impressão.
 Os formulários preservam ambientes antigos, brigada, menus e anexos.
 
+O menu Eventos expande quatro submenus nativos: Dashboard (`/eventos/dashboard`),
+Eventos (`/eventos/lista`), Nova O.S. (`/eventos/nova`) e Equipe no MISE
+(`/eventos/equipe`). Dashboard apresenta indicadores e os oito eventos mais recentes;
+a lista apresenta todas as OS. Nova O.S. e Equipe exigem perfil gestor também
+no servidor. A equipe reutiliza o cadastro do MISE dentro da navegação de Eventos.
+
 As leituras e alterações de O.S. passam por `/api/eventos/data`, com sessão e
 permissões verificadas no servidor: administrador pode consultar/criar/editar/excluir;
 gerente pode consultar/criar/editar; cozinheiro pode consultar e imprimir.

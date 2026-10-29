@@ -1,4 +1,4 @@
-import { CalendarDays, House, LayoutDashboard, Tag, Clock3, ClipboardCheck, BookOpen, ShieldCheck, Bell, Package, FolderTree, Users, UserCheck, Printer, KeyRound, FileChartColumn, ChefHat, PackageCheck, ClipboardList, type LucideIcon } from 'lucide-react'
+import { CalendarDays, Plus, House, LayoutDashboard, Tag, Clock3, ClipboardCheck, BookOpen, ShieldCheck, Bell, Package, FolderTree, Users, UserCheck, Printer, KeyRound, FileChartColumn, ChefHat, PackageCheck, ClipboardList, type LucideIcon } from 'lucide-react'
 
 export type WorkspaceRole = 'admin' | 'gerente' | 'cozinheiro'
 export type NavigationItem = { href: string; label: string; description: string; icon: LucideIcon; access?: 'gestor' | 'admin'; upcoming?: boolean; parent?: string }
@@ -11,6 +11,10 @@ export const navigationGroups: { label: string; items: NavigationItem[] }[] = [
   ] },
   { label: 'Operação', items: [
     { href: '/eventos', label: 'Eventos', description: 'Ordens de serviço e gestão de eventos', icon: CalendarDays },
+    { href: '/eventos/dashboard', label: 'Dashboard', description: 'Indicadores e eventos recentes', icon: LayoutDashboard, parent: '/eventos' },
+    { href: '/eventos/lista', label: 'Eventos', description: 'Todas as ordens de serviço de eventos', icon: ClipboardList, parent: '/eventos' },
+    { href: '/eventos/nova', label: 'Nova O.S.', description: 'Cadastrar uma ordem de serviço de evento', icon: Plus, parent: '/eventos', access: 'gestor' },
+    { href: '/eventos/equipe', label: 'Equipe no MISE', description: 'Gerenciar a equipe e seus acessos no MISE', icon: Users, parent: '/eventos', access: 'gestor' },
     { href: '/etiquetas', label: 'Etiquetas', description: 'Identificação e rastreabilidade', icon: Tag },
     { href: '/validades', label: 'Validades', description: 'Controle de vencimentos', icon: Clock3 },
     { href: '/checklists', label: 'Checklists', description: 'RITMO · rotinas e conferências', icon: ClipboardCheck },

@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
 import { casas, statuses, groups, text, money, parseMoney, rows, type Evento, type Field } from './model'
@@ -14,7 +15,8 @@ async function api(query = '', method = 'GET', body?: Evento): Promise<Evento[]>
 const date = (value: unknown) => text(value).split('-').reverse().join('/') || '—'
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Não foi possível concluir a operação.'
 
-export default function EventosClient({ role }: { role: string }) {
+export default function EventosClient({ role, page = 'list' }: { role: string; page?: 'list' | 'dashboard' | 'new' }) {
+  const router = useRouter()
   const [events, setEvents] = useState<Evento[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -22,8 +24,8 @@ export default function EventosClient({ role }: { role: string }) {
   const [house, setHouse] = useState('')
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
-  const [selected, setSelected] = useState<Evento | null>(null)
-  const [mode, setMode] = useState<'list' | 'view' | 'edit'>('list')
+  const [selected, setSelected] = useState<Evento | null>(page === 'new' ? { status: 'confirmado' } : null)
+  const [mode, setMode] = useState<'list' | 'view' | 'edit'>(page === 'new' ? 'edit' : 'list')
   const [busy, setBusy] = useState(false)
   const canEdit = role === 'admin' || role === 'gerente'
   async function refresh() {
@@ -47,20 +49,22 @@ export default function EventosClient({ role }: { role: string }) {
   }
   const filtered = events.filter(e => (!house || e.casa === house) && (!status || e.status === status) && text(e.nome_evento).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
   return <section className="mise-events" aria-label="Eventos">
-    <header className="events-heading"><div><p className="events-eyebrow"><CalendarDays size={14} /> OPERAÇÃO</p><h1>{mode === 'list' ? 'Eventos' : mode === 'edit' ? selected?.id ? 'Editar O.S.' : 'Nova O.S.' : text(selected?.nome_evento)}</h1><p className="events-subtitle">Ordens de serviço e planejamento dos eventos.</p></div>
-      <div className="events-actions no-print">{mode === 'list' ? canEdit && <button className="events-primary" disabled={busy} onClick={() => { setSelected({ status: 'confirmado' }); setMode('edit'); setError(''); setNotice('') }}><Plus size={16} /> Nova O.S.</button> : <><button disabled={busy} onClick={() => { if (mode === 'edit' && !window.confirm('Voltar à lista? Alterações não salvas serão descartadas.')) return; setMode('list'); setSelected(null); setError('') }}><ArrowLeft size={16} /> Voltar</button>{mode === 'view' && <><button onClick={() => window.print()}><Printer size={16} /> Imprimir</button>{canEdit && <button className="events-primary" onClick={() => setMode('edit')}>Editar O.S.</button>}</>}</>}</div>
+    <header className="events-heading"><div><p className="events-eyebrow"><CalendarDays size={14} /> OPERAÇÃO</p><h1>{mode === 'list' ? page === 'dashboard' ? 'Dashboard de eventos' : 'Eventos' : mode === 'edit' ? selected?.id ? 'Editar O.S.' : 'Nova O.S.' : text(selected?.nome_evento)}</h1><p className="events-subtitle">Ordens de serviço e planejamento dos eventos.</p></div>
+      <div className="events-actions no-print">{mode === 'list' ? canEdit && <button className="events-primary" disabled={busy} onClick={() => { router.push('/eventos/nova') }}><Plus size={16} /> Nova O.S.</button> : <><button disabled={busy} onClick={() => { if (mode === 'edit' && !window.confirm('Voltar à lista? Alterações não salvas serão descartadas.')) return; if (page === 'new') { router.push('/eventos/lista'); return }; setMode('list'); setSelected(null); setError('') }}><ArrowLeft size={16} /> Voltar</button>{mode === 'view' && <><button onClick={() => window.print()}><Printer size={16} /> Imprimir</button>{canEdit && <button className="events-primary" onClick={() => setMode('edit')}>Editar O.S.</button>}</>}</>}</div>
     </header>
     {error && <div className="events-error" role="alert">{error} {mode === 'list' && <button onClick={refresh}>Tentar novamente</button>}</div>}
     {notice && <p role="status" className="events-notice">{notice}</p>}
     {mode === 'list' ? <>
       <div className="events-stats">{[['Eventos', filtered.length], ['Confirmados', filtered.filter(e => e.status === 'confirmado').length], ['Em andamento', filtered.filter(e => e.status === 'em_andamento').length], ['Pagos', filtered.filter(e => e.status === 'pago').length]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong></div>)}</div>
       <div className="events-filters"><label>Casa<select value={house} onChange={e => setHouse(e.target.value)}><option value="">Todas as casas</option>{Array.from(new Set([...Object.keys(casas), ...events.map(e => text(e.casa)).filter(Boolean)])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos os status</option>{Object.entries(statuses).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label><label className="events-search">Buscar evento<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nome do evento ou cliente" /></label><button disabled={loading || busy} onClick={refresh}>Atualizar</button></div>
-      <div className="events-table-wrap"><table><thead><tr>{['Evento', 'Casa', 'Data', 'Pax', 'Responsável op.', 'Criado por', 'Custo', 'Valor cobrado', 'Status', 'Ações'].map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={10}>Carregando eventos…</td></tr> : filtered.length === 0 ? <tr><td colSpan={10}>Nenhum evento encontrado.</td></tr> : filtered.map(e => <tr key={e.id}><td><strong>{text(e.nome_evento)}</strong><small>{text(e.tipo_evento)}</small></td><td>{text(e.casa)}</td><td className="nowrap">{date(e.data_inicio)}</td><td>{text(e.num_convidados) || '—'}</td><td>{text(e.responsavel_operacional) || '—'}</td><td>{text(e.criado_por) || '—'}</td><td className="events-money">{money(e.custo_evento)}</td><td className="events-money">{money(e.valor_cobrado)}</td><td><span className="events-status">{statuses[text(e.status)] || text(e.status)}</span></td><td><div className="events-actions"><button disabled={busy} onClick={() => open(e.id!)}>Ver</button>{canEdit && <button disabled={busy} onClick={() => open(e.id!, true)}>Editar</button>}{role === 'admin' && <button className="events-danger" disabled={busy} onClick={() => remove(e)} aria-label={`Excluir ${text(e.nome_evento)}`}>Excluir</button>}</div></td></tr>)}</tbody></table></div><p className="events-subtitle">{filtered.length} evento(s) · Valores em reais</p>
+      {page === 'dashboard' && <div className="events-heading"><h2>Eventos recentes</h2><button onClick={() => router.push('/eventos/lista')}>Ver todos os eventos</button></div>}
+      <div className="events-table-wrap"><table><thead><tr>{['Evento', 'Casa', 'Data', 'Pax', 'Responsável op.', 'Criado por', 'Custo', 'Valor cobrado', 'Status', 'Ações'].map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={10}>Carregando eventos…</td></tr> : filtered.length === 0 ? <tr><td colSpan={10}>Nenhum evento encontrado.</td></tr> : (page === 'dashboard' ? filtered.slice(0, 8) : filtered).map(e => <tr key={e.id}><td><strong>{text(e.nome_evento)}</strong><small>{text(e.tipo_evento)}</small></td><td>{text(e.casa)}</td><td className="nowrap">{date(e.data_inicio)}</td><td>{text(e.num_convidados) || '—'}</td><td>{text(e.responsavel_operacional) || '—'}</td><td>{text(e.criado_por) || '—'}</td><td className="events-money">{money(e.custo_evento)}</td><td className="events-money">{money(e.valor_cobrado)}</td><td><span className="events-status">{statuses[text(e.status)] || text(e.status)}</span></td><td><div className="events-actions"><button disabled={busy} onClick={() => open(e.id!)}>Ver</button>{canEdit && <button disabled={busy} onClick={() => open(e.id!, true)}>Editar</button>}{role === 'admin' && <button className="events-danger" disabled={busy} onClick={() => remove(e)} aria-label={`Excluir ${text(e.nome_evento)}`}>Excluir</button>}</div></td></tr>)}</tbody></table></div><p className="events-subtitle">{filtered.length} evento(s) · Valores em reais</p>
     </> : selected && <EventForm key={`${selected.id ?? 'new'}-${mode}`} event={selected} readOnly={mode === 'view'} onSave={async body => {
       setBusy(true)
       try {
         const [saved] = await api(selected.id ? `?id=eq.${selected.id}` : '', selected.id ? 'PATCH' : 'POST', body)
         if (!saved) throw new Error('A O.S. não foi encontrada para salvar. Atualize a listagem.')
+        if (page === 'new') { router.push('/eventos/lista'); return }
         setSelected(null); setMode('list'); await refresh(); setNotice('O.S. salva com sucesso.')
       } finally { setBusy(false) }
     }} />}
