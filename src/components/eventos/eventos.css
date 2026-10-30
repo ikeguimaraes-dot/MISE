@@ -14,7 +14,7 @@
 .events-print-actions{justify-content:flex-end;margin:18px 0}
 @media print{
   .mise-events button,.mise-events input[type=file],.events-save,.events-error,.events-notice{display:none!important}
-  .events-brigade-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 14px}
+  .events-brigade-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}
   .events-brigade-grid .events-row{display:grid;grid-template-columns:minmax(0,1fr) 52px;align-items:start;gap:6px;margin:0;padding:0 0 6px;break-inside:avoid}
   .events-brigade-grid .events-row label{min-width:0;font-size:10px;gap:3px}
   .events-brigade-grid .events-value{font-size:11px;min-height:0}
