@@ -205,3 +205,18 @@ test('pagamento parcial exige valor positivo e persiste centavos no financeiro',
   assert.equal(JSON.parse(calls[0].options.body).valor_pago_parcial, 100.5)
   assert.equal(JSON.parse(calls[0].options.body).versao, undefined)
 })
+
+test('extras validam pagamento integral, parcial e não pago sem alterar dados operacionais', async () => {
+  const { route: api, calls } = route('data')
+  for (const body of [
+    { extras_valor: -1 }, { extras_valor: 100 }, { extras_status: 'Pago integralmente' },
+    { extras_valor: 100, extras_status: 'Pagamento parcial', extras_valor_pago: 0 },
+    { extras_valor: 100, extras_status: 'Pagamento parcial', extras_valor_pago: 100 },
+    { extras_valor: 100, extras_status: 'Pago integralmente', extras_meio: 'Inválido' },
+  ]) assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', body))).status, 400)
+  assert.equal(calls.length, 0)
+  for (const extras_status of ['Pago integralmente', 'Pagamento parcial', 'Não pago']) {
+    assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { extras_valor: 100.5, extras_status, extras_valor_pago: 25.25, extras_meio: 'Pix', extras_local: 'Via Financeiro Adm' }))).status, 200)
+  }
+  assert.equal(JSON.parse(calls[0].options.body).extras_valor, 100.5)
+})

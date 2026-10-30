@@ -176,3 +176,19 @@ a versão operacional. Migração: `20261030130336_eventos_documentos_privados.s
 
 Validação: 36 testes de Eventos e build aprovados; PDF sintético enviado, lido por
 URL assinada, acesso público bloqueado e arquivo sintético removido ao concluir.
+
+## Extras e posição do salvamento
+
+Salvar O.S. fica depois de Documento. Valores do evento inclui um valor de extras,
+com pagamento integral, parcial ou não pago, valor parcial, meio, local e detalhes.
+O total da listagem, consulta e impressão soma A&B + Locação + Extras.
+Os seis campos `extras_*` são exclusivos do financeiro e não incrementam a versão.
+Pagamento parcial exige valor maior que zero e menor que o valor dos extras.
+Migração aplicada ao projeto de Eventos: `20261030194858_eventos_extras.sql`.
+Validação: 38 testes, TypeScript, build Webpack e teste de persistência/versão em
+uma tabela temporária, sem modificar OS reais.
+
+Consultas de Eventos repetem uma vez em caso de falha de rede no envio ou na
+leitura da resposta. Escritas não repetem automaticamente para evitar duplicação;
+a mensagem orienta conferir o registro antes de reenviar. Erros da API, incluindo
+sessão expirada, preservam a mensagem e não são repetidos. Validação: 41 testes.

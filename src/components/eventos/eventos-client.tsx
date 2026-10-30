@@ -3,16 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
-import { casas, statuses, groups, text, money, eventTotal, eventSaveRequest, financialFields, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
+import { casas, statuses, groups, text, money, eventTotal, eventSaveRequest, financialFields, extraFields, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
 import EventDocument from './event-document'
+import { eventApi as api } from './client-api'
 
-async function api(query = '', method = 'GET', body?: Evento): Promise<Evento[]> {
-  const response = await fetch(`/api/eventos/data${query}`, { method, cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.message || 'Não foi possível concluir a operação.')
-  return data
-}
 const date = (value: unknown) => text(value).split('-').reverse().join('/') || '—'
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : 'Não foi possível concluir a operação.'
 
@@ -61,7 +56,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
       <div className="events-stats">{[['Eventos', filtered.length], ['Confirmados', filtered.filter(e => e.status === 'confirmado').length], ['Em andamento', filtered.filter(e => e.status === 'em_andamento').length], ['Pagos', filtered.filter(e => e.status === 'pago').length]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong></div>)}</div>
       <div className="events-filters"><label>Casa<select value={house} onChange={e => setHouse(e.target.value)}><option value="">Todas as casas</option>{Array.from(new Set([...Object.keys(casas), ...events.map(e => text(e.casa)).filter(Boolean)])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos os status</option>{Object.entries(statuses).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label><label className="events-search">Buscar evento<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nome do evento ou cliente" /></label><button disabled={loading || busy} onClick={refresh}>Atualizar</button></div>
       {page === 'dashboard' && <div className="events-heading"><h2>Eventos recentes</h2><button onClick={() => router.push('/eventos/lista')}>Ver todos os eventos</button></div>}
-      <div className="events-table-wrap"><table><thead><tr>{['Evento', 'Casa', 'Data', 'Pax', 'Responsável op.', 'Criado por', 'Custo A&B', 'Locação', 'Total', 'Status', 'Versão', 'Ações'].map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={12}>Carregando eventos…</td></tr> : filtered.length === 0 ? <tr><td colSpan={12}>Nenhum evento encontrado.</td></tr> : (page === 'dashboard' ? filtered.slice(0, 8) : filtered).map(e => <tr key={e.id}><td><strong>{text(e.nome_evento)}</strong><small>{text(e.tipo_evento)}</small></td><td>{text(e.casa)}</td><td className="nowrap">{date(e.data_inicio)}</td><td>{text(e.num_convidados) || '—'}</td><td>{text(e.responsavel_operacional) || '—'}</td><td>{text(e.criado_por) || '—'}</td><td className="events-money">{money(e.custo_evento)}</td><td className="events-money">{money(e.valor_cobrado)}</td><td className="events-money"><strong>{money(eventTotal(e.custo_evento, e.valor_cobrado))}</strong></td><td><span className="events-status">{statuses[text(e.status)] || text(e.status)}</span></td><td className="nowrap">V{Number(e.versao ?? 1)}</td><td><div className="events-actions"><button disabled={busy} onClick={() => open(e.id!)}>Ver</button>{canEdit && <button disabled={busy} onClick={() => open(e.id!, true)}>Editar</button>}{role === 'admin' && <button className="events-danger" disabled={busy} onClick={() => remove(e)} aria-label={`Excluir ${text(e.nome_evento)}`}>Excluir</button>}</div></td></tr>)}</tbody></table></div><p className="events-subtitle">{filtered.length} evento(s) · Valores em reais</p>
+      <div className="events-table-wrap"><table><thead><tr>{['Evento', 'Casa', 'Data', 'Pax', 'Responsável op.', 'Criado por', 'Custo A&B', 'Locação', 'Total', 'Status', 'Versão', 'Ações'].map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={12}>Carregando eventos…</td></tr> : filtered.length === 0 ? <tr><td colSpan={12}>Nenhum evento encontrado.</td></tr> : (page === 'dashboard' ? filtered.slice(0, 8) : filtered).map(e => <tr key={e.id}><td><strong>{text(e.nome_evento)}</strong><small>{text(e.tipo_evento)}</small></td><td>{text(e.casa)}</td><td className="nowrap">{date(e.data_inicio)}</td><td>{text(e.num_convidados) || '—'}</td><td>{text(e.responsavel_operacional) || '—'}</td><td>{text(e.criado_por) || '—'}</td><td className="events-money">{money(e.custo_evento)}</td><td className="events-money">{money(e.valor_cobrado)}</td><td className="events-money"><strong>{money(eventTotal(e.custo_evento, e.valor_cobrado, e.extras_valor))}</strong></td><td><span className="events-status">{statuses[text(e.status)] || text(e.status)}</span></td><td className="nowrap">V{Number(e.versao ?? 1)}</td><td><div className="events-actions"><button disabled={busy} onClick={() => open(e.id!)}>Ver</button>{canEdit && <button disabled={busy} onClick={() => open(e.id!, true)}>Editar</button>}{role === 'admin' && <button className="events-danger" disabled={busy} onClick={() => remove(e)} aria-label={`Excluir ${text(e.nome_evento)}`}>Excluir</button>}</div></td></tr>)}</tbody></table></div><p className="events-subtitle">{filtered.length} evento(s) · Valores em reais</p>
     </> : selected && <EventForm key={`${selected.id ?? 'new'}-${mode}`} event={selected} readOnly={mode === 'view'} onSave={async body => {
       setBusy(true)
       try {
@@ -87,7 +82,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
 }
 
 function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento; readOnly: boolean; onSave: (body: Evento) => Promise<Evento>; onFinancialSave: (body: Evento) => Promise<Evento> }) {
-  const [draft, setDraft] = useState<Evento>(() => ({ ...event, valor_pago_parcial: event.valor_pago_parcial == null ? '' : Number(event.valor_pago_parcial).toFixed(2).replace('.', ','), nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
+  const [draft, setDraft] = useState<Evento>(() => ({ ...event, extras_valor: event.extras_valor == null ? '' : Number(event.extras_valor).toFixed(2).replace('.', ','), extras_valor_pago: event.extras_valor_pago == null ? '' : Number(event.extras_valor_pago).toFixed(2).replace('.', ','), valor_pago_parcial: event.valor_pago_parcial == null ? '' : Number(event.valor_pago_parcial).toFixed(2).replace('.', ','), nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const saveInFlight = useRef(false)
@@ -107,11 +102,12 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
   const set = (key: string, value: unknown) => { if (financialFields.includes(key as typeof financialFields[number])) { setFinancialDirty(true); setFinancialNotice('') } else setDirty(true); setDraft(d => ({ ...d, [key]: key === 'nome_evento' ? text(value).toLocaleUpperCase('pt-BR') : value })) }
   const spaces = text(draft.espacos).split('\n').filter(Boolean)
   function field([key, label, kind, options]: Field) {
+    if (key === 'extras_valor_pago' && draft.extras_status !== 'Pagamento parcial') return null
     if (key === 'valor_pago_parcial' && draft.pagamento_status !== 'Pagamento parcial' && !text(draft.valor_pago_parcial)) return null
     if (kind === 'total') {
       let total = '—'
-      try { total = money(readOnly ? eventTotal(event.custo_evento, event.valor_cobrado) : eventTotal(parseMoney(text(draft.custo_evento)), parseMoney(text(draft.valor_cobrado)))) } catch { /* Wait for valid monetary input. */ }
-      return <label key={key}>{label}<output className="events-value" aria-live="polite">{total}</output><small>Custo A&amp;B + Locação</small></label>
+      try { total = money(readOnly ? eventTotal(event.custo_evento, event.valor_cobrado, event.extras_valor) : eventTotal(parseMoney(text(draft.custo_evento)), parseMoney(text(draft.valor_cobrado)), parseMoney(text(draft.extras_valor)))) } catch { /* Wait for valid monetary input. */ }
+      return <label key={key}>{label}<output className="events-value" aria-live="polite">{total}</output><small>Custo A&amp;B + Locação + Extras</small></label>
     }
     const value = text(draft[key])
     return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input autoCapitalize={key === 'nome_evento' ? 'characters' : undefined} required={key === 'nome_evento' || (key === 'valor_pago_parcial' && draft.pagamento_status === 'Pagamento parcial')} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
@@ -159,6 +155,8 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
     try {
       const financial = financialPayload(draft)
       if (financial.pagamento_status === 'Pagamento parcial' && !(Number(financial.valor_pago_parcial) > 0)) throw new Error('Informe o valor já pago no pagamento parcial.')
+      if (financial.extras_status === 'Pagamento parcial' && !(Number(financial.extras_valor_pago) > 0 && Number(financial.extras_valor_pago) < Number(financial.extras_valor))) throw new Error('O valor parcial dos extras deve ser maior que zero e menor que o valor dos extras.')
+      if (financial.extras_valor != null && !financial.extras_status) throw new Error('Informe a situação do pagamento dos extras.')
       await onFinancialSave(financial)
       setFinancialDirty(false)
       setFinancialNotice('Valores e pagamento salvos. A versão da O.S. foi mantida.')
@@ -175,15 +173,16 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
     {collection('brigada', 'Brigada', [['funcao', 'Função'], ['qtd', 'Quantidade', 'number']])}
     {(['menu_bar', 'menu_cozinha'] as const).map(key => collection(key, key === 'menu_bar' ? 'Menu bar' : 'Menu cozinha', [['categoria', 'Categoria'], ['servico', 'Serviço'], ['hr_ini', 'Início', 'time'], ['hr_fim', 'Fim', 'time'], ['descritivo', 'Descrição'], ['obs', 'Observações']]))}
     {attachment('layout_anexos')}
+    <EventDocument eventId={draft.id} readOnly={readOnly} />
     {error && <p className="events-error" role="alert">{error}</p>}
     {!readOnly && <div className="events-save"><span>{uploading ? 'Carregando anexos…' : 'Salva os dados operacionais da O.S.'}</span><button className="events-primary" type="submit">{saving ? 'Salvando…' : 'Salvar O.S.'}</button></div>}
   </fieldset></form>
-  <EventDocument eventId={draft.id} readOnly={readOnly} />
   <form onSubmit={submitFinancial} className="events-financial-form" aria-label="Valores do evento">
     <fieldset disabled={saving || financialSaving || uploading || (!readOnly && !draft.id)} className="events-fieldset">
       <section className="events-card"><h2>Valores do evento</h2><p className="events-subtitle">Salvamento independente, sem alterar a versão da O.S.</p>
         {!readOnly && !draft.id && <p role="status" className="events-subtitle">Salve a O.S. acima para habilitar os valores e pagamentos.</p>}
         <div className="events-grid events-menu-info">{groups.find(group => group.title === 'Valores do evento')?.fields.map(field)}</div>
+        <h3 className="events-menu-info">Extras</h3><div className="events-grid events-menu-info">{extraFields.map(field)}</div>
       </section>
       {attachment('comprovantes_pagamento')}
       {financialError && <p className="events-error" role="alert">{financialError}</p>}

@@ -59,3 +59,12 @@ test('valor parcial pertence somente ao salvamento financeiro e aceita formato b
   assert.equal(exports.financialPayload(event).valor_pago_parcial, 1250.5)
   assert.equal(Object.hasOwn(exports.operationalPayload(event), 'valor_pago_parcial'), false)
 })
+
+test('extras somam ao total e são salvos somente no financeiro', () => {
+  assert.equal(exports.eventTotal(0.1, 0.2, 0.3), 0.6)
+  assert.equal(exports.eventTotal(null, null, 50), 50)
+  const draft = { extras_valor: '1.250,50', extras_valor_pago: '250,25', extras_status: 'Pagamento parcial', extras_meio: 'Pix', extras_local: 'Via Financeiro Adm' }
+  assert.equal(exports.financialPayload(draft).extras_valor, 1250.5)
+  assert.equal(exports.financialPayload(draft).extras_valor_pago, 250.25)
+  assert.equal(Object.keys(exports.operationalPayload(draft)).length, 0)
+})

@@ -3,7 +3,7 @@ import { getMiseSession } from '@/lib/session'
 export const dynamic = 'force-dynamic'
 const endpoint = 'https://rpavxnjchfmeiacnumpk.supabase.co/rest/v1/eventos'
 const fields = new Set([
-  'custo_evento', 'valor_cobrado', 'valor_pago_parcial', 'status', 'casa', 'espacos', 'tipo_evento', 'tema', 'nome_evento', 'contato',
+  'extras_valor', 'extras_valor_pago', 'extras_status', 'extras_meio', 'extras_local', 'extras_observacoes', 'custo_evento', 'valor_cobrado', 'valor_pago_parcial', 'status', 'casa', 'espacos', 'tipo_evento', 'tema', 'nome_evento', 'contato',
   'pagamento_status', 'pagamento_meio', 'situacao_pagamento', 'responsavel_comercial', 'responsavel_operacional',
   'data_inicio', 'hora_inicio', 'hora_termino', 'num_convidados', 'briefing_cliente',
   'acesso_entrada', 'acesso_obs', 'mobiliario', 'mobiliario_obs', 'fotografia',
@@ -11,7 +11,7 @@ const fields = new Set([
   'montagem', 'montagem_descricao', 'brigada', 'menu_bar', 'menu_cozinha',
   'campo_livre', 'tempos_movimentos', 'layout_anexos', 'comprovantes_pagamento',
 ])
-const financialFields = new Set(['custo_evento', 'valor_cobrado', 'valor_pago_parcial', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'comprovantes_pagamento'])
+const financialFields = new Set(['extras_valor', 'extras_valor_pago', 'extras_status', 'extras_meio', 'extras_local', 'extras_observacoes', 'custo_evento', 'valor_cobrado', 'valor_pago_parcial', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'comprovantes_pagamento'])
 const headers = { 'Cache-Control': 'private, no-store' }
 const fail = (message: string, status: number) => Response.json({ message }, { status, headers })
 
@@ -61,7 +61,7 @@ async function handle(request: Request) {
       }
       body = Object.fromEntries(Object.entries(input).filter(([name]) => fields.has(name)))
       if (!Object.keys(body).length) return fail('Informe os dados da O.S.', 400)
-      for (const field of ['custo_evento', 'valor_cobrado', 'valor_pago_parcial']) {
+      for (const field of ['custo_evento', 'valor_cobrado', 'valor_pago_parcial', 'extras_valor', 'extras_valor_pago']) {
         const value = body[field]
         if (value !== undefined && value !== null && (
           typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 9999999999.99 ||
@@ -72,6 +72,13 @@ async function handle(request: Request) {
         if (body[name] != null && !(allowed as readonly unknown[]).includes(body[name])) return fail('Opção de pagamento inválida.', 400)
       }
       if (body.pagamento_status === 'Pagamento parcial' && !(typeof body.valor_pago_parcial === 'number' && body.valor_pago_parcial > 0)) return fail('Informe o valor já pago no pagamento parcial.', 400)
+      for (const [name, allowed] of [['extras_status', ['Pago integralmente', 'Pagamento parcial', 'Não pago']], ['extras_meio', ['Cartão', 'Pix', 'Boleto', 'Dinheiro', 'Outro']], ['extras_local', ['Via Financeiro Adm', 'Via Caixa Restaurante', 'Outro']]] as const) {
+        if (body[name] != null && !(allowed as readonly unknown[]).includes(body[name])) return fail('Opção de pagamento dos extras inválida.', 400)
+      }
+      if (body.extras_valor != null && !body.extras_status) return fail('Informe a situação do pagamento dos extras.', 400)
+      if (body.extras_status != null && typeof body.extras_valor !== 'number') return fail('Informe o valor dos extras.', 400)
+      if (body.extras_status === 'Pagamento parcial' && !(typeof body.extras_valor_pago === 'number' && body.extras_valor_pago > 0 && body.extras_valor_pago < Number(body.extras_valor))) return fail('O valor parcial dos extras deve ser maior que zero e menor que o valor dos extras.', 400)
+      if (body.extras_observacoes != null && (typeof body.extras_observacoes !== 'string' || body.extras_observacoes.length > 5000)) return fail('Detalhes dos extras inválidos.', 400)
       if (typeof body.nome_evento === 'string') body.nome_evento = body.nome_evento.trim().toLocaleUpperCase('pt-BR')
       if (method === 'POST') {
         if (typeof body.nome_evento !== 'string' || !body.nome_evento.trim()) return fail('Informe o nome do evento.', 400)

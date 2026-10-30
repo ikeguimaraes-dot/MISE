@@ -8,8 +8,8 @@ export const text = (value: unknown) => value == null ? '' : String(value)
 export const money = (value: unknown) => value == null || value === '' ? 'Não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 // Sum in cents to avoid floating-point artifacts. Missing amounts contribute zero;
 // when neither amount was entered, the total remains unknown.
-export function eventTotal(cost: unknown, rental: unknown): number | null {
-  const values = [cost, rental].filter(value => value != null && value !== '')
+export function eventTotal(cost: unknown, rental: unknown, extras?: unknown): number | null {
+  const values = [cost, rental, extras].filter(value => value != null && value !== '')
   if (!values.length) return null
   return values.reduce<number>((sum, value) => sum + Math.round(Number(value) * 100), 0) / 100
 }
@@ -49,12 +49,14 @@ export function eventSaveRequest(target: SaveTarget, event: Evento) {
   return { query: '', method: 'POST' }
 }
 
-export const financialFields = ['custo_evento', 'valor_cobrado', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'valor_pago_parcial', 'comprovantes_pagamento'] as const
+export const extraFields: Field[] = [['extras_valor', 'Valor dos extras (R$)', 'money'], ['extras_status', 'Pagamento dos extras', 'select', ['Pago integralmente', 'Pagamento parcial', 'Não pago']], ['extras_valor_pago', 'Valor já pago dos extras (R$)', 'money'], ['extras_meio', 'Como foi pago', 'select', ['Cartão', 'Pix', 'Boleto', 'Dinheiro', 'Outro']], ['extras_local', 'Onde foi pago', 'select', ['Via Financeiro Adm', 'Via Caixa Restaurante', 'Outro']], ['extras_observacoes', 'Descrição dos extras / detalhes do pagamento', 'textarea']]
+
+export const financialFields = ['extras_valor', 'extras_status', 'extras_valor_pago', 'extras_meio', 'extras_local', 'extras_observacoes', 'custo_evento', 'valor_cobrado', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'valor_pago_parcial', 'comprovantes_pagamento'] as const
 export function operationalPayload(event: Evento): Evento {
   return Object.fromEntries(Object.entries(event).filter(([key]) => !financialFields.includes(key as typeof financialFields[number])))
 }
 export function financialPayload(event: Evento): Evento {
   return Object.fromEntries(financialFields.filter(key => event[key] !== undefined).map(key => [key,
-    key === 'custo_evento' || key === 'valor_cobrado' || key === 'valor_pago_parcial' ? parseMoney(text(event[key])) : event[key] === '' ? null : event[key],
+    key === 'extras_valor' || key === 'extras_valor_pago' || key === 'custo_evento' || key === 'valor_cobrado' || key === 'valor_pago_parcial' ? parseMoney(text(event[key])) : event[key] === '' ? null : event[key],
   ]))
 }
