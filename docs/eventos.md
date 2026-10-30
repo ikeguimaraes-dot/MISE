@@ -94,3 +94,12 @@ Sessão expirada deve impedir novas consultas e pedir a entrada no MISE.
   MISE valida acesso no servidor, mas isso não protege acesso direto ao banco.
   Revisar as integrações legadas e habilitar RLS antes de inserir dados financeiros
   confidenciais. Referência: https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public
+
+## Nomes e total na interface
+
+`custo_evento` aparece como **Custo A&B** e `valor_cobrado` como **Locação**.
+Os campos existentes são preservados, inclusive os valores já cadastrados.
+A coluna **Total** soma Custo A&B + Locação em centavos; o mesmo total aparece
+no formulário e na consulta/impressão. Não é um campo editável ou persistido.
+Se apenas um valor foi informado, o outro contribui zero; se ambos estão vazios,
+o total mostra “Não informado”.

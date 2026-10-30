@@ -6,6 +6,13 @@ export const casas: Record<string, string[]> = {
 export const statuses: Record<string, string> = { rascunho: 'Rascunho', confirmado: 'Confirmado', em_andamento: 'Em andamento', realizado: 'Realizado', pago: 'Pago', cancelado: 'Cancelado' }
 export const text = (value: unknown) => value == null ? '' : String(value)
 export const money = (value: unknown) => value == null || value === '' ? 'Não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+// Sum in cents to avoid floating-point artifacts. Missing amounts contribute zero;
+// when neither amount was entered, the total remains unknown.
+export function eventTotal(cost: unknown, rental: unknown): number | null {
+  const values = [cost, rental].filter(value => value != null && value !== '')
+  if (!values.length) return null
+  return values.reduce<number>((sum, value) => sum + Math.round(Number(value) * 100), 0) / 100
+}
 export function parseMoney(value: string): number | null {
   const raw = value.trim().replace(/^R\$\s*/, '')
   if (!raw) return null
@@ -26,7 +33,7 @@ export const groups: { title: string; fields: Field[] }[] = [
     ['tema', 'Tema'], ['data_inicio', 'Data do evento', 'date'], ['hora_inicio', 'Hora de início', 'time'], ['hora_termino', 'Hora de término', 'time'],
     ['num_convidados', 'Convidados', 'number'], ['contato', 'Contato / telefone'], ['responsavel_comercial', 'Responsável comercial'], ['responsavel_operacional', 'Responsável operacional'], ['briefing_cliente', 'Briefing do cliente', 'textarea'],
   ] },
-  { title: 'Valores do evento', fields: [['custo_evento', 'Custo do evento (R$)', 'money'], ['valor_cobrado', 'Valor cobrado (R$)', 'money'], ['situacao_pagamento', 'Situação do pagamento', 'select', ['Via Financeiro Adm', 'Via Caixa Restaurante']]] },
+  { title: 'Valores do evento', fields: [['custo_evento', 'Custo A&B (R$)', 'money'], ['valor_cobrado', 'Locação (R$)', 'money'], ['total_evento', 'Total (R$)', 'total'], ['situacao_pagamento', 'Situação do pagamento', 'select', ['Via Financeiro Adm', 'Via Caixa Restaurante']]] },
   { title: 'Montagem e operação', fields: [['montagem', 'Tipo de montagem'], ['montagem_descricao', 'Descrição da montagem', 'textarea'], ['tempos_movimentos', 'Tempos e movimentos', 'textarea'], ['campo_livre', 'Observações e alertas', 'textarea']] },
   { title: 'Infraestrutura', fields: [['acesso_entrada', 'Acesso de entrada'], ['acesso_obs', 'Observações de portaria', 'textarea'], ['mobiliario', 'Mobiliário'], ['mobiliario_obs', 'Observações de mobiliário'], ['fotografia', 'Fotografia / vídeo'], ['valet', 'Valet'], ['artistico', 'Artístico / DJ / banda'], ['artistico_obs', 'Observações do artístico'], ['gerador', 'Gerador'], ['ambulancia', 'Ambulância'], ['menores', 'Menores']] },
 ]

@@ -53,7 +53,7 @@ async function handle(request: Request) {
         if (value !== undefined && value !== null && (
           typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 9999999999.99 ||
           Math.abs(value * 100 - Math.round(value * 100)) > 0.0001
-        )) return fail('Informe custo e valor cobrado válidos, não negativos e com até duas casas decimais.', 400)
+        )) return fail('Informe custo A&B e locação válidos, não negativos e com até duas casas decimais.', 400)
       }
       if (method === 'POST') {
         if (typeof body.nome_evento !== 'string' || !body.nome_evento.trim()) return fail('Informe o nome do evento.', 400)

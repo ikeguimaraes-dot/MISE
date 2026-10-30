@@ -19,3 +19,14 @@ test('dados operacionais e anexos legados podem ser lidos como JSON ou arrays', 
   assert.equal(exports.rows(data), data)
   assert.equal(exports.rows(null).length, 0)
 })
+
+test('total soma A&B e locação em centavos, distinguindo ausência de zero', () => {
+  assert.equal(exports.eventTotal(1250.5, 2500.75), 3751.25)
+  assert.equal(exports.eventTotal(0.1, 0.2), 0.3)
+  assert.equal(exports.eventTotal(null, null), null)
+  assert.equal(exports.eventTotal('', undefined), null)
+  assert.equal(exports.eventTotal(0, null), 0)
+  assert.equal(exports.eventTotal(null, 150), 150)
+  assert.equal(exports.eventTotal(150, null), 150)
+  assert.equal(exports.eventTotal('1250.50', '2500.75'), 3751.25)
+})
