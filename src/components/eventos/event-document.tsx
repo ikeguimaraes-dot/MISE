@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-type Document = { key: string; name: string; size?: number }
-export default function EventDocument({ eventId, readOnly }: { eventId?: number; readOnly: boolean }) {
-  const [documents, setDocuments] = useState<Document[]>([])
+export type EventContract = { key: string; name: string; size?: number }
+export default function EventDocument({ eventId, readOnly, onDocumentsChange }: { eventId?: number; readOnly: boolean; onDocumentsChange?: (documents: EventContract[]) => void }) {
+  const [documents, setDocuments] = useState<EventContract[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -12,6 +12,8 @@ export default function EventDocument({ eventId, readOnly }: { eventId?: number;
   const [reload, setReload] = useState(0)
   const uploadLock = useRef(false)
   const input = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { onDocumentsChange?.(documents) }, [documents, onDocumentsChange])
 
   useEffect(() => {
     if (!eventId) return

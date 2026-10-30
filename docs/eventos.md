@@ -192,3 +192,20 @@ Consultas de Eventos repetem uma vez em caso de falha de rede no envio ou na
 leitura da resposta. Escritas não repetem automaticamente para evitar duplicação;
 a mensagem orienta conferir o registro antes de reenviar. Erros da API, incluindo
 sessão expirada, preservam a mensagem e não são repetidos. Validação: 41 testes.
+
+## Diagramação da impressão
+
+A impressão da OS usa `event-print.tsx`, uma composição própria para A4 com
+margens de 10/11 mm, fontes de 9 pt, resumo no topo e seções compactas. O formulário
+interativo fica oculto no papel. Dados financeiros e comprovantes nunca são
+incluídos nessa composição. Campos e seções operacionais sem conteúdo são omitidos;
+zero continua sendo um valor válido, inclusive para convidados e quantidades.
+
+Brigada usa três pares de função/Qtd. por linha, com cabeçalho único. Menus usam
+tabelas com categoria/serviço, horário e descrição/observações, repetindo o
+cabeçalho entre páginas. Textos completos e informações gerais são preservados.
+As seções podem continuar na página seguinte; a prevenção de quebra fica nos
+itens e títulos, em vez de empurrar seções inteiras. Os nomes dos contratos e
+anexos são incluídos quando há arquivos, reutilizando a consulta já existente.
+
+Validação: prévia visual em largura A4, 45 testes de Eventos, TypeScript e build.

@@ -5,7 +5,8 @@ import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
 import { casas, statuses, groups, text, money, rentalMoney, eventTotal, eventSaveRequest, financialFields, extraFields, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
-import EventDocument from './event-document'
+import EventDocument, { type EventContract } from './event-document'
+import EventPrint from './event-print'
 import { eventApi as api } from './client-api'
 
 const date = (value: unknown) => text(value).split('-').reverse().join('/') || '—'
@@ -46,7 +47,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
     catch (e) { setError(errorMessage(e)) } finally { setBusy(false) }
   }
   const filtered = events.filter(e => (!house || e.casa === house) && (!status || e.status === status) && text(e.nome_evento).toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
-  return <section className="mise-events" aria-label="Eventos">
+  return <section className={`mise-events${mode !== 'list' ? ' events-os-open' : ''}`} aria-label="Eventos">
     <header className="events-heading"><div><p className="events-eyebrow"><CalendarDays size={14} /> OPERAÇÃO</p><h1>{mode === 'list' ? page === 'dashboard' ? 'Dashboard de eventos' : 'Eventos' : mode === 'edit' ? selected?.id ? 'Editar O.S.' : 'Nova O.S.' : text(selected?.nome_evento).toLocaleUpperCase('pt-BR')}</h1><p className="events-subtitle">Ordens de serviço e planejamento dos eventos.</p></div>
       <div className="events-actions no-print">{mode === 'list' ? canEdit && <button className="events-primary" disabled={busy} onClick={() => { router.push('/eventos/nova') }}><Plus size={16} /> Nova O.S.</button> : <><button disabled={busy} onClick={() => { if (mode === 'edit' && !window.confirm('Voltar à lista? Alterações não salvas serão descartadas.')) return; if (page === 'new') { router.push('/eventos/lista'); return }; setMode('list'); setSelected(null); setError('') }}><ArrowLeft size={16} /> Voltar</button>{mode === 'view' && <><button onClick={() => window.print()}><Printer size={16} /> Imprimir</button>{canEdit && <button className="events-primary" onClick={() => setMode('edit')}>Editar O.S.</button>}</>}</>}</div>
     </header>
@@ -82,6 +83,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
 }
 
 function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento; readOnly: boolean; onSave: (body: Evento) => Promise<Evento>; onFinancialSave: (body: Evento) => Promise<Evento> }) {
+  const [documents, setDocuments] = useState<EventContract[]>([])
   const [draft, setDraft] = useState<Evento>(() => ({ ...event, extras_valor: event.extras_valor == null ? '' : Number(event.extras_valor).toFixed(2).replace('.', ','), extras_valor_pago: event.extras_valor_pago == null ? '' : Number(event.extras_valor_pago).toFixed(2).replace('.', ','), valor_pago_parcial: event.valor_pago_parcial == null ? '' : Number(event.valor_pago_parcial).toFixed(2).replace('.', ','), nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -166,14 +168,14 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
   function attachment(key: 'layout_anexos' | 'comprovantes_pagamento') {
     return <section className="events-card" key={key}><h2>{key === 'layout_anexos' ? 'Layout e anexos' : 'Comprovantes de pagamento'}</h2>{rows(draft[key]).map((file, index) => <div className="events-attachment" key={index}>{/^data:(application\/pdf|image\/(png|jpeg));base64,/.test(text(file.data)) ? <a href={text(file.data)} download={text(file.name)}>{text(file.name) || 'Baixar anexo'}</a> : <span>{text(file.name)}</span>}{!readOnly && <button type="button" onClick={() => set(key, JSON.stringify(rows(draft[key]).filter((_, i) => i !== index)))}>Remover</button>}</div>)}{!readOnly && <label>Anexar PDF, JPG ou PNG (até 3 MB por arquivo)<input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={e => { void attach(key, Array.from(e.target.files || [])); e.target.value = '' }} /></label>}</section>
   }
-  return <><form onSubmit={submit}><fieldset disabled={saving || financialSaving || uploading} className="events-fieldset">
+  return <><EventPrint event={draft} documents={documents} /><form onSubmit={submit} className="events-operational-form no-print"><fieldset disabled={saving || financialSaving || uploading} className="events-fieldset">
     <section className="events-card"><h2>Casa e status · V{Number(draft.versao ?? 1)}</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
     <div className="events-wide"><span className="events-label">Ambientes</span><div className="events-spaces">{readOnly ? <p>{spaces.join(' • ') || '—'}</p> : Array.from(new Set([...(casas[text(draft.casa)] || []), ...spaces])).map(space => <label key={space}><input type="checkbox" checked={spaces.includes(space)} onChange={e => set('espacos', (e.target.checked ? [...spaces, space] : spaces.filter(s => s !== space)).join('\n'))} />{space}</label>)}{!draft.casa && <p>Selecione uma casa para escolher os ambientes.</p>}</div></div></div></section>
     {groups.filter(group => group.title !== 'Valores do evento').map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2><div className="events-grid">{group.fields.map(field)}</div></section>)}
     {collection('brigada', 'Brigada', [['funcao', 'Função'], ['qtd', 'Quantidade', 'number']])}
     {(['menu_bar', 'menu_cozinha'] as const).map(key => collection(key, key === 'menu_bar' ? 'Menu bar' : 'Menu cozinha', [['categoria', 'Categoria'], ['servico', 'Serviço'], ['hr_ini', 'Início', 'time'], ['hr_fim', 'Fim', 'time'], ['descritivo', 'Descrição'], ['obs', 'Observações']]))}
     {attachment('layout_anexos')}
-    <EventDocument eventId={draft.id} readOnly={readOnly} />
+    <EventDocument eventId={draft.id} readOnly={readOnly} onDocumentsChange={setDocuments} />
     <div className="events-actions events-print-actions no-print"><button type="button" onClick={() => window.print()}><Printer size={16} /> Imprimir O.S.</button></div>
     {error && <p className="events-error" role="alert">{error}</p>}
     {!readOnly && <div className="events-save"><span>{uploading ? 'Carregando anexos…' : 'Salva os dados operacionais da O.S.'}</span><button className="events-primary" type="submit">{saving ? 'Salvando…' : 'Salvar O.S.'}</button></div>}
