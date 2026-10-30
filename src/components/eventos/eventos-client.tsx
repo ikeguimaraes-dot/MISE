@@ -5,6 +5,7 @@ import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
 import { casas, statuses, groups, text, money, eventTotal, eventSaveRequest, financialFields, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
+import EventDocument from './event-document'
 
 async function api(query = '', method = 'GET', body?: Evento): Promise<Evento[]> {
   const response = await fetch(`/api/eventos/data${query}`, { method, cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
@@ -177,6 +178,7 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
     {error && <p className="events-error" role="alert">{error}</p>}
     {!readOnly && <div className="events-save"><span>{uploading ? 'Carregando anexos…' : 'Salva os dados operacionais da O.S.'}</span><button className="events-primary" type="submit">{saving ? 'Salvando…' : 'Salvar O.S.'}</button></div>}
   </fieldset></form>
+  <EventDocument eventId={draft.id} readOnly={readOnly} />
   <form onSubmit={submitFinancial} className="events-financial-form" aria-label="Valores do evento">
     <fieldset disabled={saving || financialSaving || uploading || (!readOnly && !draft.id)} className="events-fieldset">
       <section className="events-card"><h2>Valores do evento</h2><p className="events-subtitle">Salvamento independente, sem alterar a versão da O.S.</p>

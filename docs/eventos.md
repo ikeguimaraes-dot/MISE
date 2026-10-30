@@ -157,3 +157,22 @@ Migração aplicada: `20261030125903_eventos_pagamento_parcial.sql`.
 Validação: testes de parsing, separação dos formulários e validação da API;
 uma tabela temporária confirmou que atualizar o parcial de R$ 1.250,50 para
 R$ 1.500,75 manteve V1, sem alterar registros reais.
+
+## Documento / contrato
+
+A seção Documento permite anexar contratos depois do primeiro salvamento da OS.
+O envio é imediato e independente dos formulários operacional e financeiro.
+Contratos ficam listados com nome, tamanho e link Ver contrato (abre em nova aba),
+inclusive no modo de consulta. PDF, JPG e PNG são aceitos, até 3 MB por arquivo.
+Novos envios recebem nomes únicos e não sobrescrevem contratos anteriores.
+
+A API `/api/eventos/documento` exige sessão MISE e existência da OS. Administrador
+e gerente podem enviar; operação pode consultar. O servidor valida origem, tipo,
+assinatura inicial e tamanho do arquivo. Nenhuma chave de serviço vai ao navegador.
+O bucket `mise-eventos-documentos` é privado, sem políticas de acesso direto para
+anon/authenticated. A consulta passa pela sessão e gera link assinado de 60 segundos.
+Os documentos não são armazenados na tabela pública de eventos e não incrementam
+a versão operacional. Migração: `20261030130336_eventos_documentos_privados.sql`.
+
+Validação: 36 testes de Eventos e build aprovados; PDF sintético enviado, lido por
+URL assinada, acesso público bloqueado e arquivo sintético removido ao concluir.

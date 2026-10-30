@@ -9,3 +9,4 @@
 @media print{.workspace-sidebar,.workspace-topbar,.no-print{display:none!important}.workspace-main{margin:0!important}.mise-events{padding:0;color:#000}.events-card{background:#fff;border-color:#bbb;break-inside:avoid}.events-value,.mise-events label{color:#000}.events-heading h1{color:#000}.events-eyebrow,.events-subtitle{color:#555}.events-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .events-menu-info{margin-top:18px}
 .events-financial-form{margin-top:24px}
+.events-document{margin-top:24px}.events-document .events-attachment{flex-wrap:wrap;overflow-wrap:anywhere}
