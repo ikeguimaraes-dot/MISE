@@ -63,6 +63,7 @@ async function handle(request: Request) {
           Math.abs(value * 100 - Math.round(value * 100)) > 0.0001
         )) return fail('Informe custo A&B e locação válidos, não negativos e com até duas casas decimais.', 400)
       }
+      if (typeof body.nome_evento === 'string') body.nome_evento = body.nome_evento.trim().toLocaleUpperCase('pt-BR')
       if (method === 'POST') {
         if (typeof body.nome_evento !== 'string' || !body.nome_evento.trim()) return fail('Informe o nome do evento.', 400)
         body.criado_por = session.employeeName

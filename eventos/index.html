@@ -1005,7 +1005,7 @@
                 <div class="field-row col2" style="margin-bottom:14px">
                   <div class="field">
                     <label>Nome do Evento / Cliente</label>
-                    <input type="text" id="f-nome" placeholder="Ex: Patria Investimentos">
+                    <input type="text" id="f-nome" autocapitalize="characters" oninput="this.value = this.value.toLocaleUpperCase('pt-BR')" placeholder="Ex: Patria Investimentos">
                   </div>
                   <div class="field">
                     <label>Tema do Evento</label>
@@ -1690,7 +1690,7 @@
     }
 
     async function salvarOSInterno() {
-      const nome = document.getElementById('f-nome').value.trim();
+      const nome = document.getElementById('f-nome').value.trim().toLocaleUpperCase('pt-BR');
       if (!nome) { showOSAlert("Informe o nome do evento.", "error"); return; }
 
       if (!document.getElementById('f-casa').value || !document.getElementById('f-espacos').value) {

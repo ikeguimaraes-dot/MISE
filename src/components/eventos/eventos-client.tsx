@@ -75,7 +75,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
 }
 
 function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boolean; onSave: (body: Evento) => Promise<void> }) {
-  const [draft, setDraft] = useState<Evento>(() => ({ ...event, custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
+  const [draft, setDraft] = useState<Evento>(() => ({ ...event, nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const saveInFlight = useRef(false)
@@ -87,7 +87,7 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
-  const set = (key: string, value: unknown) => { setDirty(true); setDraft(d => ({ ...d, [key]: value })) }
+  const set = (key: string, value: unknown) => { setDirty(true); setDraft(d => ({ ...d, [key]: key === 'nome_evento' ? text(value).toLocaleUpperCase('pt-BR') : value })) }
   const spaces = text(draft.espacos).split('\n').filter(Boolean)
   function field([key, label, kind, options]: Field) {
     if (kind === 'total') {
@@ -96,7 +96,7 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
       return <label key={key}>{label}<output className="events-value" aria-live="polite">{total}</output><small>Custo A&amp;B + Locação</small></label>
     }
     const value = text(draft[key])
-    return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input required={key === 'nome_evento'} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
+    return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input autoCapitalize={key === 'nome_evento' ? 'characters' : undefined} required={key === 'nome_evento'} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
   }
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -106,7 +106,7 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
     try {
       if (!text(draft.nome_evento).trim()) throw new Error('Informe o nome do evento.')
       if (!draft.casa || !draft.espacos) throw new Error('Selecione a casa e pelo menos um ambiente.')
-      const body: Evento = { ...draft, nome_evento: text(draft.nome_evento).trim(), custo_evento: parseMoney(text(draft.custo_evento)), valor_cobrado: parseMoney(text(draft.valor_cobrado)), num_convidados: text(draft.num_convidados) === '' ? null : Number(draft.num_convidados) }
+      const body: Evento = { ...draft, nome_evento: text(draft.nome_evento).trim().toLocaleUpperCase('pt-BR'), custo_evento: parseMoney(text(draft.custo_evento)), valor_cobrado: parseMoney(text(draft.valor_cobrado)), num_convidados: text(draft.num_convidados) === '' ? null : Number(draft.num_convidados) }
       for (const key of ['data_inicio', 'hora_inicio', 'hora_termino']) body[key] = draft[key] || null
       setSaving(true); await onSave(body); setDirty(false)
     } catch (e) { saveInFlight.current = false; setSaving(false); setError(errorMessage(e)) }
