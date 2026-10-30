@@ -194,3 +194,14 @@ test('pagamento valida opções e mantém permissão de escrita no servidor', as
   assert.equal((await readonly.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { pagamento_status: 'Pago' }))).status, 403)
   assert.equal(calls.length, 0)
 })
+
+test('pagamento parcial exige valor positivo e persiste centavos no financeiro', async () => {
+  const { route: api, calls } = route('data')
+  for (const value of [undefined, null, 0, -1, 1.001, '100,50']) {
+    assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { pagamento_status: 'Pagamento parcial', valor_pago_parcial: value }))).status, 400)
+  }
+  assert.equal(calls.length, 0)
+  assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { pagamento_status: 'Pagamento parcial', valor_pago_parcial: 100.5 }))).status, 200)
+  assert.equal(JSON.parse(calls[0].options.body).valor_pago_parcial, 100.5)
+  assert.equal(JSON.parse(calls[0].options.body).versao, undefined)
+})

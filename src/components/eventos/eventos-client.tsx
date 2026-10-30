@@ -86,7 +86,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
 }
 
 function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento; readOnly: boolean; onSave: (body: Evento) => Promise<Evento>; onFinancialSave: (body: Evento) => Promise<Evento> }) {
-  const [draft, setDraft] = useState<Evento>(() => ({ ...event, nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
+  const [draft, setDraft] = useState<Evento>(() => ({ ...event, valor_pago_parcial: event.valor_pago_parcial == null ? '' : Number(event.valor_pago_parcial).toFixed(2).replace('.', ','), nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const saveInFlight = useRef(false)
@@ -106,13 +106,14 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
   const set = (key: string, value: unknown) => { if (financialFields.includes(key as typeof financialFields[number])) { setFinancialDirty(true); setFinancialNotice('') } else setDirty(true); setDraft(d => ({ ...d, [key]: key === 'nome_evento' ? text(value).toLocaleUpperCase('pt-BR') : value })) }
   const spaces = text(draft.espacos).split('\n').filter(Boolean)
   function field([key, label, kind, options]: Field) {
+    if (key === 'valor_pago_parcial' && draft.pagamento_status !== 'Pagamento parcial' && !text(draft.valor_pago_parcial)) return null
     if (kind === 'total') {
       let total = '—'
       try { total = money(readOnly ? eventTotal(event.custo_evento, event.valor_cobrado) : eventTotal(parseMoney(text(draft.custo_evento)), parseMoney(text(draft.valor_cobrado)))) } catch { /* Wait for valid monetary input. */ }
       return <label key={key}>{label}<output className="events-value" aria-live="polite">{total}</output><small>Custo A&amp;B + Locação</small></label>
     }
     const value = text(draft[key])
-    return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input autoCapitalize={key === 'nome_evento' ? 'characters' : undefined} required={key === 'nome_evento'} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
+    return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input autoCapitalize={key === 'nome_evento' ? 'characters' : undefined} required={key === 'nome_evento' || (key === 'valor_pago_parcial' && draft.pagamento_status === 'Pagamento parcial')} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
   }
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -155,7 +156,9 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
     if (!draft.id || financialInFlight.current) return
     financialInFlight.current = true; setFinancialSaving(true); setFinancialError(''); setFinancialNotice('')
     try {
-      await onFinancialSave(financialPayload(draft))
+      const financial = financialPayload(draft)
+      if (financial.pagamento_status === 'Pagamento parcial' && !(Number(financial.valor_pago_parcial) > 0)) throw new Error('Informe o valor já pago no pagamento parcial.')
+      await onFinancialSave(financial)
       setFinancialDirty(false)
       setFinancialNotice('Valores e pagamento salvos. A versão da O.S. foi mantida.')
     } catch (e) { setFinancialError(errorMessage(e)) }

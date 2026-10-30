@@ -53,3 +53,9 @@ test('salvamentos operacional e financeiro não carregam campos um do outro', ()
   assert.equal(financial.pagamento_status, 'Pago')
   for (const key of ['id', 'versao', 'nome_evento', 'status']) assert.equal(Object.hasOwn(financial, key), false)
 })
+
+test('valor parcial pertence somente ao salvamento financeiro e aceita formato brasileiro', () => {
+  const event = { id: 42, versao: 3, pagamento_status: 'Pagamento parcial', valor_pago_parcial: '1.250,50' }
+  assert.equal(exports.financialPayload(event).valor_pago_parcial, 1250.5)
+  assert.equal(Object.hasOwn(exports.operationalPayload(event), 'valor_pago_parcial'), false)
+})

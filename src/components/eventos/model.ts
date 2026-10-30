@@ -33,7 +33,7 @@ export const groups: { title: string; fields: Field[] }[] = [
     ['tema', 'Tema'], ['data_inicio', 'Data do evento', 'date'], ['hora_inicio', 'Hora de início', 'time'], ['hora_termino', 'Hora de término', 'time'],
     ['num_convidados', 'Convidados', 'number'], ['contato', 'Contato / telefone'], ['responsavel_comercial', 'Responsável comercial'], ['responsavel_operacional', 'Responsável operacional'], ['briefing_cliente', 'Briefing do cliente', 'textarea'],
   ] },
-  { title: 'Valores do evento', fields: [['custo_evento', 'Custo A&B (R$)', 'money'], ['valor_cobrado', 'Locação (R$)', 'money'], ['total_evento', 'Total (R$)', 'total'], ['situacao_pagamento', 'Forma de pagamento', 'select', ['Via Financeiro Adm', 'Via Caixa Restaurante']], ['pagamento_status', 'Situação do pagamento', 'select', ['Pago', 'A pagar']], ['pagamento_meio', 'Meio de pagamento', 'select', ['Cartão', 'Pix', 'Boleto']]] },
+  { title: 'Valores do evento', fields: [['custo_evento', 'Custo A&B (R$)', 'money'], ['valor_cobrado', 'Locação (R$)', 'money'], ['total_evento', 'Total (R$)', 'total'], ['situacao_pagamento', 'Forma de pagamento', 'select', ['Via Financeiro Adm', 'Via Caixa Restaurante']], ['pagamento_status', 'Situação do pagamento', 'select', ['Pago', 'A pagar', 'Pagamento parcial']], ['valor_pago_parcial', 'Valor pago parcial (R$)', 'money'], ['pagamento_meio', 'Meio de pagamento', 'select', ['Cartão', 'Pix', 'Boleto']]] },
   { title: 'Montagem e operação', fields: [['montagem', 'Tipo de montagem'], ['montagem_descricao', 'Descrição da montagem', 'textarea'], ['tempos_movimentos', 'Tempos e movimentos', 'textarea'], ['campo_livre', 'Observações e alertas', 'textarea']] },
   { title: 'Infraestrutura', fields: [['acesso_entrada', 'Acesso de entrada'], ['acesso_obs', 'Observações de portaria', 'textarea'], ['mobiliario', 'Mobiliário'], ['mobiliario_obs', 'Observações de mobiliário'], ['fotografia', 'Fotografia / vídeo'], ['valet', 'Valet'], ['artistico', 'Artístico / DJ / banda'], ['artistico_obs', 'Observações do artístico'], ['gerador', 'Gerador'], ['ambulancia', 'Ambulância'], ['menores', 'Menores']] },
 ]
@@ -49,12 +49,12 @@ export function eventSaveRequest(target: SaveTarget, event: Evento) {
   return { query: '', method: 'POST' }
 }
 
-export const financialFields = ['custo_evento', 'valor_cobrado', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'comprovantes_pagamento'] as const
+export const financialFields = ['custo_evento', 'valor_cobrado', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'valor_pago_parcial', 'comprovantes_pagamento'] as const
 export function operationalPayload(event: Evento): Evento {
   return Object.fromEntries(Object.entries(event).filter(([key]) => !financialFields.includes(key as typeof financialFields[number])))
 }
 export function financialPayload(event: Evento): Evento {
   return Object.fromEntries(financialFields.filter(key => event[key] !== undefined).map(key => [key,
-    key === 'custo_evento' || key === 'valor_cobrado' ? parseMoney(text(event[key])) : event[key] === '' ? null : event[key],
+    key === 'custo_evento' || key === 'valor_cobrado' || key === 'valor_pago_parcial' ? parseMoney(text(event[key])) : event[key] === '' ? null : event[key],
   ]))
 }

@@ -145,3 +145,15 @@ Migração aplicada: `20261030125031_eventos_financeiro_independente.sql` no ban
 de Eventos. Validação: 30 testes, build e teste em tabela temporária no banco;
 prévia de navegador confirmou cadastro V1, salvamento financeiro V1, edição
 operacional V2 e novo salvamento financeiro mantendo V2.
+
+## Pagamento parcial
+
+Situação do pagamento oferece também **Pagamento parcial**. Ao selecionar essa
+opção, o formulário exibe **Valor pago parcial (R$)**, obrigatório e maior que zero.
+O valor representa o total acumulado já pago e aceita centavos. Fica armazenado
+em `valor_pago_parcial`, pertence apenas ao financeiro e não aumenta a versão.
+Se a situação mudar depois, o valor já registrado é preservado e continua visível.
+Migração aplicada: `20261030125903_eventos_pagamento_parcial.sql`.
+Validação: testes de parsing, separação dos formulários e validação da API;
+uma tabela temporária confirmou que atualizar o parcial de R$ 1.250,50 para
+R$ 1.500,75 manteve V1, sem alterar registros reais.
