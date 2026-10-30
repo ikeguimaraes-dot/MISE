@@ -6,6 +6,7 @@ export const casas: Record<string, string[]> = {
 export const statuses: Record<string, string> = { rascunho: 'Rascunho', confirmado: 'Confirmado', em_andamento: 'Em andamento', realizado: 'Realizado', pago: 'Pago', cancelado: 'Cancelado' }
 export const text = (value: unknown) => value == null ? '' : String(value)
 export const money = (value: unknown) => value == null || value === '' ? 'Não informado' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+export const rentalMoney = (value: unknown) => value == null || value === '' || Number(value) === 0 ? 'N/A' : money(value)
 // Sum in cents to avoid floating-point artifacts. Missing amounts contribute zero;
 // when neither amount was entered, the total remains unknown.
 export function eventTotal(cost: unknown, rental: unknown, extras?: unknown): number | null {
