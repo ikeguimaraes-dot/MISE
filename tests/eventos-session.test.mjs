@@ -168,3 +168,29 @@ test('versão desatualizada não sobrescreve nem cria outra OS', async () => {
   assert.equal(calls[0].options.method, 'PATCH')
   assert.equal((await api.PATCH(request('PATCH', '?id=eq.42', { nome_evento: 'Evento' }))).status, 404)
 })
+
+test('salvamento financeiro permite apenas campos financeiros e preserva versão retornada', async () => {
+  const { route: api, calls } = route('data', { upstreamData: [{ id: 42, versao: 3, pagamento_status: 'Pago' }] })
+  const response = await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { custo_evento: 100, pagamento_status: 'Pago', pagamento_meio: 'Pix' }))
+  assert.equal(response.status, 200)
+  assert.equal((await response.json())[0].versao, 3)
+  assert.equal(calls[0].options.method, 'PATCH')
+  assert.equal(new URL(calls[0].url).searchParams.get('id'), 'eq.42')
+  assert.equal(new URL(calls[0].url).searchParams.has('section'), false)
+  assert.equal(new URL(calls[0].url).searchParams.has('versao'), false)
+  for (const key of ['nome_evento', 'status', 'versao']) {
+    assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { [key]: 'indevido' }))).status, 400)
+  }
+  assert.equal(calls.length, 1)
+})
+
+test('pagamento valida opções e mantém permissão de escrita no servidor', async () => {
+  const { route: api } = route('data')
+  for (const body of [{ pagamento_status: 'confirmado' }, { pagamento_meio: 'inválido' }]) {
+    assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', body))).status, 400)
+  }
+  assert.equal((await api.POST(request('POST', '?section=financeiro', { nome_evento: 'OS' }))).status, 400)
+  const { route: readonly, calls } = route('data', { role: 'cozinheiro' })
+  assert.equal((await readonly.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { pagamento_status: 'Pago' }))).status, 403)
+  assert.equal(calls.length, 0)
+})

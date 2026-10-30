@@ -112,10 +112,36 @@ bloqueia envios simultâneos; o HTML legado também bloqueia novo envio depois d
 sucesso (antes ele limpava o ID e aguardava 1,2 segundo para sair do formulário).
 
 A coluna `versao` inicia em 1. Um trigger incrementa atomicamente a versão em
-cada UPDATE, mantendo o ID e o registro. A interface mostra V1/V2/V3 após Status,
+cada alteração operacional, mantendo o ID e o registro. Alterações financeiras não incrementam a versão. A interface mostra V1/V2/V3 após Status,
 na consulta e edição. A API compara a versão carregada antes de atualizar:
 edições concorrentes desatualizadas recebem erro 409 e devem reabrir a OS.
 As OS anteriores começam em V1, sem inferir um histórico que não foi registrado.
 A migração `20261030123718_eventos_versao.sql` foi aplicada ao banco de Eventos.
 O trigger foi testado em tabela temporária: duas edições mantiveram um registro
 com o mesmo ID e versão 3, sem alterar OS reais.
+
+
+## Financeiro independente
+
+A seção Valores do evento fica depois do botão Salvar O.S., em um formulário
+separado com Salvar valores. O primeiro cadastro mantém a tela aberta e habilita
+os campos financeiros depois de obter o ID da OS. Salvar O.S. envia somente os
+dados operacionais; Salvar valores envia somente os campos financeiros, incluindo
+comprovantes, por PATCH com `section=financeiro`. Alterações ainda não salvas no
+outro formulário permanecem na tela.
+
+- Forma de pagamento: Via Financeiro Adm / Via Caixa Restaurante (coluna legada
+  `situacao_pagamento`, preservada).
+- Situação do pagamento: Pago / A pagar (`pagamento_status`).
+- Meio de pagamento: Cartão / Pix / Boleto (`pagamento_meio`).
+
+O trigger compara os campos operacionais e ignora valores, os três campos de
+pagamento, comprovantes e `updated_at` para calcular a versão. Mesmo uma chamada
+legada que altere apenas o financeiro preserva a versão. Salvar sem mudança
+operacional também mantém a versão. Campos novos de OS antigas ficam sem
+preenchimento, sem inferir se o pagamento já ocorreu.
+
+Migração aplicada: `20261030125031_eventos_financeiro_independente.sql` no banco
+de Eventos. Validação: 30 testes, build e teste em tabela temporária no banco;
+prévia de navegador confirmou cadastro V1, salvamento financeiro V1, edição
+operacional V2 e novo salvamento financeiro mantendo V2.

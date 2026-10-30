@@ -4,13 +4,14 @@ export const dynamic = 'force-dynamic'
 const endpoint = 'https://rpavxnjchfmeiacnumpk.supabase.co/rest/v1/eventos'
 const fields = new Set([
   'custo_evento', 'valor_cobrado', 'status', 'casa', 'espacos', 'tipo_evento', 'tema', 'nome_evento', 'contato',
-  'situacao_pagamento', 'responsavel_comercial', 'responsavel_operacional',
+  'pagamento_status', 'pagamento_meio', 'situacao_pagamento', 'responsavel_comercial', 'responsavel_operacional',
   'data_inicio', 'hora_inicio', 'hora_termino', 'num_convidados', 'briefing_cliente',
   'acesso_entrada', 'acesso_obs', 'mobiliario', 'mobiliario_obs', 'fotografia',
   'valet', 'artistico', 'artistico_obs', 'gerador', 'ambulancia', 'menores',
   'montagem', 'montagem_descricao', 'brigada', 'menu_bar', 'menu_cozinha',
   'campo_livre', 'tempos_movimentos', 'layout_anexos', 'comprovantes_pagamento',
 ])
+const financialFields = new Set(['custo_evento', 'valor_cobrado', 'situacao_pagamento', 'pagamento_status', 'pagamento_meio', 'comprovantes_pagamento'])
 const headers = { 'Cache-Control': 'private, no-store' }
 const fail = (message: string, status: number) => Response.json({ message }, { status, headers })
 
@@ -30,6 +31,7 @@ async function handle(request: Request) {
   }
   const params = url.searchParams
   for (const [name, value] of params) {
+    if (name === 'section' && value === 'financeiro' && method === 'PATCH') continue
     if (name === 'id' && /^eq\.[1-9]\d*$/.test(value)) continue
     if (name === 'casa' && value.startsWith('eq.') && value.length <= 100) continue
     if (name === 'order' && /^data_inicio\.(asc|desc)$/.test(value)) continue
@@ -39,6 +41,8 @@ async function handle(request: Request) {
   }
   if ([...new Set(params.keys())].some(name => params.getAll(name).length > 1)) return fail('Filtro duplicado.', 400)
   if ((method === 'PATCH' || method === 'DELETE') && !params.has('id')) return fail('Informe a O.S. a alterar.', 400)
+  const financialOnly = params.get('section') === 'financeiro'
+  params.delete('section')
   const key = process.env.EVENTOS_SUPABASE_SERVICE_ROLE_KEY
   if (!key) return fail('O acesso a Eventos ainda não foi configurado neste ambiente.', 503)
   try {
@@ -46,6 +50,7 @@ async function handle(request: Request) {
     if (method === 'POST' || method === 'PATCH') {
       const input = await request.json()
       if (!input || typeof input !== 'object' || Array.isArray(input)) return fail('Dados inválidos.', 400)
+      if (financialOnly && Object.keys(input).some(name => !financialFields.has(name))) return fail('Envie apenas os campos financeiros em Salvar valores.', 400)
       if (method === 'POST' && (input.id != null || params.has('id'))) return fail('Uma O.S. existente deve ser editada, não criada novamente.', 400)
       if (method === 'PATCH') {
         if (input.id != null && String(input.id) !== params.get('id')?.slice(3)) return fail('A identificação da O.S. não corresponde à edição.', 400)
@@ -62,6 +67,9 @@ async function handle(request: Request) {
           typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 9999999999.99 ||
           Math.abs(value * 100 - Math.round(value * 100)) > 0.0001
         )) return fail('Informe custo A&B e locação válidos, não negativos e com até duas casas decimais.', 400)
+      }
+      for (const [name, allowed] of [['pagamento_status', ['Pago', 'A pagar']], ['pagamento_meio', ['Cartão', 'Pix', 'Boleto']]] as const) {
+        if (body[name] != null && !(allowed as readonly unknown[]).includes(body[name])) return fail('Opção de pagamento inválida.', 400)
       }
       if (typeof body.nome_evento === 'string') body.nome_evento = body.nome_evento.trim().toLocaleUpperCase('pt-BR')
       if (method === 'POST') {

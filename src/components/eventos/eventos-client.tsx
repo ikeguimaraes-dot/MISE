@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
-import { casas, statuses, groups, text, money, eventTotal, eventSaveRequest, parseMoney, rows, type Evento, type Field } from './model'
+import { casas, statuses, groups, text, money, eventTotal, eventSaveRequest, financialFields, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
 
 async function api(query = '', method = 'GET', body?: Evento): Promise<Evento[]> {
@@ -64,30 +64,46 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
     </> : selected && <EventForm key={`${selected.id ?? 'new'}-${mode}`} event={selected} readOnly={mode === 'view'} onSave={async body => {
       setBusy(true)
       try {
-        const request = eventSaveRequest(page === 'new' ? { kind: 'create' } : { kind: 'edit', id: editingId! }, body)
+        const request = eventSaveRequest(page === 'new' && editingId === null ? { kind: 'create' } : { kind: 'edit', id: editingId! }, body)
         const [saved] = await api(request.query, request.method, body)
         if (!saved) throw new Error('A O.S. não foi encontrada para salvar. Atualize a listagem.')
-        if (page === 'new') { router.push('/eventos/lista'); return }
-        setSelected(null); setMode('list'); await refresh(); setNotice(`O.S. salva com sucesso — V${Number(saved.versao ?? 1)}.`)
+        setEditingId(saved.id!); setSelected(saved)
+        setEvents(current => current.some(e => e.id === saved.id) ? current.map(e => e.id === saved.id ? saved : e) : [saved, ...current])
+        setNotice(`O.S. salva com sucesso — V${Number(saved.versao ?? 1)}. Você pode salvar os valores abaixo.`)
+        return saved
+      } finally { setBusy(false) }
+    }} onFinancialSave={async body => {
+      if (!selected.id) throw new Error('Salve a O.S. primeiro para registrar os valores.')
+      setBusy(true)
+      try {
+        const [saved] = await api(`?id=eq.${selected.id}&section=financeiro`, 'PATCH', body)
+        if (!saved) throw new Error('O.S. não encontrada para salvar os valores.')
+        setEvents(current => current.map(e => e.id === saved.id ? saved : e))
+        return saved
       } finally { setBusy(false) }
     }} />}
   </section>
 }
 
-function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boolean; onSave: (body: Evento) => Promise<void> }) {
+function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento; readOnly: boolean; onSave: (body: Evento) => Promise<Evento>; onFinancialSave: (body: Evento) => Promise<Evento> }) {
   const [draft, setDraft] = useState<Evento>(() => ({ ...event, nome_evento: text(event.nome_evento).toLocaleUpperCase('pt-BR'), custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const saveInFlight = useRef(false)
   const [uploading, setUploading] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [financialDirty, setFinancialDirty] = useState(false)
+  const [financialSaving, setFinancialSaving] = useState(false)
+  const [financialError, setFinancialError] = useState('')
+  const [financialNotice, setFinancialNotice] = useState('')
+  const financialInFlight = useRef(false)
   useEffect(() => {
-    if (!dirty) return
+    if (!dirty && !financialDirty) return
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
-  const set = (key: string, value: unknown) => { setDirty(true); setDraft(d => ({ ...d, [key]: key === 'nome_evento' ? text(value).toLocaleUpperCase('pt-BR') : value })) }
+  }, [dirty, financialDirty])
+  const set = (key: string, value: unknown) => { if (financialFields.includes(key as typeof financialFields[number])) { setFinancialDirty(true); setFinancialNotice('') } else setDirty(true); setDraft(d => ({ ...d, [key]: key === 'nome_evento' ? text(value).toLocaleUpperCase('pt-BR') : value })) }
   const spaces = text(draft.espacos).split('\n').filter(Boolean)
   function field([key, label, kind, options]: Field) {
     if (kind === 'total') {
@@ -106,9 +122,12 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
     try {
       if (!text(draft.nome_evento).trim()) throw new Error('Informe o nome do evento.')
       if (!draft.casa || !draft.espacos) throw new Error('Selecione a casa e pelo menos um ambiente.')
-      const body: Evento = { ...draft, nome_evento: text(draft.nome_evento).trim().toLocaleUpperCase('pt-BR'), custo_evento: parseMoney(text(draft.custo_evento)), valor_cobrado: parseMoney(text(draft.valor_cobrado)), num_convidados: text(draft.num_convidados) === '' ? null : Number(draft.num_convidados) }
+      const body: Evento = { ...operationalPayload(draft), nome_evento: text(draft.nome_evento).trim().toLocaleUpperCase('pt-BR'), num_convidados: text(draft.num_convidados) === '' ? null : Number(draft.num_convidados) }
       for (const key of ['data_inicio', 'hora_inicio', 'hora_termino']) body[key] = draft[key] || null
-      setSaving(true); await onSave(body); setDirty(false)
+      setSaving(true)
+      const saved = await onSave(body)
+      setDraft(current => ({ ...current, id: saved.id, versao: saved.versao }))
+      setDirty(false); saveInFlight.current = false; setSaving(false)
     } catch (e) { saveInFlight.current = false; setSaving(false); setError(errorMessage(e)) }
   }
   function collection(key: string, title: string, columns: Field[]) {
@@ -120,7 +139,7 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
     </section>
   }
   async function attach(key: string, files: File[]) {
-    setUploading(true); setError('')
+    setUploading(true); if (key === 'comprovantes_pagamento') setFinancialError(''); else setError('')
     try {
       const added = await Promise.all(files.map(file => new Promise<Record<string, unknown>>((resolve, reject) => {
         if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) return reject(new Error('Anexe arquivos PDF, JPG ou PNG.'))
@@ -129,16 +148,42 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
         reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, data: reader.result }); reader.readAsDataURL(file)
       })))
       set(key, JSON.stringify([...rows(draft[key]), ...added]))
-    } catch (e) { setError(errorMessage(e)) } finally { setUploading(false) }
+    } catch (e) { if (key === 'comprovantes_pagamento') setFinancialError(errorMessage(e)); else setError(errorMessage(e)) } finally { setUploading(false) }
   }
-  return <form onSubmit={submit}><fieldset disabled={saving || uploading} className="events-fieldset">
-    <section className="events-card"><h2>Casa e status · V{Number(event.versao ?? 1)}</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
+  async function submitFinancial(e: FormEvent) {
+    e.preventDefault()
+    if (!draft.id || financialInFlight.current) return
+    financialInFlight.current = true; setFinancialSaving(true); setFinancialError(''); setFinancialNotice('')
+    try {
+      await onFinancialSave(financialPayload(draft))
+      setFinancialDirty(false)
+      setFinancialNotice('Valores e pagamento salvos. A versão da O.S. foi mantida.')
+    } catch (e) { setFinancialError(errorMessage(e)) }
+    finally { financialInFlight.current = false; setFinancialSaving(false) }
+  }
+  function attachment(key: 'layout_anexos' | 'comprovantes_pagamento') {
+    return <section className="events-card" key={key}><h2>{key === 'layout_anexos' ? 'Layout e anexos' : 'Comprovantes de pagamento'}</h2>{rows(draft[key]).map((file, index) => <div className="events-attachment" key={index}>{/^data:(application\/pdf|image\/(png|jpeg));base64,/.test(text(file.data)) ? <a href={text(file.data)} download={text(file.name)}>{text(file.name) || 'Baixar anexo'}</a> : <span>{text(file.name)}</span>}{!readOnly && <button type="button" onClick={() => set(key, JSON.stringify(rows(draft[key]).filter((_, i) => i !== index)))}>Remover</button>}</div>)}{!readOnly && <label>Anexar PDF, JPG ou PNG (até 3 MB por arquivo)<input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={e => { void attach(key, Array.from(e.target.files || [])); e.target.value = '' }} /></label>}</section>
+  }
+  return <><form onSubmit={submit}><fieldset disabled={saving || financialSaving || uploading} className="events-fieldset">
+    <section className="events-card"><h2>Casa e status · V{Number(draft.versao ?? 1)}</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
     <div className="events-wide"><span className="events-label">Ambientes</span><div className="events-spaces">{readOnly ? <p>{spaces.join(' • ') || '—'}</p> : Array.from(new Set([...(casas[text(draft.casa)] || []), ...spaces])).map(space => <label key={space}><input type="checkbox" checked={spaces.includes(space)} onChange={e => set('espacos', (e.target.checked ? [...spaces, space] : spaces.filter(s => s !== space)).join('\n'))} />{space}</label>)}{!draft.casa && <p>Selecione uma casa para escolher os ambientes.</p>}</div></div></div></section>
-    {groups.map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2><div className="events-grid">{group.fields.map(field)}</div></section>)}
+    {groups.filter(group => group.title !== 'Valores do evento').map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2><div className="events-grid">{group.fields.map(field)}</div></section>)}
     {collection('brigada', 'Brigada', [['funcao', 'Função'], ['qtd', 'Quantidade', 'number']])}
     {(['menu_bar', 'menu_cozinha'] as const).map(key => collection(key, key === 'menu_bar' ? 'Menu bar' : 'Menu cozinha', [['categoria', 'Categoria'], ['servico', 'Serviço'], ['hr_ini', 'Início', 'time'], ['hr_fim', 'Fim', 'time'], ['descritivo', 'Descrição'], ['obs', 'Observações']]))}
-    {(['layout_anexos', 'comprovantes_pagamento'] as const).map(key => <section className="events-card" key={key}><h2>{key === 'layout_anexos' ? 'Layout e anexos' : 'Comprovantes de pagamento'}</h2>{rows(draft[key]).map((file, index) => <div className="events-attachment" key={index}>{/^data:(application\/pdf|image\/(png|jpeg));base64,/.test(text(file.data)) ? <a href={text(file.data)} download={text(file.name)}>{text(file.name) || 'Baixar anexo'}</a> : <span>{text(file.name)}</span>}{!readOnly && <button type="button" onClick={() => set(key, JSON.stringify(rows(draft[key]).filter((_, i) => i !== index)))}>Remover</button>}</div>)}{!readOnly && <label>Anexar PDF, JPG ou PNG (até 3 MB por arquivo)<input type="file" multiple accept="application/pdf,image/jpeg,image/png" onChange={e => { void attach(key, Array.from(e.target.files || [])); e.target.value = '' }} /></label>}</section>)}
+    {attachment('layout_anexos')}
     {error && <p className="events-error" role="alert">{error}</p>}
-    {!readOnly && <div className="events-save"><span>{uploading ? 'Carregando anexos…' : 'Custo A&B e locação podem ser preenchidos depois.'}</span><button className="events-primary" type="submit">{saving ? 'Salvando…' : 'Salvar O.S.'}</button></div>}
+    {!readOnly && <div className="events-save"><span>{uploading ? 'Carregando anexos…' : 'Salva os dados operacionais da O.S.'}</span><button className="events-primary" type="submit">{saving ? 'Salvando…' : 'Salvar O.S.'}</button></div>}
   </fieldset></form>
+  <form onSubmit={submitFinancial} className="events-financial-form" aria-label="Valores do evento">
+    <fieldset disabled={saving || financialSaving || uploading || (!readOnly && !draft.id)} className="events-fieldset">
+      <section className="events-card"><h2>Valores do evento</h2><p className="events-subtitle">Salvamento independente, sem alterar a versão da O.S.</p>
+        {!readOnly && !draft.id && <p role="status" className="events-subtitle">Salve a O.S. acima para habilitar os valores e pagamentos.</p>}
+        <div className="events-grid events-menu-info">{groups.find(group => group.title === 'Valores do evento')?.fields.map(field)}</div>
+      </section>
+      {attachment('comprovantes_pagamento')}
+      {financialError && <p className="events-error" role="alert">{financialError}</p>}
+      {financialNotice && <p className="events-notice" role="status">{financialNotice}</p>}
+      {!readOnly && <div className="events-save"><span>Valores e pagamento não alteram a versão operacional.</span><button className="events-primary" type="submit">{financialSaving ? 'Salvando valores…' : 'Salvar valores'}</button></div>}
+    </fieldset>
+  </form></>
 }

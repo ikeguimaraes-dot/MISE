@@ -41,3 +41,15 @@ test('salvar edição nunca recorre a criação se o ID estiver ausente', () => 
   assert.throws(() => exports.eventSaveRequest({ kind: 'create' }, { id: 42 }))
   assert.equal(exports.eventSaveRequest({ kind: 'create' }, { nome_evento: 'Novo evento' }).method, 'POST')
 })
+
+test('salvamentos operacional e financeiro não carregam campos um do outro', () => {
+  const event = { id: 42, versao: 3, nome_evento: 'OS', status: 'confirmado', custo_evento: '1.250,50', valor_cobrado: '2.000,00', situacao_pagamento: 'Via Financeiro Adm', pagamento_status: 'Pago', pagamento_meio: 'Pix', comprovantes_pagamento: '[]' }
+  const operational = exports.operationalPayload(event)
+  assert.equal(operational.id, 42)
+  assert.equal(operational.versao, 3)
+  for (const key of exports.financialFields) assert.equal(Object.hasOwn(operational, key), false)
+  const financial = exports.financialPayload(event)
+  assert.equal(financial.custo_evento, 1250.5)
+  assert.equal(financial.pagamento_status, 'Pago')
+  for (const key of ['id', 'versao', 'nome_evento', 'status']) assert.equal(Object.hasOwn(financial, key), false)
+})
