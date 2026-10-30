@@ -39,6 +39,19 @@ export const groups: { title: string; fields: Field[] }[] = [
   { title: 'Infraestrutura', fields: [['acesso_entrada', 'Acesso de entrada'], ['acesso_obs', 'Observações de portaria', 'textarea'], ['mobiliario', 'Mobiliário'], ['mobiliario_obs', 'Observações de mobiliário'], ['fotografia', 'Fotografia / vídeo'], ['valet', 'Valet'], ['artistico', 'Artístico / DJ / banda'], ['artistico_obs', 'Observações do artístico'], ['gerador', 'Gerador'], ['ambulancia', 'Ambulância'], ['menores', 'Menores']] },
 ]
 
+export const requiredEventFields = groups.find(group => group.title === 'Dados do evento')!.fields.filter(([key]) => key !== 'tema')
+export function eventDetailsError(event: Evento, partial = false): string | null {
+  for (const [key, label] of requiredEventFields) {
+    if (partial && !Object.hasOwn(event, key)) continue
+    const value = event[key]
+    if (value == null || !text(value).trim()) return `Preencha o campo ${label}.`
+    if (key === 'num_convidados') {
+      if ((typeof value !== 'number' && typeof value !== 'string') || !Number.isSafeInteger(Number(value)) || Number(value) < 0) return 'Informe uma quantidade válida de convidados.'
+    } else if (typeof value !== 'string') return `Preencha o campo ${label}.`
+  }
+  return null
+}
+
 export type SaveTarget = { kind: 'create' } | { kind: 'edit'; id: number }
 export function eventSaveRequest(target: SaveTarget, event: Evento) {
   if (target.kind === 'edit') {

@@ -1,4 +1,5 @@
 import { getMiseSession } from '@/lib/session'
+import { eventDetailsError } from '@/components/eventos/model'
 
 export const dynamic = 'force-dynamic'
 const endpoint = 'https://rpavxnjchfmeiacnumpk.supabase.co/rest/v1/eventos'
@@ -61,6 +62,10 @@ async function handle(request: Request) {
       }
       body = Object.fromEntries(Object.entries(input).filter(([name]) => fields.has(name)))
       if (!Object.keys(body).length) return fail('Informe os dados da O.S.', 400)
+      if (!financialOnly) {
+        const detailsError = eventDetailsError(body, method === 'PATCH')
+        if (detailsError) return fail(detailsError, 400)
+      }
       for (const field of ['custo_evento', 'valor_cobrado', 'valor_pago_parcial', 'extras_valor', 'extras_valor_pago']) {
         const value = body[field]
         if (value !== undefined && value !== null && (

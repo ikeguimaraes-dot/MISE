@@ -4,6 +4,10 @@ import fs from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 
+const model = {}
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/eventos/model.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports: model })
+const validDetails = { nome_evento: 'Evento', tipo_evento: 'Jantar', data_inicio: '2026-11-01', hora_inicio: '18:00', hora_termino: '23:00', num_convidados: 40, contato: 'Reservas', responsavel_comercial: 'Comercial', responsavel_operacional: 'Operação', briefing_cliente: 'Recepção para convidados' }
+
 function route(name, { role = 'admin', key = 'private-key', upstreamStatus = 200, upstreamData = [{ id: 1, nome_evento: 'Evento' }] } = {}) {
   const calls = []
   const source = fs.readFileSync(new URL(`../src/app/api/eventos/${name}/route.ts`, import.meta.url), 'utf8')
@@ -12,7 +16,7 @@ function route(name, { role = 'admin', key = 'private-key', upstreamStatus = 200
   vm.runInNewContext(code, {
     exports, Request, Response, URL,
     process: { env: { EVENTOS_SUPABASE_SERVICE_ROLE_KEY: key } },
-    require: () => ({ getMiseSession: async () => role ? { employeeId: 'employee-1', employeeName: 'Pessoa do MISE', role } : null }),
+    require: name => name === '@/components/eventos/model' ? model : ({ getMiseSession: async () => role ? { employeeId: 'employee-1', employeeName: 'Pessoa do MISE', role } : null }),
     fetch: async (url, options) => { calls.push({ url, options }); return Response.json(upstreamData, { status: upstreamStatus }) },
   })
   return { route: exports, calls }
@@ -41,7 +45,7 @@ test('matriz de permissões é aplicada no servidor, sem confiar no navegador', 
   for (const role of [null, 'admin', 'gerente', 'cozinheiro']) {
     for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
       const { route: api, calls } = route('data', { role })
-      const body = ['POST', 'PATCH'].includes(method) ? { nome_evento: 'Evento' } : undefined
+      const body = ['POST', 'PATCH'].includes(method) ? { ...validDetails } : undefined
       const response = await api[method](request(method, method === 'POST' ? '' : '?id=eq.1', body))
       const allowed = role && (method === 'GET' || role === 'admin' || (role === 'gerente' && method !== 'DELETE'))
       assert.equal(response.status, allowed ? 200 : role ? 403 : 401, `${role} ${method}`)
@@ -65,7 +69,7 @@ test('proxy permite somente filtros restritos e exige ID em alterações e exclu
 
 test('autoria vem da sessão e campos de identidade não podem ser sobrescritos', async () => {
   const { route: api, calls } = route('data')
-  await api.POST(request('POST', '', { nome_evento: 'Evento', criado_por: 'Outra pessoa', nivel_acesso: 'master' }))
+  await api.POST(request('POST', '', { ...validDetails, criado_por: 'Outra pessoa', nivel_acesso: 'master' }))
   const created = JSON.parse(calls[0].options.body)
   assert.equal(created.criado_por, 'Pessoa do MISE')
   assert.equal(created.id, undefined)
@@ -110,7 +114,7 @@ test('valores financeiros aceitam zero, centavos e ausência sem perder campos o
   for (const method of ['POST', 'PATCH']) {
     for (const value of [null, 0, 1250.5, 9999999999.99]) {
       const { route: api, calls } = route('data')
-      const body = { nome_evento: 'Evento', custo_evento: value, valor_cobrado: value, menu_bar: [{ servico: '_info', descritivo: 'Manter serviço' }] }
+      const body = { ...validDetails, custo_evento: value, valor_cobrado: value, menu_bar: [{ servico: '_info', descritivo: 'Manter serviço' }] }
       assert.equal((await api[method](request(method, method === 'PATCH' ? '?id=eq.1' : '', body))).status, 200)
       const saved = JSON.parse(calls[0].options.body)
       assert.equal(saved.custo_evento, value)
@@ -219,4 +223,34 @@ test('extras validam pagamento integral, parcial e não pago sem alterar dados o
     assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { extras_valor: 100.5, extras_status, extras_valor_pago: 25.25, extras_meio: 'Pix', extras_local: 'Via Financeiro Adm' }))).status, 200)
   }
   assert.equal(JSON.parse(calls[0].options.body).extras_valor, 100.5)
+})
+
+test('cadastro exige todos os dados do evento, exceto tema', async () => {
+  const { route: api, calls } = route('data')
+  for (const [key] of model.requiredEventFields) {
+    for (const missing of [null, '', '   ', undefined]) {
+      const body = { ...validDetails, [key]: missing }
+      const response = await api.POST(request('POST', '', body))
+      assert.equal(response.status, 400, `${key}: ${String(missing)}`)
+    }
+  }
+  assert.equal(calls.length, 0)
+  for (const tema of [undefined, '', 'Celebração']) {
+    assert.equal((await api.POST(request('POST', '', { ...validDetails, tema }))).status, 200)
+  }
+})
+
+test('edição rejeita apagar campos obrigatórios e financeiro continua independente', async () => {
+  const { route: api, calls } = route('data')
+  for (const [key] of model.requiredEventFields) {
+    const response = await api.PATCH(request('PATCH', '?id=eq.42', { [key]: '   ' }))
+    assert.equal(response.status, 400, key)
+  }
+  for (const num_convidados of [-1, 1.5, 'abc', true]) {
+    assert.equal((await api.POST(request('POST', '', { ...validDetails, num_convidados }))).status, 400)
+  }
+  assert.equal(calls.length, 0)
+  assert.equal((await api.PATCH(request('PATCH', '?id=eq.42', { tema: '' }))).status, 200)
+  assert.equal((await api.PATCH(request('PATCH', '?id=eq.42&section=financeiro', { custo_evento: 100 }))).status, 200)
+  assert.equal((await api.POST(request('POST', '', { ...validDetails, num_convidados: 0 }))).status, 200)
 })

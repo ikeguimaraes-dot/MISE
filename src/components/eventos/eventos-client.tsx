@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
-import { casas, statuses, groups, text, money, rentalMoney, eventTotal, eventSaveRequest, financialFields, extraFields, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
+import { casas, statuses, groups, text, money, rentalMoney, eventTotal, eventSaveRequest, financialFields, extraFields, requiredEventFields, eventDetailsError, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
 import EventDocument, { type EventContract } from './event-document'
 import EventPrint from './event-print'
@@ -111,8 +111,9 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
       try { total = money(readOnly ? eventTotal(event.custo_evento, event.valor_cobrado, event.extras_valor) : eventTotal(parseMoney(text(draft.custo_evento)), parseMoney(text(draft.valor_cobrado)), parseMoney(text(draft.extras_valor)))) } catch { /* Wait for valid monetary input. */ }
       return <label key={key}>{label}<output className="events-value" aria-live="polite">{total}</output><small>Custo A&amp;B + Locação + Extras</small></label>
     }
+    const required = requiredEventFields.some(([name]) => name === key) || (key === 'valor_pago_parcial' && draft.pagamento_status === 'Pagamento parcial')
     const value = text(draft[key])
-    return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? key === 'valor_cobrado' ? rentalMoney(event[key]) : money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input autoCapitalize={key === 'nome_evento' ? 'characters' : undefined} required={key === 'nome_evento' || (key === 'valor_pago_parcial' && draft.pagamento_status === 'Pagamento parcial')} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
+    return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{!readOnly && required && ' *'}{readOnly ? <div className="events-value">{kind === 'money' ? key === 'valor_cobrado' ? rentalMoney(event[key]) : money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea required={required} rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select required={required} value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input autoCapitalize={key === 'nome_evento' ? 'characters' : undefined} required={required} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
   }
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -120,7 +121,8 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
     saveInFlight.current = true
     setError('')
     try {
-      if (!text(draft.nome_evento).trim()) throw new Error('Informe o nome do evento.')
+      const detailsError = eventDetailsError(draft)
+      if (detailsError) throw new Error(detailsError)
       if (!draft.casa || !draft.espacos) throw new Error('Selecione a casa e pelo menos um ambiente.')
       const body: Evento = { ...operationalPayload(draft), nome_evento: text(draft.nome_evento).trim().toLocaleUpperCase('pt-BR'), num_convidados: text(draft.num_convidados) === '' ? null : Number(draft.num_convidados) }
       for (const key of ['data_inicio', 'hora_inicio', 'hora_termino']) body[key] = draft[key] || null
@@ -171,7 +173,7 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
   return <><EventPrint event={draft} documents={documents} /><form onSubmit={submit} className="events-operational-form no-print"><fieldset disabled={saving || financialSaving || uploading} className="events-fieldset">
     <section className="events-card"><h2>Casa e status · V{Number(draft.versao ?? 1)}</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
     <div className="events-wide"><span className="events-label">Ambientes</span><div className="events-spaces">{readOnly ? <p>{spaces.join(' • ') || '—'}</p> : Array.from(new Set([...(casas[text(draft.casa)] || []), ...spaces])).map(space => <label key={space}><input type="checkbox" checked={spaces.includes(space)} onChange={e => set('espacos', (e.target.checked ? [...spaces, space] : spaces.filter(s => s !== space)).join('\n'))} />{space}</label>)}{!draft.casa && <p>Selecione uma casa para escolher os ambientes.</p>}</div></div></div></section>
-    {groups.filter(group => group.title !== 'Valores do evento').map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2><div className="events-grid">{group.fields.map(field)}</div></section>)}
+    {groups.filter(group => group.title !== 'Valores do evento').map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2>{!readOnly && group.title === 'Dados do evento' && <p className="events-subtitle events-required-hint">Todos os campos são obrigatórios, exceto Tema.</p>}<div className="events-grid">{group.fields.map(field)}</div></section>)}
     {collection('brigada', 'Brigada', [['funcao', 'Função'], ['qtd', 'Quantidade', 'number']])}
     {(['menu_bar', 'menu_cozinha'] as const).map(key => collection(key, key === 'menu_bar' ? 'Menu bar' : 'Menu cozinha', [['categoria', 'Categoria'], ['servico', 'Serviço'], ['hr_ini', 'Início', 'time'], ['hr_fim', 'Fim', 'time'], ['descritivo', 'Descrição'], ['obs', 'Observações']]))}
     {attachment('layout_anexos')}

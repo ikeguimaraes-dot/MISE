@@ -57,3 +57,5 @@
   .event-print-attachments{display:flex;flex-wrap:wrap;gap:3pt 16pt;margin:0;padding-left:12pt;font-size:8pt}
   .event-print-attachments li{overflow-wrap:anywhere}
 }
+
+.events-required-hint{margin:-8px 0 18px}

@@ -68,3 +68,15 @@ test('extras somam ao total e são salvos somente no financeiro', () => {
   assert.equal(exports.financialPayload(draft).extras_valor_pago, 250.25)
   assert.equal(Object.keys(exports.operationalPayload(draft)).length, 0)
 })
+
+test('dados do evento exigem preenchimento completo e tema continua opcional', () => {
+  const event = { nome_evento: 'Evento', tipo_evento: 'Jantar', data_inicio: '2026-11-01', hora_inicio: '18:00', hora_termino: '23:00', num_convidados: '40', contato: 'Reservas', responsavel_comercial: 'Comercial', responsavel_operacional: 'Operação', briefing_cliente: 'Descrição do evento' }
+  assert.equal(exports.eventDetailsError(event), null)
+  assert.equal(exports.eventDetailsError({ ...event, tema: '' }), null)
+  for (const [key] of exports.requiredEventFields) {
+    assert.ok(exports.eventDetailsError({ ...event, [key]: '   ' }), key)
+    const incomplete = { ...event }; delete incomplete[key]
+    assert.ok(exports.eventDetailsError(incomplete), key)
+  }
+  assert.equal(exports.eventDetailsError({ ...event, num_convidados: '0' }), null)
+})

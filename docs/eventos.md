@@ -209,3 +209,13 @@ itens e títulos, em vez de empurrar seções inteiras. Os nomes dos contratos e
 anexos são incluídos quando há arquivos, reutilizando a consulta já existente.
 
 Validação: prévia visual em largura A4, 45 testes de Eventos, TypeScript e build.
+
+## Campos obrigatórios do evento
+
+Todos os campos de Dados do evento, exceto Tema, são obrigatórios no formulário
+para criar ou salvar a OS. Campos obrigatórios têm asterisco e usam validação
+nativa do navegador; a validação compartilhada também rejeita textos só com
+espaços e quantidades inválidas. Zero é uma quantidade informada válida.
+A API exige todos esses dados no cadastro e rejeita apagar um campo obrigatório
+em edições parciais. O salvamento financeiro continua independente.
+Validação: 48 testes de Eventos, TypeScript e build.
