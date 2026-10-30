@@ -1,9 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
-import { casas, statuses, groups, text, money, eventTotal, parseMoney, rows, type Evento, type Field } from './model'
+import { casas, statuses, groups, text, money, eventTotal, eventSaveRequest, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
 
 async function api(query = '', method = 'GET', body?: Evento): Promise<Evento[]> {
@@ -27,6 +27,7 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
   const [selected, setSelected] = useState<Evento | null>(page === 'new' ? { status: 'confirmado' } : null)
   const [mode, setMode] = useState<'list' | 'view' | 'edit'>(page === 'new' ? 'edit' : 'list')
   const [busy, setBusy] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const canEdit = role === 'admin' || role === 'gerente'
   async function refresh() {
     setLoading(true); setError('')
@@ -38,7 +39,8 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
     try {
       const [event] = await api(`?id=eq.${id}`)
       if (!event) throw new Error('Esta O.S. não foi encontrada. Atualize a listagem.')
-      setSelected(event); setMode(edit ? 'edit' : 'view')
+      if (event.id !== id) throw new Error('Não foi possível identificar a O.S. para edição.')
+      setEditingId(id); setSelected(event); setMode(edit ? 'edit' : 'view')
     } catch (e) { setError(errorMessage(e)) } finally { setBusy(false) }
   }
   async function remove(event: Evento) {
@@ -58,14 +60,15 @@ export default function EventosClient({ role, page = 'list' }: { role: string; p
       <div className="events-stats">{[['Eventos', filtered.length], ['Confirmados', filtered.filter(e => e.status === 'confirmado').length], ['Em andamento', filtered.filter(e => e.status === 'em_andamento').length], ['Pagos', filtered.filter(e => e.status === 'pago').length]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{loading ? '—' : value}</strong></div>)}</div>
       <div className="events-filters"><label>Casa<select value={house} onChange={e => setHouse(e.target.value)}><option value="">Todas as casas</option>{Array.from(new Set([...Object.keys(casas), ...events.map(e => text(e.casa)).filter(Boolean)])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={status} onChange={e => setStatus(e.target.value)}><option value="">Todos os status</option>{Object.entries(statuses).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label><label className="events-search">Buscar evento<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nome do evento ou cliente" /></label><button disabled={loading || busy} onClick={refresh}>Atualizar</button></div>
       {page === 'dashboard' && <div className="events-heading"><h2>Eventos recentes</h2><button onClick={() => router.push('/eventos/lista')}>Ver todos os eventos</button></div>}
-      <div className="events-table-wrap"><table><thead><tr>{['Evento', 'Casa', 'Data', 'Pax', 'Responsável op.', 'Criado por', 'Custo A&B', 'Locação', 'Total', 'Status', 'Ações'].map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={11}>Carregando eventos…</td></tr> : filtered.length === 0 ? <tr><td colSpan={11}>Nenhum evento encontrado.</td></tr> : (page === 'dashboard' ? filtered.slice(0, 8) : filtered).map(e => <tr key={e.id}><td><strong>{text(e.nome_evento)}</strong><small>{text(e.tipo_evento)}</small></td><td>{text(e.casa)}</td><td className="nowrap">{date(e.data_inicio)}</td><td>{text(e.num_convidados) || '—'}</td><td>{text(e.responsavel_operacional) || '—'}</td><td>{text(e.criado_por) || '—'}</td><td className="events-money">{money(e.custo_evento)}</td><td className="events-money">{money(e.valor_cobrado)}</td><td className="events-money"><strong>{money(eventTotal(e.custo_evento, e.valor_cobrado))}</strong></td><td><span className="events-status">{statuses[text(e.status)] || text(e.status)}</span></td><td><div className="events-actions"><button disabled={busy} onClick={() => open(e.id!)}>Ver</button>{canEdit && <button disabled={busy} onClick={() => open(e.id!, true)}>Editar</button>}{role === 'admin' && <button className="events-danger" disabled={busy} onClick={() => remove(e)} aria-label={`Excluir ${text(e.nome_evento)}`}>Excluir</button>}</div></td></tr>)}</tbody></table></div><p className="events-subtitle">{filtered.length} evento(s) · Valores em reais</p>
+      <div className="events-table-wrap"><table><thead><tr>{['Evento', 'Casa', 'Data', 'Pax', 'Responsável op.', 'Criado por', 'Custo A&B', 'Locação', 'Total', 'Status', 'Versão', 'Ações'].map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={12}>Carregando eventos…</td></tr> : filtered.length === 0 ? <tr><td colSpan={12}>Nenhum evento encontrado.</td></tr> : (page === 'dashboard' ? filtered.slice(0, 8) : filtered).map(e => <tr key={e.id}><td><strong>{text(e.nome_evento)}</strong><small>{text(e.tipo_evento)}</small></td><td>{text(e.casa)}</td><td className="nowrap">{date(e.data_inicio)}</td><td>{text(e.num_convidados) || '—'}</td><td>{text(e.responsavel_operacional) || '—'}</td><td>{text(e.criado_por) || '—'}</td><td className="events-money">{money(e.custo_evento)}</td><td className="events-money">{money(e.valor_cobrado)}</td><td className="events-money"><strong>{money(eventTotal(e.custo_evento, e.valor_cobrado))}</strong></td><td><span className="events-status">{statuses[text(e.status)] || text(e.status)}</span></td><td className="nowrap">V{Number(e.versao ?? 1)}</td><td><div className="events-actions"><button disabled={busy} onClick={() => open(e.id!)}>Ver</button>{canEdit && <button disabled={busy} onClick={() => open(e.id!, true)}>Editar</button>}{role === 'admin' && <button className="events-danger" disabled={busy} onClick={() => remove(e)} aria-label={`Excluir ${text(e.nome_evento)}`}>Excluir</button>}</div></td></tr>)}</tbody></table></div><p className="events-subtitle">{filtered.length} evento(s) · Valores em reais</p>
     </> : selected && <EventForm key={`${selected.id ?? 'new'}-${mode}`} event={selected} readOnly={mode === 'view'} onSave={async body => {
       setBusy(true)
       try {
-        const [saved] = await api(selected.id ? `?id=eq.${selected.id}` : '', selected.id ? 'PATCH' : 'POST', body)
+        const request = eventSaveRequest(page === 'new' ? { kind: 'create' } : { kind: 'edit', id: editingId! }, body)
+        const [saved] = await api(request.query, request.method, body)
         if (!saved) throw new Error('A O.S. não foi encontrada para salvar. Atualize a listagem.')
         if (page === 'new') { router.push('/eventos/lista'); return }
-        setSelected(null); setMode('list'); await refresh(); setNotice('O.S. salva com sucesso.')
+        setSelected(null); setMode('list'); await refresh(); setNotice(`O.S. salva com sucesso — V${Number(saved.versao ?? 1)}.`)
       } finally { setBusy(false) }
     }} />}
   </section>
@@ -75,6 +78,7 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
   const [draft, setDraft] = useState<Evento>(() => ({ ...event, custo_evento: event.custo_evento == null ? '' : Number(event.custo_evento).toFixed(2).replace('.', ','), valor_cobrado: event.valor_cobrado == null ? '' : Number(event.valor_cobrado).toFixed(2).replace('.', ',') }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const saveInFlight = useRef(false)
   const [uploading, setUploading] = useState(false)
   const [dirty, setDirty] = useState(false)
   useEffect(() => {
@@ -95,14 +99,17 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
     return <label key={key} className={kind === 'textarea' ? 'events-wide' : ''}>{label}{readOnly ? <div className="events-value">{kind === 'money' ? money(event[key]) : kind === 'date' ? date(event[key]) : value || '—'}</div> : kind === 'textarea' ? <textarea rows={3} value={value} onChange={e => set(key, e.target.value)} /> : kind === 'select' ? <select value={value} onChange={e => set(key, e.target.value)}><option value="">Selecione</option>{Array.from(new Set([...(options || []), ...(value ? [value] : [])])).map(o => <option key={o}>{o}</option>)}</select> : <input required={key === 'nome_evento'} type={kind === 'money' ? 'text' : kind || 'text'} inputMode={kind === 'money' ? 'decimal' : undefined} min={kind === 'number' ? 0 : undefined} step={kind === 'number' ? 1 : undefined} placeholder={kind === 'money' ? 'Não informado' : undefined} value={value} onChange={e => set(key, e.target.value)} />}</label>
   }
   async function submit(e: FormEvent) {
-    e.preventDefault(); setError('')
+    e.preventDefault()
+    if (saveInFlight.current) return
+    saveInFlight.current = true
+    setError('')
     try {
       if (!text(draft.nome_evento).trim()) throw new Error('Informe o nome do evento.')
       if (!draft.casa || !draft.espacos) throw new Error('Selecione a casa e pelo menos um ambiente.')
       const body: Evento = { ...draft, nome_evento: text(draft.nome_evento).trim(), custo_evento: parseMoney(text(draft.custo_evento)), valor_cobrado: parseMoney(text(draft.valor_cobrado)), num_convidados: text(draft.num_convidados) === '' ? null : Number(draft.num_convidados) }
       for (const key of ['data_inicio', 'hora_inicio', 'hora_termino']) body[key] = draft[key] || null
       setSaving(true); await onSave(body); setDirty(false)
-    } catch (e) { setError(errorMessage(e)) } finally { setSaving(false) }
+    } catch (e) { saveInFlight.current = false; setSaving(false); setError(errorMessage(e)) }
   }
   function collection(key: string, title: string, columns: Field[]) {
     const items = rows(draft[key])
@@ -125,7 +132,7 @@ function EventForm({ event, readOnly, onSave }: { event: Evento; readOnly: boole
     } catch (e) { setError(errorMessage(e)) } finally { setUploading(false) }
   }
   return <form onSubmit={submit}><fieldset disabled={saving || uploading} className="events-fieldset">
-    <section className="events-card"><h2>Casa e status</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
+    <section className="events-card"><h2>Casa e status · V{Number(event.versao ?? 1)}</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
     <div className="events-wide"><span className="events-label">Ambientes</span><div className="events-spaces">{readOnly ? <p>{spaces.join(' • ') || '—'}</p> : Array.from(new Set([...(casas[text(draft.casa)] || []), ...spaces])).map(space => <label key={space}><input type="checkbox" checked={spaces.includes(space)} onChange={e => set('espacos', (e.target.checked ? [...spaces, space] : spaces.filter(s => s !== space)).join('\n'))} />{space}</label>)}{!draft.casa && <p>Selecione uma casa para escolher os ambientes.</p>}</div></div></div></section>
     {groups.map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2><div className="events-grid">{group.fields.map(field)}</div></section>)}
     {collection('brigada', 'Brigada', [['funcao', 'Função'], ['qtd', 'Quantidade', 'number']])}

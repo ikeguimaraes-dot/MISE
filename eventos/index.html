@@ -1676,7 +1676,20 @@
     // ══════════════════════════════════════════════════════════════════════
     // SALVAR / EDITAR
     // ══════════════════════════════════════════════════════════════════════
+    let salvandoOS = false;
     async function salvarOS() {
+      if (salvandoOS) return;
+      salvandoOS = true;
+      try {
+        const saved = await salvarOSInterno();
+        if (!saved) salvandoOS = false;
+      } catch {
+        salvandoOS = false;
+        showOSAlert('Não foi possível salvar a O.S. Tente novamente.', 'error');
+      }
+    }
+
+    async function salvarOSInterno() {
       const nome = document.getElementById('f-nome').value.trim();
       if (!nome) { showOSAlert("Informe o nome do evento.", "error"); return; }
 
@@ -1747,7 +1760,8 @@
 
       showOSAlert("Ordem de Serviço salva com sucesso!", "success");
       editingId = null;
-      setTimeout(() => showPage('eventos'), 1200);
+      showPage('eventos');
+      return true;
     }
 
     function showOSAlert(msg, type) {
@@ -1904,6 +1918,7 @@
     }
 
     async function editarOS(id) {
+      salvandoOS = false;
       editingId = id;
       const q = new SBQuery('eventos');
       q.eq('id', id);
@@ -2016,6 +2031,7 @@
     }
 
     function resetForm() {
+      salvandoOS = false;
       editingId = null;
       document.getElementById('os-form-title').textContent = 'Nova Ordem de Serviço';
       document.getElementById('os-id').value = '';

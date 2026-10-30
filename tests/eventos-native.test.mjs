@@ -30,3 +30,14 @@ test('total soma A&B e locação em centavos, distinguindo ausência de zero', (
   assert.equal(exports.eventTotal(150, null), 150)
   assert.equal(exports.eventTotal('1250.50', '2500.75'), 3751.25)
 })
+
+
+test('salvar edição nunca recorre a criação se o ID estiver ausente', () => {
+  for (const id of [null, undefined, 0, -1, NaN]) assert.throws(() => exports.eventSaveRequest({ kind: 'edit', id }, { nome_evento: 'Evento' }))
+  const request = exports.eventSaveRequest({ kind: 'edit', id: 42 }, { id: 42, nome_evento: 'Evento editado' })
+  assert.equal(request.method, 'PATCH')
+  assert.equal(request.query, '?id=eq.42')
+  assert.throws(() => exports.eventSaveRequest({ kind: 'edit', id: 42 }, { id: 43 }))
+  assert.throws(() => exports.eventSaveRequest({ kind: 'create' }, { id: 42 }))
+  assert.equal(exports.eventSaveRequest({ kind: 'create' }, { nome_evento: 'Novo evento' }).method, 'POST')
+})

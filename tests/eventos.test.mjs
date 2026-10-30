@@ -155,3 +155,19 @@ test('dashboard filtra a consulta por casa e atualiza os indicadores e a tabela'
   assert.equal(elements['stat-total'].textContent, 2)
   assert.deepEqual(rendered, events)
 })
+
+test('salvamento legado bloqueia clique duplo e reenvio após sucesso', async () => {
+  let calls = 0
+  let finish
+  const context = eventosFunction('    let salvandoOS = false;', '    async function salvarOSInterno()', {
+    salvarOSInterno: () => { calls++; return new Promise(resolve => { finish = resolve }) },
+    showOSAlert() {},
+  })
+  const first = context.salvarOS()
+  await context.salvarOS()
+  assert.equal(calls, 1)
+  finish(true)
+  await first
+  await context.salvarOS()
+  assert.equal(calls, 1)
+})

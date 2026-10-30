@@ -46,6 +46,14 @@ async function handle(request: Request) {
     if (method === 'POST' || method === 'PATCH') {
       const input = await request.json()
       if (!input || typeof input !== 'object' || Array.isArray(input)) return fail('Dados inválidos.', 400)
+      if (method === 'POST' && (input.id != null || params.has('id'))) return fail('Uma O.S. existente deve ser editada, não criada novamente.', 400)
+      if (method === 'PATCH') {
+        if (input.id != null && String(input.id) !== params.get('id')?.slice(3)) return fail('A identificação da O.S. não corresponde à edição.', 400)
+        if (input.versao != null) {
+          if (!Number.isSafeInteger(input.versao) || input.versao < 1) return fail('Versão inválida.', 400)
+          params.set('versao', `eq.${input.versao}`)
+        }
+      }
       body = Object.fromEntries(Object.entries(input).filter(([name]) => fields.has(name)))
       if (!Object.keys(body).length) return fail('Informe os dados da O.S.', 400)
       for (const field of ['custo_evento', 'valor_cobrado']) {
@@ -69,7 +77,9 @@ async function handle(request: Request) {
     })
     if (!upstream.ok) return fail('Não foi possível concluir a operação em Eventos. Tente novamente.', 502)
     if (upstream.status === 204) return Response.json([], { headers })
-    return new Response(await upstream.text(), { status: upstream.status, headers: { ...headers, 'Content-Type': 'application/json' } })
+    const result = await upstream.json()
+    if (method === 'PATCH' && Array.isArray(result) && !result.length) return fail(params.has('versao') ? 'Esta O.S. foi alterada ou excluída. Reabra o evento para carregar a versão atual antes de salvar.' : 'O.S. não encontrada para edição.', params.has('versao') ? 409 : 404)
+    return new Response(JSON.stringify(result), { status: upstream.status, headers: { ...headers, 'Content-Type': 'application/json' } })
   } catch {
     return fail('Não foi possível concluir a operação em Eventos.', 502)
   }

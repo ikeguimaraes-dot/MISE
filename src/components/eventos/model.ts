@@ -37,3 +37,14 @@ export const groups: { title: string; fields: Field[] }[] = [
   { title: 'Montagem e operação', fields: [['montagem', 'Tipo de montagem'], ['montagem_descricao', 'Descrição da montagem', 'textarea'], ['tempos_movimentos', 'Tempos e movimentos', 'textarea'], ['campo_livre', 'Observações e alertas', 'textarea']] },
   { title: 'Infraestrutura', fields: [['acesso_entrada', 'Acesso de entrada'], ['acesso_obs', 'Observações de portaria', 'textarea'], ['mobiliario', 'Mobiliário'], ['mobiliario_obs', 'Observações de mobiliário'], ['fotografia', 'Fotografia / vídeo'], ['valet', 'Valet'], ['artistico', 'Artístico / DJ / banda'], ['artistico_obs', 'Observações do artístico'], ['gerador', 'Gerador'], ['ambulancia', 'Ambulância'], ['menores', 'Menores']] },
 ]
+
+export type SaveTarget = { kind: 'create' } | { kind: 'edit'; id: number }
+export function eventSaveRequest(target: SaveTarget, event: Evento) {
+  if (target.kind === 'edit') {
+    if (!Number.isSafeInteger(target.id) || target.id <= 0) throw new Error('O.S. sem identificação. Reabra o evento para editar.')
+    if (event.id != null && event.id !== target.id) throw new Error('A identificação da O.S. mudou. Reabra o evento.')
+    return { query: `?id=eq.${target.id}`, method: 'PATCH' }
+  }
+  if (event.id != null) throw new Error('Uma O.S. existente deve ser editada, não cadastrada novamente.')
+  return { query: '', method: 'POST' }
+}

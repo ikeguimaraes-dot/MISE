@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import vm from 'node:vm'
 import ts from 'typescript'
 
-function route(name, { role = 'admin', key = 'private-key', upstreamStatus = 200 } = {}) {
+function route(name, { role = 'admin', key = 'private-key', upstreamStatus = 200, upstreamData = [{ id: 1, nome_evento: 'Evento' }] } = {}) {
   const calls = []
   const source = fs.readFileSync(new URL(`../src/app/api/eventos/${name}/route.ts`, import.meta.url), 'utf8')
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText
@@ -13,7 +13,7 @@ function route(name, { role = 'admin', key = 'private-key', upstreamStatus = 200
     exports, Request, Response, URL,
     process: { env: { EVENTOS_SUPABASE_SERVICE_ROLE_KEY: key } },
     require: () => ({ getMiseSession: async () => role ? { employeeId: 'employee-1', employeeName: 'Pessoa do MISE', role } : null }),
-    fetch: async (url, options) => { calls.push({ url, options }); return Response.json([{ id: 1, nome_evento: 'Evento' }], { status: upstreamStatus }) },
+    fetch: async (url, options) => { calls.push({ url, options }); return Response.json(upstreamData, { status: upstreamStatus }) },
   })
   return { route: exports, calls }
 }
@@ -42,7 +42,7 @@ test('matriz de permissões é aplicada no servidor, sem confiar no navegador', 
     for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
       const { route: api, calls } = route('data', { role })
       const body = ['POST', 'PATCH'].includes(method) ? { nome_evento: 'Evento' } : undefined
-      const response = await api[method](request(method, '?id=eq.1', body))
+      const response = await api[method](request(method, method === 'POST' ? '' : '?id=eq.1', body))
       const allowed = role && (method === 'GET' || role === 'admin' || (role === 'gerente' && method !== 'DELETE'))
       assert.equal(response.status, allowed ? 200 : role ? 403 : 401, `${role} ${method}`)
       assert.equal(calls.length, allowed ? 1 : 0)
@@ -65,7 +65,7 @@ test('proxy permite somente filtros restritos e exige ID em alterações e exclu
 
 test('autoria vem da sessão e campos de identidade não podem ser sobrescritos', async () => {
   const { route: api, calls } = route('data')
-  await api.POST(request('POST', '', { nome_evento: 'Evento', criado_por: 'Outra pessoa', id: 99, nivel_acesso: 'master' }))
+  await api.POST(request('POST', '', { nome_evento: 'Evento', criado_por: 'Outra pessoa', nivel_acesso: 'master' }))
   const created = JSON.parse(calls[0].options.body)
   assert.equal(created.criado_por, 'Pessoa do MISE')
   assert.equal(created.id, undefined)
@@ -136,4 +136,35 @@ test('edições parciais não apagam valores financeiros anteriores', async () =
   const saved = JSON.parse(calls[0].options.body)
   assert.equal(Object.hasOwn(saved, 'custo_evento'), false)
   assert.equal(Object.hasOwn(saved, 'valor_cobrado'), false)
+})
+
+
+test('editar usa PATCH no mesmo ID e a versão é controlada pelo banco', async () => {
+  const { route: api, calls } = route('data', { upstreamData: [{ id: 42, versao: 3 }] })
+  const response = await api.PATCH(request('PATCH', '?id=eq.42', { id: 42, versao: 2, nome_evento: 'Evento editado' }))
+  assert.equal(response.status, 200)
+  assert.deepEqual(await response.json(), [{ id: 42, versao: 3 }])
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].options.method, 'PATCH')
+  assert.equal(new URL(calls[0].url).searchParams.get('id'), 'eq.42')
+  assert.equal(new URL(calls[0].url).searchParams.get('versao'), 'eq.2')
+  const saved = JSON.parse(calls[0].options.body)
+  assert.equal(saved.versao, undefined)
+  assert.equal(saved.id, undefined)
+})
+
+test('criação com identidade existente e edição com identidade divergente são bloqueadas', async () => {
+  const { route: api, calls } = route('data')
+  assert.equal((await api.POST(request('POST', '', { id: 42, nome_evento: 'Evento' }))).status, 400)
+  assert.equal((await api.POST(request('POST', '?id=eq.42', { nome_evento: 'Evento' }))).status, 400)
+  assert.equal((await api.PATCH(request('PATCH', '?id=eq.42', { id: 43, nome_evento: 'Evento' }))).status, 400)
+  assert.equal(calls.length, 0)
+})
+
+test('versão desatualizada não sobrescreve nem cria outra OS', async () => {
+  const { route: api, calls } = route('data', { upstreamData: [] })
+  assert.equal((await api.PATCH(request('PATCH', '?id=eq.42', { id: 42, versao: 1, nome_evento: 'Evento' }))).status, 409)
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].options.method, 'PATCH')
+  assert.equal((await api.PATCH(request('PATCH', '?id=eq.42', { nome_evento: 'Evento' }))).status, 404)
 })

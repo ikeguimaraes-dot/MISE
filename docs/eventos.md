@@ -103,3 +103,19 @@ A coluna **Total** soma Custo A&B + Locação em centavos; o mesmo total aparece
 no formulário e na consulta/impressão. Não é um campo editável ou persistido.
 Se apenas um valor foi informado, o outro contribui zero; se ambos estão vazios,
 o total mostra “Não informado”.
+
+## Edição e versões
+
+A edição usa um alvo explícito e PATCH por ID, sem fallback para criação se a
+identidade estiver ausente. POST com ID existente é rejeitado. O formulário
+bloqueia envios simultâneos; o HTML legado também bloqueia novo envio depois do
+sucesso (antes ele limpava o ID e aguardava 1,2 segundo para sair do formulário).
+
+A coluna `versao` inicia em 1. Um trigger incrementa atomicamente a versão em
+cada UPDATE, mantendo o ID e o registro. A interface mostra V1/V2/V3 após Status,
+na consulta e edição. A API compara a versão carregada antes de atualizar:
+edições concorrentes desatualizadas recebem erro 409 e devem reabrir a OS.
+As OS anteriores começam em V1, sem inferir um histórico que não foi registrado.
+A migração `20261030123718_eventos_versao.sql` foi aplicada ao banco de Eventos.
+O trigger foi testado em tabela temporária: duas edições mantiveram um registro
+com o mesmo ID e versão 3, sem alterar OS reais.
