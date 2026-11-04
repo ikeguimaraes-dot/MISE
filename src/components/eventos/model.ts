@@ -28,6 +28,23 @@ export function rows(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? value : []
 }
 export type Field = [key: string, label: string, type?: string, options?: string[]]
+// Keep a saved custom/legacy value available when an OS is reopened for editing.
+export function selectOptions(options: string[] = [], current: unknown): string[] {
+  const value = text(current)
+  return Array.from(new Set([...options, ...(value ? [value] : [])]))
+}
+export const menuFields: Record<'menu_bar' | 'menu_cozinha', Field[]> = {
+  menu_bar: [
+    ['categoria', 'Categoria', 'select', ['Menu Aberto', 'Menu Fechado', 'Open Bar']],
+    ['servico', 'Serviço', 'select', ['Não Alcoólicas', 'Alcoólicas', 'Vinhos e Champanhes', 'Pausa de Serviço', 'Encerramento de Serviço']],
+    ['hr_ini', 'Início', 'time'], ['hr_fim', 'Fim', 'time'], ['descritivo', 'Descrição'], ['obs', 'Observações'],
+  ],
+  menu_cozinha: [
+    ['categoria', 'Categoria', 'select', ['Coquetel Volante', 'Empratado', 'Cardápio Aberto']],
+    ['servico', 'Serviço', 'select', ['Entradas', 'Saladas', 'Principais', 'Sobremesas', 'Pausa de Serviço', 'Encerramento de Serviço']],
+    ['hr_ini', 'Início', 'time'], ['hr_fim', 'Fim', 'time'], ['descritivo', 'Descrição'], ['obs', 'Observações'],
+  ],
+}
 export const groups: { title: string; fields: Field[] }[] = [
   { title: 'Dados do evento', fields: [
     ['nome_evento', 'Nome do evento / cliente'], ['tipo_evento', 'Tipo de evento', 'select', ['Corporativo', 'Confraternização', 'Festa Aniversário', 'Jantar', 'Almoço', 'Café da Manhã', 'Fotografia', 'Palestra', 'Outro']],
@@ -36,7 +53,18 @@ export const groups: { title: string; fields: Field[] }[] = [
   ] },
   { title: 'Valores do evento', fields: [['custo_evento', 'Custo A&B (R$)', 'money'], ['valor_cobrado', 'Locação (R$)', 'money'], ['total_evento', 'Total (R$)', 'total'], ['situacao_pagamento', 'Forma de pagamento', 'select', ['Via Financeiro Adm', 'Via Caixa Restaurante']], ['pagamento_status', 'Situação do pagamento', 'select', ['Pago', 'A pagar', 'Pagamento parcial']], ['valor_pago_parcial', 'Valor pago parcial (R$)', 'money'], ['pagamento_meio', 'Meio de pagamento', 'select', ['Cartão', 'Pix', 'Boleto']]] },
   { title: 'Montagem e operação', fields: [['montagem', 'Tipo de montagem'], ['montagem_descricao', 'Descrição da montagem', 'textarea'], ['tempos_movimentos', 'Tempos e movimentos', 'textarea'], ['campo_livre', 'Observações e alertas', 'textarea']] },
-  { title: 'Infraestrutura', fields: [['acesso_entrada', 'Acesso de entrada'], ['acesso_obs', 'Observações de portaria', 'textarea'], ['mobiliario', 'Mobiliário'], ['mobiliario_obs', 'Observações de mobiliário'], ['fotografia', 'Fotografia / vídeo'], ['valet', 'Valet'], ['artistico', 'Artístico / DJ / banda'], ['artistico_obs', 'Observações do artístico'], ['gerador', 'Gerador'], ['ambulancia', 'Ambulância'], ['menores', 'Menores']] },
+  { title: 'Infraestrutura', fields: [
+    ['acesso_entrada', 'Acesso de entrada', 'select', ['Entrada Principal']],
+    ['acesso_obs', 'Observações de portaria', 'textarea'],
+    ['mobiliario', 'Mobiliário', 'select', ['Casa', 'Locação']], ['mobiliario_obs', 'Observações de mobiliário'],
+    ['fotografia', 'Fotografia / vídeo', 'select', ['Autorizado', 'Em Aprovação', 'Não Autorizado']],
+    ['valet', 'Valet', 'select', ['Contratado pelo Cliente', 'Contratado pela Casa', 'Não Contratado']],
+    ['artistico', 'Artístico / DJ / banda', 'select', ['Pelo Cliente', 'Pela Casa', 'Contratado', 'Não Contratado', 'Não se aplica']],
+    ['artistico_obs', 'Observações do artístico'],
+    ['gerador', 'Gerador', 'select', ['Contratado', 'Contratado pela Casa', 'Contratado pelo Cliente', 'Não Contratado']],
+    ['ambulancia', 'Ambulância', 'select', ['Contratado', 'Contratado pela Casa', 'Contratado pelo Cliente', 'Não Contratado', 'UTI', 'Remoção']],
+    ['menores', 'Observação dos menores', 'textarea'],
+  ] },
 ]
 
 export const requiredEventFields = groups.find(group => group.title === 'Dados do evento')!.fields.filter(([key]) => key !== 'tema')

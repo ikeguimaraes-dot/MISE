@@ -219,3 +219,15 @@ espaços e quantidades inválidas. Zero é uma quantidade informada válida.
 A API exige todos esses dados no cadastro e rejeita apagar um campo obrigatório
 em edições parciais. O salvamento financeiro continua independente.
 Validação: 48 testes de Eventos, TypeScript e build.
+
+## Opções dos menus e da infraestrutura
+
+Categoria e Serviço dos menus de bar/cozinha usam seletores com as opções do
+formulário antigo, incluindo pausa e encerramento. Horários, descrições,
+observações e informações gerais continuam disponíveis em cada menu.
+Infraestrutura oferece seletores para acesso, mobiliário, fotografia/vídeo,
+valet, artístico, gerador e ambulância. As opções de contratação distinguem
+cliente/casa e não contratado; ambulância mantém também UTI e Remoção.
+Valores personalizados ou antigos são acrescentados às opções da própria OS,
+sem substituição automática. Não há alteração de banco ou migração de registros.
+Validação: 50 testes de Eventos, TypeScript e build Webpack.
