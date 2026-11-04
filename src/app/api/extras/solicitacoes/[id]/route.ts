@@ -8,7 +8,7 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}) {
   requireExtraRead(grants,result.data.unit_id,result.data.mise_requested_by,session.employeeId)
   const mayIdentify=grants.some(g=>g.unit_id===result.data.unit_id&&['rh','financeiro','caixa'].includes(g.role))
   const [events,people]=await Promise.all([
-   db.schema('mise').from('extra_request_events').select('id,actor_role,action,from_status,to_status,note,created_at').eq('request_id',id).order('created_at'),
+   db.schema('mise').from('extra_request_events').select('id,actor_role,action,from_status,to_status,note,created_at,changes').eq('request_id',id).order('created_at'),
    db.from('op_extra').select(mayIdentify?`${EXTRA_SELECT},cpf`:EXTRA_SELECT).eq('solicitacao_id',id).order('mise_position')
   ])
   if(events.error||people.error)throw new ExtraError('Não foi possível carregar pessoas e histórico.',503)

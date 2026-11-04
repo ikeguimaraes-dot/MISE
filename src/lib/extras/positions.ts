@@ -4,11 +4,18 @@ export type PositionRequest = {
  quantidade:number;valor_unitario:number;valor_total:number;valor_consumido:number;valor_nomeado:number;
  preenchidos:number;pagamentos_pendentes:number;motivo:string;motivo_detalhe:string|null;solicitante_nome:string;
  pagadora:string;status:string;emergencial:boolean;mise_managed:boolean;mise_requested_by:string|null;
+ mise_refusal_edited?:boolean;mise_refusal_reconsidered?:boolean;
  mise_version:number;mise_named_at:string|null;mise_emergency_decision:string|null;
 }
-export const REQUEST_SELECT = 'id,unit_id,data_trabalho,periodo,setor,funcao,quantidade,valor_unitario,valor_total,valor_consumido,valor_nomeado,preenchidos,pagamentos_pendentes,motivo,motivo_detalhe,solicitante_nome,pagadora,status,emergencial,mise_managed,mise_requested_by,mise_version,mise_named_at,mise_emergency_decision'
+export const REQUEST_SELECT = 'id,unit_id,data_trabalho,periodo,setor,funcao,quantidade,valor_unitario,valor_total,valor_consumido,valor_nomeado,preenchidos,pagamentos_pendentes,motivo,motivo_detalhe,solicitante_nome,pagadora,status,emergencial,mise_managed,mise_requested_by,mise_version,mise_named_at,mise_emergency_decision,mise_refusal_edited,mise_refusal_reconsidered'
 export function positionActions(item:PositionRequest,role:OperationalRole,employee:string) {
- if(!item.mise_managed || ['cancelado','recusado'].includes(item.status)) return []
+ if(!item.mise_managed || item.status==='cancelado') return []
+ if(item.status==='recusado') {
+  if(item.emergencial) return []
+  if(role==='diretor' && !item.mise_refusal_reconsidered) return ['reconsiderar_recusa']
+  if(role==='lider' && item.mise_requested_by===employee && !item.mise_refusal_edited && item.mise_named_at===null) return ['reenviar_recusada']
+  return []
+ }
  const result:string[]=[]
  if(role==='diretor' && item.emergencial && !item.mise_emergency_decision) result.push('ratificar_emergencia','nao_ratificar_emergencia')
  if(role==='diretor' && item.status==='aguardando_diretoria') result.push('aprovar','recusar')

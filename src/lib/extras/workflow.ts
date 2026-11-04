@@ -22,6 +22,8 @@ export const STATUS_LABELS: Record<string, string> = {
   cancelado: "Cancelado",
 };
 export const ACTION_LABELS: Record<string, string> = {
+  reenviar_recusada: "Editar e reenviar (1 vez)",
+  reconsiderar_recusa: "Reconsiderar e aprovar (1 vez)",
   ratificar_emergencia: "Aprovar emergência",
   nao_ratificar_emergencia: "Registrar emergência não aprovada",
   aprovar: "Aprovar solicitação",

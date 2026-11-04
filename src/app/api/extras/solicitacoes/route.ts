@@ -14,7 +14,8 @@ export async function GET(request:Request) {
   let q=db.schema('mise').from('extra_request_summary').select(REQUEST_SELECT).eq('unit_id',unit).order('data_trabalho',{ascending:false}).order('id').range(offset,offset+100)
   if(role==='lider'||!grants.some(g=>g.unit_id===unit&&g.role!=='lider'))q=q.eq('mise_requested_by',session.employeeId)
   if(p.get('queue')==='1') {
-   if(role==='diretor')q=q.or('status.eq.aguardando_diretoria,and(emergencial.eq.true,mise_emergency_decision.is.null,status.not.in.(cancelado,recusado))')
+   if(role==='diretor')q=q.or('status.eq.aguardando_diretoria,and(status.eq.recusado,mise_refusal_reconsidered.eq.false,emergencial.eq.false),and(emergencial.eq.true,mise_emergency_decision.is.null,status.not.in.(cancelado,recusado))')
+   else if(role==='lider')q=q.or('and(status.eq.recusado,mise_refusal_edited.eq.false,mise_named_at.is.null,emergencial.eq.false),and(status.not.in.(cancelado,recusado),or(rh_pendente.eq.true,pagamentos_pendentes.gt.0,status.eq.aguardando_diretoria))')
    else if(role==='rh')q=q.in('status',['solicitado','aprovado_rh']).eq('rh_pendente',true)
    else q=q.not('status','in','(cancelado,recusado)').or('rh_pendente.eq.true,pagamentos_pendentes.gt.0,status.eq.aguardando_diretoria')
   } else q=q.gte('data_trabalho',from).lte('data_trabalho',to)

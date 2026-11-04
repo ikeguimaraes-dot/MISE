@@ -69,3 +69,29 @@ avulso passa a se chamar Solicitar extra. É necessário selecionar um nome em
 Responsável → Gerentes da casa; RH e Caixa são perfis separados nessa seleção.
 Validação: testes de contexto/autorização, APIs de posições e solicitantes,
 TypeScript, build e leitura da grade semanal para a conta nas quatro casas.
+
+## Revisão de recusa — 04/11/2026
+
+Pedidos recusados admitem duas ações, cada uma no máximo uma vez por pedido:
+
+- O Líder que criou o pedido pode editar função, quantidade, diária, data, período,
+  motivo e detalhes e reenviar, com justificativa obrigatória. O pedido mantém o ID,
+  volta sempre à diretoria (mesmo abaixo da alçada) e reserva o novo valor na semana
+  correta. Pedidos que já tiveram pessoas nomeadas preservam seus dados e oferecem
+  apenas a reconsideração pelo diretor.
+- O Diretor pode reconsiderar e aprovar uma recusa com justificativa, preservando
+  as pessoas já nomeadas. Recursos liberados e pagamentos não são reescritos.
+
+As tentativas usadas são derivadas do histórico, sem reiniciar o limite após uma
+nova recusa. Recusados com revisão disponível aparecem na fila de Líder/Diretor.
+Cancelamentos e emergências mantêm suas regras anteriores. Edições têm snapshots
+antes/depois em `mise.extra_request_events.changes`; todo comando exige versão
+atual, permissão por casa e chave idempotente. Mudanças de semana bloqueiam ambas
+as alçadas em ordem para evitar reserva duplicada.
+
+Migração aplicada: `supabase/migrations/20261104195431_extras_revisao_recusa.sql`.
+Validação: banco PostgreSQL local isolado com dados sintéticos (limites, autor,
+reenvio, snapshots, versões, alçadas, concorrência, reconsideração com pessoas e
+cancelamentos), regressão completa de posições/pagamentos, testes da API e da
+interface renderizada, TypeScript e build. Nenhum pedido real foi alterado para
+validar essas ações.

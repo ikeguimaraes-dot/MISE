@@ -23,5 +23,14 @@ const params={params:Promise.resolve({id})},post=data=>new Request('https://exam
  assert.equal((await list.POST(post(body))).status,201);assert.equal(rpc.at(-1).name,'extra_request_command');assert.equal(rpc.at(-1).args.p_actor,employee);
  assert.equal((await list.POST(post({...body,role:'financeiro'}))).status,403);
  requestUnit=other;assert.equal((await actions.POST(post({role:'lider',action:'cancelar',version:1,command_id:id,data:{note:'test'}}),params)).status,403);
+ role='diretor';requestUnit=unit;
+ assert.equal((await actions.POST(post({role,action:'reconsiderar_recusa',version:2,command_id:id,data:{note:'Review'}}),params)).status,200);
+ assert.equal(rpc.at(-1).args.p_action,'reconsiderar_recusa');
+ assert.equal((await actions.POST(post({role,action:'reenviar_recusada',version:2,command_id:id,data:{note:'Wrong role'}}),params)).status,403);
+ role='lider';assert.equal((await actions.POST(post({role,action:'reconsiderar_recusa',version:2,command_id:id,data:{note:'Wrong role'}}),params)).status,403);
+ assert.equal((await actions.POST(post({role,action:'reenviar_recusada',version:2,command_id:id,data:{note:'Review'}}),params)).status,200);
+ assert.equal(rpc.at(-1).args.p_action,'reenviar_recusada');
+ log=[];await list.GET(new Request(`https://example.invalid?unit_id=${unit}&role=lider&from=2026-10-05&to=2026-10-11&queue=1`));
+ assert.ok(log.some(l=>l.method==='or'&&l.args[0].includes('mise_refusal_edited.eq.false')));
  console.log('PASS positions APIs: scoped ownership and units, CPF restricted to authorized roles, pending RH query, transactional parent creation, action scope');
 })().catch(e=>{console.error(e);process.exitCode=1});
