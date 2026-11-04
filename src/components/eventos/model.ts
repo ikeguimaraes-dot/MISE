@@ -33,6 +33,10 @@ export function selectOptions(options: string[] = [], current: unknown): string[
   const value = text(current)
   return Array.from(new Set([...options, ...(value ? [value] : [])]))
 }
+export const brigadeFields: Field[] = [
+  ['funcao', 'Função', 'select', ['Maître', 'Chefe de Fila', 'Garçom', 'Cumin', 'Limpeza', 'Chefe de Bar', 'Bartender', 'Barback', 'Chef de Cozinha', 'Segurança', 'Bombeiro', 'Hostess']],
+  ['qtd', 'Quantidade', 'number'],
+]
 export const menuFields: Record<'menu_bar' | 'menu_cozinha', Field[]> = {
   menu_bar: [
     ['categoria', 'Categoria', 'select', ['Menu Aberto', 'Menu Fechado', 'Open Bar']],

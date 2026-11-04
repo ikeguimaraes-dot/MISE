@@ -23,9 +23,10 @@ const render = (event, readOnly = false) => renderToStaticMarkup(createElement(E
 const selects = html => [...html.matchAll(/<select\b[^>]*>([\s\S]*?)<\/select>/g)].map(match => match[1])
 
 test('formulário oferece categorias e serviços de bar/cozinha em seletores, além da infraestrutura', () => {
-  const html = render({ menu_bar: [{}], menu_cozinha: [{}] })
+  const html = render({ brigada: [{}], menu_bar: [{}], menu_cozinha: [{}] })
   const options = selects(html)
   for (const expected of [
+    ['Maître', 'Chefe de Fila', 'Garçom', 'Cumin', 'Limpeza', 'Chefe de Bar', 'Bartender', 'Barback', 'Chef de Cozinha', 'Segurança', 'Bombeiro', 'Hostess'],
     ['Menu Aberto', 'Menu Fechado', 'Open Bar'],
     ['Não Alcoólicas', 'Alcoólicas', 'Vinhos e Champanhes', 'Pausa de Serviço', 'Encerramento de Serviço'],
     ['Coquetel Volante', 'Empratado', 'Cardápio Aberto'],
@@ -40,12 +41,13 @@ test('formulário oferece categorias e serviços de bar/cozinha em seletores, al
 })
 
 test('OS antiga mantém opções personalizadas, acentos legados e informações gerais', () => {
-  const event = { mobiliario: 'Mobiliário do fornecedor', gerador: 'Contrado Casa', menu_bar: [{ categoria: 'Categoria antiga', servico: 'Não Alcóolicas', descritivo: 'Descrição preservada', obs: 'Observação preservada' }, { servico: '_info', descritivo: 'Informação geral preservada' }], menu_cozinha: [{ categoria: 'Buffet especial', servico: 'Serviço antigo' }] }
+  const event = { brigada: [{ funcao: 'Garçon', qtd: 2 }, { funcao: 'Coordenador de eventos', qtd: 1 }], mobiliario: 'Mobiliário do fornecedor', gerador: 'Contrado Casa', menu_bar: [{ categoria: 'Categoria antiga', servico: 'Não Alcóolicas', descritivo: 'Descrição preservada', obs: 'Observação preservada' }, { servico: '_info', descritivo: 'Informação geral preservada' }], menu_cozinha: [{ categoria: 'Buffet especial', servico: 'Serviço antigo' }] }
   const html = render(event)
-  for (const value of ['Mobiliário do fornecedor', 'Contrado Casa', 'Categoria antiga', 'Não Alcóolicas', 'Buffet especial', 'Serviço antigo']) {
+  for (const value of ['Garçon', 'Coordenador de eventos', 'Mobiliário do fornecedor', 'Contrado Casa', 'Categoria antiga', 'Não Alcóolicas', 'Buffet especial', 'Serviço antigo']) {
     assert.ok(selects(html).some(select => select.includes(`selected="">${value}</option>`)), value)
   }
   for (const value of ['Descrição preservada', 'Observação preservada', 'Informação geral preservada']) assert.ok(html.includes(value), value)
+  assert.equal(model.operationalPayload(event).brigada, event.brigada)
   assert.equal(model.operationalPayload(event).menu_bar, event.menu_bar)
   const readOnly = render(event, true)
   assert.equal(selects(readOnly).length, 0)

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { CalendarDays, Plus, ArrowLeft, Printer } from 'lucide-react'
-import { casas, statuses, groups, menuFields, selectOptions, text, money, rentalMoney, eventTotal, eventSaveRequest, financialFields, extraFields, requiredEventFields, eventDetailsError, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
+import { casas, statuses, groups, brigadeFields, menuFields, selectOptions, text, money, rentalMoney, eventTotal, eventSaveRequest, financialFields, extraFields, requiredEventFields, eventDetailsError, operationalPayload, financialPayload, parseMoney, rows, type Evento, type Field } from './model'
 import './eventos.css'
 import EventDocument, { type EventContract } from './event-document'
 import EventPrint from './event-print'
@@ -174,7 +174,7 @@ function EventForm({ event, readOnly, onSave, onFinancialSave }: { event: Evento
     <section className="events-card"><h2>Casa e status · V{Number(draft.versao ?? 1)}</h2><div className="events-grid">{readOnly ? <><label>Casa<div className="events-value">{text(draft.casa)}</div></label><label>Status<div className="events-value">{statuses[text(draft.status)] || text(draft.status)}</div></label></> : <><label>Casa<select required value={text(draft.casa)} onChange={e => { set('casa', e.target.value); set('espacos', '') }}><option value="">Selecione</option>{Array.from(new Set([...Object.keys(casas), ...(draft.casa ? [text(draft.casa)] : [])])).map(c => <option key={c}>{c}</option>)}</select></label><label>Status<select value={text(draft.status)} onChange={e => set('status', e.target.value)}>{Array.from(new Set([...Object.keys(statuses), text(draft.status)])).filter(Boolean).map(v => <option key={v} value={v}>{statuses[v] || v}</option>)}</select></label></>}
     <div className="events-wide"><span className="events-label">Ambientes</span><div className="events-spaces">{readOnly ? <p>{spaces.join(' • ') || '—'}</p> : Array.from(new Set([...(casas[text(draft.casa)] || []), ...spaces])).map(space => <label key={space}><input type="checkbox" checked={spaces.includes(space)} onChange={e => set('espacos', (e.target.checked ? [...spaces, space] : spaces.filter(s => s !== space)).join('\n'))} />{space}</label>)}{!draft.casa && <p>Selecione uma casa para escolher os ambientes.</p>}</div></div></div></section>
     {groups.filter(group => group.title !== 'Valores do evento').map(group => <section className="events-card" key={group.title}><h2>{group.title}</h2>{!readOnly && group.title === 'Dados do evento' && <p className="events-subtitle events-required-hint">Todos os campos são obrigatórios, exceto Tema.</p>}<div className="events-grid">{group.fields.map(field)}</div></section>)}
-    {collection('brigada', 'Brigada', [['funcao', 'Função'], ['qtd', 'Quantidade', 'number']])}
+    {collection('brigada', 'Brigada', brigadeFields)}
     {(['menu_bar', 'menu_cozinha'] as const).map(key => collection(key, key === 'menu_bar' ? 'Menu bar' : 'Menu cozinha', menuFields[key]))}
     {attachment('layout_anexos')}
     <EventDocument eventId={draft.id} readOnly={readOnly} onDocumentsChange={setDocuments} />

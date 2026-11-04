@@ -231,3 +231,8 @@ cliente/casa e não contratado; ambulância mantém também UTI e Remoção.
 Valores personalizados ou antigos são acrescentados às opções da própria OS,
 sem substituição automática. Não há alteração de banco ou migração de registros.
 Validação: 50 testes de Eventos, TypeScript e build Webpack.
+
+Função da brigada também usa lista de seleção: Maître, Chefe de Fila, Garçom,
+Cumin, Limpeza, Chefe de Bar, Bartender, Barback, Chef de Cozinha, Segurança,
+Bombeiro e Hostess. Quantidade continua editável. Funções antigas/personalizadas
+são preservadas como opções selecionadas na respectiva OS.
