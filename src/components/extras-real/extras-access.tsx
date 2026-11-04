@@ -65,7 +65,8 @@ export function ExtrasAccess({
       <h1 className="er-access-title">Acessos de Extras</h1>
       <p>
         Cada atribuição libera ações reais naquela unidade. O papel Líder exige
-        vínculo com a própria casa.
+        vínculo com a própria casa; administradores podem receber esse acesso
+        em outras casas por atribuição explícita.
       </p>
       <form onSubmit={submit} className="er-filters">
         <label>

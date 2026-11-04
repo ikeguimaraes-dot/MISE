@@ -48,3 +48,24 @@ Alinhamento KPH-OS confirmado pelo usuário em 05/10/2026: MISE pode gravar. As 
 Uploads via API aceitam até 4 MB por arquivo (PDF, PNG ou JPEG; assinatura apenas imagem). O PDF final é salvo em bucket privado próprio e entregue por URL assinada de 60 segundos. A escolha evita o limite de payload das funções descrito em https://vercel.com/docs/functions/limitations. Dados de recibos não aparecem na listagem geral.
 
 O build local passou com as variáveis disponíveis; segredos de produção não são exportáveis pela Vercel e a verificação de dados reais foi feita pelo conector do banco. As telas autenticadas por papel ainda precisam do teste operacional após atribuição dos usuários.
+
+## Ajuste de acesso — 04/11/2026
+
+A conta de reservas tinha apenas o papel automático de Diretor de Operação,
+que não permite solicitar extras. Após confirmação do usuário, foram atribuídos
+explicitamente Líder/Gerente, RH e Caixa nas quatro casas operacionais.
+A atribuição usou `mise.extra_access_set`, com registro em `extra_access_events`;
+não foram criados pedidos nem informados pagamentos.
+
+A migração `supabase/migrations/20261104175400_extras_admin_lider_por_casa.sql`
+permite atribuir liderança fora da unidade de cadastro somente a administradores,
+sempre mediante concessão específica por casa. Usuários comuns continuam limitados
+à sua casa. A API e `mise.extra_has_role` seguem a mesma regra; nenhuma nova função
+fica executável por anon/authenticated. Administrador sem atribuições específicas
+continua recebendo automaticamente apenas o papel de diretor.
+
+Na interface, quem possui liderança começa nesse perfil e o botão de pedido
+avulso passa a se chamar Solicitar extra. É necessário selecionar um nome em
+Responsável → Gerentes da casa; RH e Caixa são perfis separados nessa seleção.
+Validação: testes de contexto/autorização, APIs de posições e solicitantes,
+TypeScript, build e leitura da grade semanal para a conta nas quatro casas.

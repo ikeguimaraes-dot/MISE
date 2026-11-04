@@ -25,7 +25,7 @@ const output=process.env.MISE_UX_OUTPUT||'/tmp/mise-ux-review';fs.mkdirSync(outp
   await setRole('rh');await page.locator('.er-request').first().click();await page.getByRole('button',{name:'Nomear pessoas',exact:true}).click();assert.equal(await page.locator('.er-position-block').count(),3);await noOverflow('RH form');
   if([390,768].includes(width))await page.screenshot({path:`${output}/extras-rh-${width}.png`,fullPage:false});
   console.log('RH PASS',width);
-  await setRole('lider');await page.getByRole('button',{name:'Pedido avulso',exact:true}).click();await page.waitForFunction(()=>document.activeElement?.classList.contains('er-create'));
+  await setRole('lider');await page.getByRole('button',{name:'Solicitar extra',exact:true}).click();await page.waitForFunction(()=>document.activeElement?.classList.contains('er-create'));
   const emergency=page.getByRole('checkbox',{name:'Emergencial · alerta imediato à diretoria'}),context=page.getByLabel('Contexto emergencial',{exact:true});
   assert.equal(await context.count(),0);await emergency.check();assert.equal(await context.getAttribute('required'),null);
   assert.ok(await page.locator('.er-create form').evaluate(form=>{const labels=[...form.children].filter(e=>e.tagName==='LABEL');return labels[0].textContent.includes('Emergencial')&&labels[1].textContent.includes('Contexto emergencial')}));

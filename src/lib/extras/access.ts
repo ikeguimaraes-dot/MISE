@@ -45,7 +45,7 @@ export async function extrasContext() {
     );
   if (operational.error) throw new ExtraError("Unidades operacionais indisponíveis.", 503);
   const operationalIds = new Set((operational.data ?? []).map(u => u.unit_id));
-  const roles = ((grants.data ?? []) as ExtraAccess[]).filter(g => operationalIds.has(g.unit_id) && (g.role !== "lider" || g.unit_id === employee.data.unit_id));
+  const roles = ((grants.data ?? []) as ExtraAccess[]).filter(g => operationalIds.has(g.unit_id) && (g.role !== "lider" || g.unit_id === employee.data.unit_id || session.role === "admin"));
   if (session.role === "admin") for (const unit_id of operationalIds) roles.push({ unit_id, role: "diretor" });
   if (session.role === "gerente" && operationalIds.has(employee.data.unit_id)) roles.push({ unit_id: employee.data.unit_id, role: "lider" });
   return {

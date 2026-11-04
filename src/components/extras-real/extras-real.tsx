@@ -68,7 +68,7 @@ export function ExtrasReal({
     return () => { window.clearInterval(interval); window.removeEventListener('focus', updateDay); };
   }, []);
   const roles = grants.filter((g) => g.unit_id === unit).map((g) => g.role);
-  const [chosenRole, setRole] = useState<OperationalRole>(roles[0]);
+  const [chosenRole, setRole] = useState<OperationalRole>(roles.includes("lider") ? "lider" : roles[0]);
   const role = roles.includes(chosenRole) ? chosenRole : roles[0];
   const [chosenView, setView] = useState<"positions" | "people" | "plan" | null>(initialExtra ? "people" : initialRequest ? "positions" : null);
   const view = chosenView ?? (role === "lider" ? "plan" : ["financeiro", "caixa"].includes(role) ? "people" : "positions");
@@ -241,7 +241,7 @@ export function ExtrasReal({
               setError("");
             }}
           >
-            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Pedido avulso"}
+            <Plus size={16} aria-hidden="true" />{role === "caixa" ? "Registrar emergência" : "Solicitar extra"}
           </button>
         )}
       </div>
