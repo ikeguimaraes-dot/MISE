@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus, Trash2 } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
+import { FOOD_CATEGORIES, CONSERVATION_METHODS, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -11,29 +12,8 @@ type Responsavel = { id: string; nome: string; unit_ids: string[] }
 type Unit = { id: string; name: string; cnpj?: string | null; address?: string | null }
 type PrintPoint = { id: string; name: string; icone: string | null }
 
-const CATEGORIA_ANVISA_OPTIONS = [
-  { value: 'proteina_animal_cozida', label: 'Proteína Animal Cozida' },
-  { value: 'proteina_animal_crua', label: 'Proteína Animal Crua' },
-  { value: 'pescado_cru', label: 'Pescado Cru' },
-  { value: 'pescado_cozido', label: 'Pescado Cozido' },
-  { value: 'vegetal_cozido', label: 'Vegetal Cozido' },
-  { value: 'vegetal_cru', label: 'Vegetal Cru' },
-  { value: 'arroz_massa_cereais', label: 'Arroz / Massa / Cereais' },
-  { value: 'molho_caldo', label: 'Molho / Caldo' },
-  { value: 'laticinios', label: 'Laticínios' },
-  { value: 'sobremesa', label: 'Sobremesa' },
-  { value: 'fritura', label: 'Fritura' },
-]
-
-const METODOS = [
-  'Resfriado 0-5°C',
-  'Refrigerado 5-10°C',
-  'Congelado -18°C',
-  'Temperatura ambiente',
-]
-
-const METODO_TEMPERATURA_AMBIENTE = 'Temperatura ambiente'
-const PRAZO_TEMPERATURA_AMBIENTE_DIAS = 30
+const CATEGORIA_ANVISA_OPTIONS = FOOD_CATEGORIES
+const METODOS = CONSERVATION_METHODS.map(method => method.value)
 
 const SELOS = ['Nenhum', 'SIF', 'SISP', 'SIM'] as const
 
@@ -76,13 +56,6 @@ function nowLocalISO(): string {
   return `${sp.getFullYear()}-${p(sp.getMonth() + 1)}-${p(sp.getDate())}T${p(sp.getHours())}:${p(sp.getMinutes())}`
 }
 
-function temperaturaAmbienteValidade(): string {
-  const base = new Date(nowLocalISO())
-  base.setDate(base.getDate() + PRAZO_TEMPERATURA_AMBIENTE_DIAS)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`
-}
-
 export function LabelForm({
   ingredients,
   initialProductId,
@@ -112,14 +85,11 @@ export function LabelForm({
   const [selo, setSelo] = useState<'Nenhum' | 'SIF' | 'SISP' | 'SIM'>('Nenhum')
   const [validadeFornecedor, setValidadeFornecedor] = useState('')
   const [metodo, setMetodo] = useState('')
-  const [dataManipulacao, setDataManipulacao] = useState(nowLocalISO())
-  const [validade, setValidade] = useState('')
-  const [validadeReadonly, setValidadeReadonly] = useState(false)
-  const [prazoHoras, setPrazoHoras] = useState<number | null>(null)
-  const [shelfLifeSource, setShelfLifeSource] = useState<'custom' | 'anvisa' | 'ambiente' | null>(null)
+  const [dataManipulacao, setDataManipulacao] = useState(nowLocalISO)
+  const [ruleResult, setRuleResult] = useState<{ key: string; rule?: ShelfLifeRule; error?: string } | null>(null)
   const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
   const [printPointId, setPrintPointId] = useState('')
-  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; unit?: Unit } | null>(null)
+  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; unit?: Unit; validade: string; dataManipulacao: string; metodo: string; respNome: string } | null>(null)
   const [quantidade, setQuantidade] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -162,62 +132,35 @@ export function LabelForm({
     return () => { cancelled = true }
   }, [selectedProduct, selectedUnit])
 
+  const ruleKey = JSON.stringify([selectedProduct?.id, categoria, metodo])
+  const currentRule = ruleResult?.key === ruleKey ? ruleResult : null
+  const shelfRule = currentRule?.rule
+  const loadingRule = Boolean(selectedProduct && categoria && metodo && !currentRule)
+  let validade = ''
+  let validityError = currentRule?.error ?? ''
+  if (shelfRule) {
+    try {
+      validade = expiryToLocalInput(calculateExpiry(dataManipulacao, shelfRule.prazo_horas, validadeFornecedor))
+    } catch (error) {
+      validityError = error instanceof Error ? error.message : 'Data inválida.'
+    }
+  }
+
   useEffect(() => {
-    if (!metodo) {
-      setValidadeReadonly(false)
-      setPrazoHoras(null)
-      setShelfLifeSource(null)
-      return
-    }
-
-    if (metodo === METODO_TEMPERATURA_AMBIENTE) {
-      setPrazoHoras(PRAZO_TEMPERATURA_AMBIENTE_DIAS * 24)
-      setValidade(temperaturaAmbienteValidade())
-      setValidadeReadonly(true)
-      setShelfLifeSource('ambiente')
-      return
-    }
-
-    const ingredientId = selectedProduct?.tipo === 'ingrediente' ? selectedProduct.id : null
-
-    // Precisa de pelo menos ingredient_id ou categoria para buscar
-    if (!ingredientId && !categoria) {
-      setValidadeReadonly(false)
-      setPrazoHoras(null)
-      setShelfLifeSource(null)
-      return
-    }
-
-    let cancelled = false
-    const params = new URLSearchParams({ metodo })
-    if (ingredientId) params.set('ingredient_id', ingredientId)
-    if (categoria) params.set('categoria', categoria)
-
-    fetch(`/api/shelf-life-rule?${params}`)
-      .then(r => r.json())
-      .then(data => {
-        if (cancelled) return
-        if (data.prazo_horas) {
-          setPrazoHoras(data.prazo_horas)
-          setValidadeReadonly(true)
-          setShelfLifeSource(data.source ?? null)
-        } else {
-          setPrazoHoras(null)
-          setValidadeReadonly(false)
-          setShelfLifeSource(null)
-        }
+    if (!selectedProduct || !categoria || !metodo) return
+    const controller = new AbortController()
+    const params = new URLSearchParams({ metodo, categoria })
+    if (selectedProduct.tipo === 'ingrediente') params.set('ingredient_id', selectedProduct.id)
+    fetch(`/api/shelf-life-rule?${params}`, { signal: controller.signal })
+      .then(async response => {
+        const data = await response.json()
+        if (!controller.signal.aborted) setRuleResult({ key: ruleKey, ...(response.ok ? { rule: data } : { error: data.error || 'Não foi possível calcular a validade.' }) })
       })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [categoria, metodo, selectedProduct])
-
-  useEffect(() => {
-    if (!prazoHoras || !dataManipulacao || shelfLifeSource === 'ambiente') return
-    const base = new Date(dataManipulacao)
-    base.setHours(base.getHours() + prazoHoras)
-    const p = (n: number) => String(n).padStart(2, '0')
-    setValidade(`${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`)
-  }, [prazoHoras, dataManipulacao, shelfLifeSource])
+      .catch(() => {
+        if (!controller.signal.aborted) setRuleResult({ key: ruleKey, error: 'Falha ao consultar a validade. Selecione o método novamente para tentar.' })
+      })
+    return () => controller.abort()
+  }, [categoria, metodo, selectedProduct, ruleKey])
 
   useEffect(() => {
     if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
@@ -233,10 +176,7 @@ export function LabelForm({
     setTipo(p.tipo === 'ingrediente' ? 'ingrediente' : 'preparacao')
     setCategoria('')
     setCategoriaFromCadastro(false)
-    setPrazoHoras(null)
-    setValidadeReadonly(false)
-    setShelfLifeSource(null)
-    setValidade('')
+    setRuleResult(null)
     if (p.tipo === 'ingrediente' && p.categoria_anvisa) {
       setCategoria(p.categoria_anvisa)
       setCategoriaFromCadastro(true)
@@ -247,7 +187,7 @@ export function LabelForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedProduct || !selectedUnit || !dataManipulacao || !validade) return
+    if (!selectedProduct || !selectedUnit || !dataManipulacao || !validade || !shelfRule || validityError || loadingRule) return
     if (conflictLabel && conflictResolution === 'none') {
       setShowConflictModal(true)
       return
@@ -256,12 +196,7 @@ export function LabelForm({
     setSaving(true)
     setError('')
 
-    // Para temperatura ambiente, a validade parte do momento em que a etiqueta
-    // é efetivamente gerada, mesmo que o formulário tenha ficado aberto.
-    const validadeEfetiva = metodo === METODO_TEMPERATURA_AMBIENTE
-      ? temperaturaAmbienteValidade()
-      : validade
-    if (validadeEfetiva !== validade) setValidade(validadeEfetiva)
+    const validadeEfetiva = calculateExpiry(dataManipulacao, shelfRule.prazo_horas, validadeFornecedor)
 
     if (conflictLabel && conflictResolution === 'overwrite') {
       await fetch(`/api/labels/${conflictLabel.id}`, {
@@ -272,6 +207,7 @@ export function LabelForm({
     }
 
     const payload = {
+      categoria_anvisa: categoria,
       unit_id: selectedUnit,
       responsavel_id: selectedResponsavel || null,
       responsavel_nome: selectedResponsavelNome || null,
@@ -285,7 +221,7 @@ export function LabelForm({
       selo: selo !== 'Nenhum' ? selo : null,
       validade_fornecedor: validadeFornecedor || null,
       metodo_conservacao: metodo || null,
-      data_manipulacao: new Date(dataManipulacao).toISOString(),
+      data_manipulacao: new Date(`${dataManipulacao}-03:00`).toISOString(),
       validade: new Date(validadeEfetiva).toISOString(),
       print_point_id: printPointId || null,
       status: 'ativa',
@@ -304,16 +240,16 @@ export function LabelForm({
       return
     }
 
-    const { id } = await res.json()
+    const { id, validade: savedExpiry } = await res.json()
     const unitObj = units.find(u => u.id === selectedUnit)
-    setSavedLabel({ id, nome: selectedProduct.nome, unit: unitObj })
+    setSavedLabel({ id, nome: selectedProduct.nome, unit: unitObj, validade: savedExpiry, dataManipulacao: payload.data_manipulacao, metodo, respNome: selectedResponsavelNome.split(' ')[0] })
     setSaving(false)
   }
 
   function handlePrint() {
     if (!savedLabel) return
-    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })
-    const respNome = selectedResponsavelNome.split(' ')[0]
+    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+    const respNome = savedLabel.respNome
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
 <style>@page{size:60mm 60mm;margin:0}
 html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:monospace}
@@ -323,7 +259,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 .dates{border-top:1px solid #000;border-bottom:1px solid #000;padding:3mm 0;margin:3mm 0}
 .row{display:flex;justify-content:space-between;align-items:baseline;font-size:9.5pt;line-height:1.4}
 .row .lbl{font-weight:bold}
-.row .validade-valor{font-size:15pt;font-weight:bold}
+.row .validade-valor{font-size:10pt;font-weight:bold}
 .resp{font-size:9pt}
 .resp b{font-weight:bold}
 .id{font-size:7pt}
@@ -331,11 +267,11 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 <div class="label">
   <div>
     <div class="nome">${savedLabel.nome}</div>
-    ${metodo ? `<div class="metodo">${metodo}</div>` : ''}
+    ${savedLabel.metodo ? `<div class="metodo">${savedLabel.metodo}</div>` : ''}
   </div>
   <div class="dates">
-    <div class="row"><span class="lbl">MANIPULAÇÃO:</span><span>${fmtDate(dataManipulacao)}</span></div>
-    <div class="row"><span class="lbl">VALIDADE:</span><span class="validade-valor">${fmtDate(validade)}</span></div>
+    <div class="row"><span class="lbl">MANIPULAÇÃO:</span><span>${fmtDate(savedLabel.dataManipulacao)}</span></div>
+    <div class="row"><span class="lbl">VALIDADE:</span><span class="validade-valor">${fmtDate(savedLabel.validade)}</span></div>
   </div>
   <div class="resp"><b>RESP.:</b> ${respNome}</div>
   <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
@@ -352,12 +288,12 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
   // que escreve os bytes diretamente no socket Bluetooth SPP da impressora.
   function handlePrintBluetooth() {
     if (!savedLabel) return
-    const respNome = selectedResponsavelNome.split(' ')[0]
+    const respNome = savedLabel.respNome
     const tspl = buildTSPL({
       nome: savedLabel.nome,
-      metodo,
-      dataManipulacao,
-      validade,
+      metodo: savedLabel.metodo,
+      dataManipulacao: savedLabel.dataManipulacao,
+      validade: savedLabel.validade,
       respNome,
       id: savedLabel.id,
       quantidade,
@@ -387,7 +323,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
             <label className="block text-xs font-medium text-ink-muted mb-1">Produto *</label>
             <input
               value={search}
-              onChange={e => { setSearch(e.target.value); setActiveIndex(-1); if (!e.target.value) setSelectedProduct(null) }}
+              onChange={e => { setSearch(e.target.value); setActiveIndex(-1); setSelectedProduct(null); setCategoria(''); setCategoriaFromCadastro(false) }}
               onKeyDown={e => {
                 if (!searchResults.length || selectedProduct) return
                 if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(i => (i + 1) % searchResults.length) }
@@ -426,9 +362,9 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
         </div>
 
         {/* Categoria ANVISA — fora da grid para não deslocar os campos abaixo ao aparecer/sumir */}
-        {selectedProduct && shelfLifeSource !== 'custom' && (
+        {selectedProduct && (
           <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1">Categoria ANVISA</label>
+            <label className="block text-xs font-medium text-ink-muted mb-1">Categoria sanitária (CVS / ANVISA)</label>
             {categoriaFromCadastro ? (
               <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
                 <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
@@ -458,8 +394,8 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Método de conservação */}
           <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1">Método de conservação</label>
-            <select value={metodo} onChange={e => setMetodo(e.target.value)}
+            <label htmlFor="label-conservation-method" className="block text-xs font-medium text-ink-muted mb-1">Método de conservação *</label>
+            <select id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setRuleResult(null) }}
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar método</option>
               {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -506,23 +442,11 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Validade */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Validade *</label>
-            {validadeReadonly ? (
-              <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
-                <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
-                <span className="text-sm text-fresh-bright">
-                  {validade ? new Date(validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                </span>
-                <span className="ml-auto text-xs text-fresh">
-                  {shelfLifeSource === 'ambiente'
-                    ? `Automático · ${PRAZO_TEMPERATURA_AMBIENTE_DIAS} dias`
-                    : shelfLifeSource === 'custom'
-                      ? `Suflex · ${prazoHoras}h`
-                      : `ANVISA · ${prazoHoras}h`}
-                </span>
-              </div>
-            ) : (
-              <DatePicker value={validade} onChange={setValidade} withTime placeholder="Selecionar data e hora" />
-            )}
+            <div aria-live="polite" className={`rounded-lg border px-3 py-2 ${validade ? 'border-fresh/40 bg-fresh-soft' : 'border-edge-strong bg-surface-raised'}`}>
+              <p className="text-sm text-ink">{loadingRule ? 'Calculando validade…' : validade ? new Date(`${validade}-03:00`).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Selecione a categoria e o método de conservação.'}</p>
+              {shelfRule && validade && <p className="mt-1 text-xs text-fresh-bright">{shelfRule.source === 'custom' ? 'Prazo do produto limitado pela CVS' : shelfRule.reference} · {shelfRule.prazo_horas}h{validadeFornecedor ? ' · respeita a validade do fornecedor' : ''}</p>}
+            </div>
+            {validityError && <p role="alert" className="mt-2 text-xs text-alert-bright">{validityError}</p>}
           </div>
         </div>
 
@@ -598,7 +522,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 
         <button
           type="submit"
-          disabled={saving || !selectedProduct || !selectedUnit || (selectedProduct?.tipo === 'ingrediente' && !categoria && shelfLifeSource !== 'custom' && shelfLifeSource !== 'ambiente')}
+          disabled={saving || !selectedProduct || !selectedUnit || !categoria || !metodo || loadingRule || !validade || Boolean(validityError)}
           className="rounded-lg bg-ember px-4 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
         >
           {saving ? 'Salvando...' : 'Gerar Etiqueta'}
@@ -644,20 +568,20 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           >
             <div>
               <div style={{ fontWeight: 'bold', fontSize: '13pt', lineHeight: 1.1 }}>{savedLabel.nome}</div>
-              {metodo && <div style={{ fontSize: '8pt', lineHeight: 1.2, marginTop: '0.5mm', textTransform: 'uppercase' }}>{metodo}</div>}
+              {savedLabel.metodo && <div style={{ fontSize: '8pt', lineHeight: 1.2, marginTop: '0.5mm', textTransform: 'uppercase' }}>{savedLabel.metodo}</div>}
             </div>
             <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '3mm 0', margin: '3mm 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>
                 <span style={{ fontWeight: 'bold' }}>MANIPULAÇÃO:</span>
-                <span>{new Date(dataManipulacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                <span>{new Date(savedLabel.dataManipulacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '9.5pt', lineHeight: 1.4 }}>
                 <span style={{ fontWeight: 'bold' }}>VALIDADE:</span>
-                <span style={{ fontSize: '15pt', fontWeight: 'bold' }}>{new Date(validade).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                <span style={{ fontSize: '10pt', fontWeight: 'bold' }}>{new Date(savedLabel.validade).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
             <div style={{ fontSize: '9pt' }}>
-              <b>RESP.:</b> {selectedResponsavelNome.split(' ')[0]}
+              <b>RESP.:</b> {savedLabel.respNome}
             </div>
             <div style={{ fontSize: '7pt' }}>#{savedLabel.id.slice(0, 6).toUpperCase()}</div>
           </div>

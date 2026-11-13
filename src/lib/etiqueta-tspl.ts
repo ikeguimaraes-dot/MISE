@@ -93,7 +93,10 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   // Rótulo fica na fonte "2" de sempre, centralizado verticalmente contra a data maior.
   cmds.push(`TEXT ${left},${y + 6},"2",0,1,1,"VALIDADE:"`)
   cmds.push(`TEXT ${left + 116},${y},"4",0,1,1,"${fmtDate(validade)}"`)
-  y += 48
+  const horaValidade = new Date(validade).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })
+  y += 36
+  cmds.push(`TEXT ${left + 116},${y},"2",0,1,1,"ATE ${horaValidade}"`)
+  y += 24
   cmds.push(`BAR ${left},${y},448,3`)
   y += 32
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)

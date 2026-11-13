@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { FOOD_CATEGORIES } from '@/lib/shelf-life'
 
 type Group = { id: string; name: string }
 type Supplier = { id: string; nome: string }
@@ -12,19 +13,7 @@ const CATEGORIAS = [
   'descartavel', 'limpeza', 'outro',
 ]
 
-const CATEGORIA_ANVISA = [
-  { value: 'proteina_animal_cozida', label: 'Proteína Animal Cozida' },
-  { value: 'proteina_animal_crua', label: 'Proteína Animal Crua' },
-  { value: 'pescado_cru', label: 'Pescado Cru' },
-  { value: 'pescado_cozido', label: 'Pescado Cozido' },
-  { value: 'vegetal_cozido', label: 'Vegetal Cozido' },
-  { value: 'vegetal_cru', label: 'Vegetal Cru' },
-  { value: 'arroz_massa_cereais', label: 'Arroz / Massa / Cereais' },
-  { value: 'molho_caldo', label: 'Molho / Caldo' },
-  { value: 'laticinios', label: 'Laticínios' },
-  { value: 'sobremesa', label: 'Sobremesa' },
-  { value: 'fritura', label: 'Fritura' },
-]
+const CATEGORIA_ANVISA = FOOD_CATEGORIES
 
 type Initial = {
   id: string

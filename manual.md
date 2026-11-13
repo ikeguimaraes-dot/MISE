@@ -317,7 +317,7 @@ const unitsMap = Object.fromEntries(units?.map(u => [u.id, u.name]) ?? [])
 | `prazo_horas` | numeric | Prazo em horas a partir da manipulação |
 
 > **798 registros importados do Suflex.** Combinação `ingredient_id + metodo_conservacao` é única.
-> Tem precedência sobre `mise.shelf_life_rules` (ANVISA) na lógica de cálculo de validade.
+> Na emissão atual, esse prazo só pode reduzir o limite sanitário versionado em `src/lib/shelf-life.ts`; não amplia o prazo da categoria.
 
 #### `mise.shelf_life_rules` — regras de validade ANVISA
 
@@ -544,31 +544,16 @@ mise-backoffice/
 
 #### Lógica de cálculo de validade automático
 
-**Prioridade (ordem de busca em `/api/shelf-life-rule`):**
+O cálculo está centralizado em `src/lib/shelf-life.ts`, usando o perfil de São Paulo (CVS 5/2013, art. 34) e os limites de temperatura da RDC 216/2004. As escolhas conservadoras solicitadas e as fontes estão em [docs/validade-etiquetas.md](docs/validade-etiquetas.md).
 
-1. **`mise.ingredient_shelf_life`** (customizado Suflex) — se `ingredient_id` fornecido
-   - 798 registros importados
-   - Badge: `"Suflex · Xh"` (verde)
-   - Campo "Categoria ANVISA" some do formulário
-2. **`mise.shelf_life_rules`** (ANVISA Portaria 2619/2011) — fallback por `categoria`
-   - 32 regras por categoria + método
-   - Badge: `"ANVISA · Xh"` (verde)
-   - Campo "Categoria ANVISA" visível (auto-preenchido se produto tem `categoria_anvisa`)
-3. **Manual** — nenhuma regra encontrada
-   - Usuário preenche a validade manualmente
-
-**API `GET /api/shelf-life-rule`:**
-- Params: `metodo` (obrigatório), `ingredient_id` (opcional), `categoria` (opcional)
-- Retorna: `{ prazo_horas, source: 'custom' | 'anvisa' }` ou 404
-- ⚠️ Nunca usar `encodeURIComponent` ao montar `URLSearchParams` — causa double-encoding
-
-**`useEffect` no label-form.tsx:**
-- Dependências: `[categoria, metodo, selectedProduct]`
-- Dispara quando método muda OU produto muda
-- Passa `ingredient_id` automaticamente para ingredientes
-- Passa `categoria` para o fallback ANVISA
-
-**624 produtos com `categoria_anvisa` preenchida** — para esses, o fallback ANVISA funciona automaticamente sem interação do usuário.
+- Categoria sanitária do cadastro + método de conservação determinam o prazo.
+- Categoria ausente precisa ser escolhida na emissão.
+- Regras específicas de produto só podem encurtar o limite.
+- A validade acompanha a data/hora de manipulação e é limitada pela validade original do fornecedor, quando informada.
+- Temperatura incompatível e método sem regra bloqueiam a emissão; não há fallback manual nem 30 dias genéricos em temperatura ambiente.
+- A API recalcula o prazo antes de salvar; impressão usa a data e hora salvas.
+- `GET /api/shelf-life-rule` recebe `metodo`, `categoria` e opcionalmente `ingredient_id`; retorna `{ prazo_horas, source: 'cvs' | 'custom', reference }` ou 422.
+- A tabela antiga `mise.shelf_life_rules` é preservada, mas não determina a emissão atual.
 
 #### Outros detalhes do formulário
 
