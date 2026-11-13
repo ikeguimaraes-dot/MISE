@@ -20,7 +20,7 @@ Os contadores usam `count: 'exact', head: true` no banco. A lista carrega 20 eti
 
 O botão de sol/lua está no topo do workspace e na tela de acesso. A preferência é salva em `localStorage['mise-theme']` neste navegador, aplicada no `head` antes da pintura e mantida durante a navegação e após recarregar. Abas do mesmo navegador/origem sincronizam a escolha. Quando o armazenamento estiver bloqueado, a troca ainda funciona na página atual. O padrão permanece escuro.
 
-As cores, superfícies, textos, controles e logotipo acompanham o tema. Impressões de etiquetas continuam usando o layout próprio de papel branco.
+As cores, superfícies, textos, controles e logotipo acompanham o tema. Os estilos estão em `src/app/theme.css`, importado diretamente no layout raiz junto ao seletor e ao script de inicialização. Impressões de etiquetas continuam usando o layout próprio de papel branco.
 
 ## Verificação
 
