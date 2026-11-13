@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Database, Info } from 'lucide-react'
 import { TopNav } from '@/components/layout/topnav'
 import { OperationsHome } from '@/components/layout/operations-home'
+import { EtiquetasHome, EtiquetasCadastros } from '@/app/(dashboard)/etiquetas/_components/etiquetas-navigation'
 import { activeNavigation } from '@/components/layout/navigation'
 import { DashboardClient } from '@/app/(dashboard)/_components/dashboard-client'
 import type { KpiItem, LabelGroup } from '@/app/(dashboard)/painel/page'
@@ -27,7 +28,7 @@ export default async function PreviewPage({ searchParams }: { searchParams: Prom
   ]} />
   const active = activeNavigation(requestedModule)
   if (!active) notFound()
-  const path = active.href
+  const path = requestedModule.startsWith('/etiquetas') ? requestedModule : active.href
   const now = Date.now()
   const units = [{ id: 'demo-meet', name: 'Meet & Eat · demonstração' }, { id: 'demo-match', name: 'Match Point · demonstração' }]
   const sampleLabels: KpiItem[] = [
@@ -43,7 +44,7 @@ export default async function PreviewPage({ searchParams }: { searchParams: Prom
     <TopNav role="admin" employeeName="Equipe KPH" preview previewPath={path} />
     <main id="main-content" tabIndex={-1} className="workspace-main">
       <div className="preview-banner"><span className="flex items-center gap-2"><Info size={13} />Prévia de layout · ambiente local</span><span>{path === '/painel' ? 'Dados demonstrativos, sem conexão com a operação.' : 'Os módulos com dados dependem da configuração do banco.'}</span><span className="flex flex-wrap gap-4"><Link href="/preview?module=login" className="underline underline-offset-4">Telas de acesso</Link><Link href="/preview/brand" className="underline underline-offset-4">Identidade visual</Link></span></div>
-      {path === '/' ? <OperationsHome role="admin" preview /> : path === '/painel' ? <DashboardClient units={units} currentUnit={currentUnit} kpiEtiquetasHoje={labels} kpiCriticas={labels} kpiProducoes={[]} kpiDescartes={[]} labelGroups={groups} preview /> : (
+      {path === '/' ? <OperationsHome role="admin" preview /> : path === '/etiquetas' ? <EtiquetasHome preview /> : path === '/etiquetas/cadastros' ? <EtiquetasCadastros preview /> : path === '/painel' ? <DashboardClient units={units} currentUnit={currentUnit} kpiEtiquetasHoje={labels} kpiCriticas={labels} kpiProducoes={[]} kpiDescartes={[]} labelGroups={groups} preview /> : (
         <div className="mx-auto max-w-3xl px-6 py-12 sm:px-10">
           <Link href="/preview" className="mb-9 inline-flex items-center gap-2 text-xs text-ink-subtle hover:text-ember"><ArrowLeft size={14} />Voltar ao início</Link>
           <span className="mb-5 flex size-14 items-center justify-center rounded-xl border border-edge bg-surface text-ember"><active.icon size={26} strokeWidth={1.5} /></span>

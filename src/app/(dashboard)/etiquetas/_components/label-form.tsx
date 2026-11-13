@@ -85,21 +85,24 @@ function temperaturaAmbienteValidade(): string {
 
 export function LabelForm({
   ingredients,
+  initialProductId,
   menuItems,
   responsaveis,
   units,
 }: {
+  initialProductId?: string
   ingredients: Ingredient[]
   menuItems: MenuItem[]
   responsaveis: Responsavel[]
   units: Unit[]
 }) {
-  const [search, setSearch] = useState('')
+  const initialProduct = ingredients.find(product => product.id === initialProductId)
+  const [search, setSearch] = useState(initialProduct?.nome ?? '')
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null } | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null } | null>(initialProduct ? { ...initialProduct, tipo: 'ingrediente' } : null)
   const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
-  const [categoria, setCategoria] = useState('')
-  const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(false)
+  const [categoria, setCategoria] = useState(initialProduct?.categoria_anvisa ?? '')
+  const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(Boolean(initialProduct?.categoria_anvisa))
   const [pesoKg, setPesoKg] = useState('')
   const [selectedResponsavel, setSelectedResponsavel] = useState<string>('')
   const [empSearch, setEmpSearch] = useState('')
