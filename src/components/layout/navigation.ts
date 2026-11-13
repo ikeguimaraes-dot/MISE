@@ -1,4 +1,4 @@
-import { CalendarDays, Plus, House, LayoutDashboard, Tag, Clock3, ClipboardCheck, BookOpen, ShieldCheck, Bell, Package, FolderTree, Users, UserCheck, Printer, KeyRound, FileChartColumn, ChefHat, PackageCheck, ClipboardList, type LucideIcon } from 'lucide-react'
+import { Building2, MapPin, CalendarDays, Plus, House, LayoutDashboard, Tag, Clock3, ClipboardCheck, BookOpen, ShieldCheck, Bell, Package, FolderTree, Users, UserCheck, Printer, KeyRound, FileChartColumn, ChefHat, PackageCheck, ClipboardList, type LucideIcon } from 'lucide-react'
 
 export type WorkspaceRole = 'admin' | 'gerente' | 'cozinheiro'
 export type NavigationItem = { href: string; label: string; description: string; icon: LucideIcon; access?: 'gestor' | 'admin'; upcoming?: boolean; parent?: string }
@@ -28,6 +28,8 @@ export const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     { href: '/crivo/relatorios', label: 'Relatórios de auditoria', description: 'Resultados e comparativos CRIVO', icon: FileChartColumn, parent: '/crivo', access: 'admin' },
   ] },
   { label: 'Gestão', items: [
+    { href: '/cadastros/empresas', label: 'Empresas', description: 'Dados fiscais e cadastro de empresas', icon: Building2, access: 'admin' },
+    { href: '/cadastros/unidades', label: 'Unidades da empresa', description: 'Unidades e seus vínculos com empresas', icon: MapPin, access: 'admin' },
     { href: '/relatorios', label: 'Relatório de produção', description: 'Histórico e consolidados', icon: FileChartColumn, access: 'gestor' },
     { href: '/cadastros/produtos', label: 'Produtos', description: 'Insumos e preparações', icon: Package, access: 'gestor' },
     { href: '/cadastros/produtos/importar', label: 'Importar produtos', description: 'Importação de planilhas do catálogo', icon: PackageCheck, parent: '/cadastros/produtos', access: 'gestor' },
