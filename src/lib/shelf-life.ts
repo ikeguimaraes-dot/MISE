@@ -36,6 +36,11 @@ export type ShelfLifeRule = {
   reference: string
 }
 
+export function getDefaultConservationMethod(category: string | null | undefined): string {
+  const food = FOOD_CATEGORIES.find(item => item.value === category)
+  return food ? `Refrigerado até ${food.maxTemperature}°C` : ''
+}
+
 export function getShelfLifeRule(category: string | null | undefined, method: string, customHours?: number | null): ShelfLifeRule {
   // Os rótulos antigos permanecem interpretáveis, sem ampliar seu limite térmico.
   const legacyMethods: Record<string, string> = {

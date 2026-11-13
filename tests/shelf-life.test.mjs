@@ -14,6 +14,16 @@ function load(path, dependencies = {}) {
 }
 const rules = load('src/lib/shelf-life.ts')
 
+test('categoria seleciona automaticamente uma refrigeração compatível e calculável', () => {
+  assert.equal(rules.getDefaultConservationMethod('pescado_cozido'), 'Refrigerado até 2°C')
+  assert.equal(rules.getDefaultConservationMethod('proteina_animal_crua'), 'Refrigerado até 4°C')
+  assert.equal(rules.getDefaultConservationMethod('vegetal_cru'), 'Refrigerado até 5°C')
+  for (const category of rules.FOOD_CATEGORIES) {
+    assert.equal(rules.getShelfLifeRule(category.value, rules.getDefaultConservationMethod(category.value)).prazo_horas, category.hours)
+  }
+  for (const missing of [null, undefined, '', 'desconhecida']) assert.equal(rules.getDefaultConservationMethod(missing), '')
+})
+
 test('impressão Bluetooth preserva data e hora do vencimento sem ultrapassar a etiqueta', () => {
   const print = load('src/lib/etiqueta-tspl.ts')
   const tspl = print.buildTSPL({ nome: 'Pescado cozido com um nome comprido para ocupar cinco linhas na etiqueta', metodo: 'Congelado abaixo de -18°C', dataManipulacao: '2026-11-13T13:00:00Z', validade: '2026-11-14T13:30:00Z', respNome: 'Ana', id: '123456' })

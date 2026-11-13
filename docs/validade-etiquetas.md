@@ -25,7 +25,7 @@ Não há prazo genérico de 30 dias em temperatura ambiente. O sistema informa a
 
 ## Cálculo e integração
 
-`src/lib/shelf-life.ts` centraliza as categorias, métodos e limites. O formulário e o cadastro usam a mesma lista. A categoria cadastrada prevalece no servidor; se ausente, a categoria escolhida na emissão é usada sem alterar automaticamente o cadastro.
+`src/lib/shelf-life.ts` centraliza as categorias, métodos e limites. O formulário e o cadastro usam a mesma lista. Ao escolher uma categoria, o formulário preenche a refrigeração correspondente (2, 4 ou 5 °C) e consulta a validade. O mesmo ocorre quando o produto já possui categoria no cadastro ou é aberto pela lista de grupos. O funcionário pode alterar o método conforme o armazenamento efetivo; trocar a categoria ou o produto redefine a sugestão para não manter uma temperatura de outro alimento. A categoria cadastrada prevalece no servidor; se ausente, a categoria escolhida na emissão é usada sem alterar automaticamente o cadastro.
 
 A regra de produto de `mise.ingredient_shelf_life` só reduz o limite da categoria, nunca o amplia ou autoriza temperatura incompatível. A antiga tabela `mise.shelf_life_rules` deixa de determinar o prazo: a regra versionada evita depender de registros ausentes ou desatualizados.
 

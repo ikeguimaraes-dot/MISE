@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus, Trash2 } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
-import { FOOD_CATEGORIES, CONSERVATION_METHODS, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -84,7 +84,7 @@ export function LabelForm({
   const [lote, setLote] = useState('')
   const [selo, setSelo] = useState<'Nenhum' | 'SIF' | 'SISP' | 'SIM'>('Nenhum')
   const [validadeFornecedor, setValidadeFornecedor] = useState('')
-  const [metodo, setMetodo] = useState('')
+  const [metodo, setMetodo] = useState(() => getDefaultConservationMethod(initialProduct?.categoria_anvisa))
   const [dataManipulacao, setDataManipulacao] = useState(nowLocalISO)
   const [ruleResult, setRuleResult] = useState<{ key: string; rule?: ShelfLifeRule; error?: string } | null>(null)
   const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
@@ -176,6 +176,7 @@ export function LabelForm({
     setTipo(p.tipo === 'ingrediente' ? 'ingrediente' : 'preparacao')
     setCategoria('')
     setCategoriaFromCadastro(false)
+    setMetodo(getDefaultConservationMethod(p.tipo === 'ingrediente' ? p.categoria_anvisa : null))
     setRuleResult(null)
     if (p.tipo === 'ingrediente' && p.categoria_anvisa) {
       setCategoria(p.categoria_anvisa)
@@ -364,7 +365,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
         {/* Categoria ANVISA — fora da grid para não deslocar os campos abaixo ao aparecer/sumir */}
         {selectedProduct && (
           <div>
-            <label className="block text-xs font-medium text-ink-muted mb-1">Categoria sanitária (CVS / ANVISA)</label>
+            <label htmlFor={categoriaFromCadastro ? undefined : 'label-food-category'} className="block text-xs font-medium text-ink-muted mb-1">Categoria sanitária (CVS / ANVISA)</label>
             {categoriaFromCadastro ? (
               <div className="flex items-center gap-2 rounded-lg border border-fresh/40 bg-fresh-soft px-3 py-2">
                 <CheckCircle className="h-4 w-4 text-fresh-bright shrink-0" />
@@ -375,7 +376,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               </div>
             ) : (
               <>
-                <select value={categoria} onChange={e => setCategoria(e.target.value)}
+                <select id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
                   className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
                   <option value="">Selecionar categoria</option>
                   {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -400,6 +401,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               <option value="">Selecionar método</option>
               {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
+            <p className="mt-1 text-xs text-ink-subtle">A categoria sugere refrigeração. Ajuste conforme o armazenamento do produto.</p>
           </div>
 
           {/* Peso */}
