@@ -2,16 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from '@/lib/product-registration'
 import { FOOD_CATEGORIES, getDefaultConservationMethod, getShelfLifeRule } from '@/lib/shelf-life'
 
 type Group = { id: string; name: string }
 type Supplier = { id: string; nome: string }
 
-const CATEGORIAS = [
-  'proteina', 'fruta', 'legume', 'verdura', 'graos',
-  'laticinios', 'panificacao', 'oleo_gordura', 'tempero',
-  'descartavel', 'limpeza', 'outro',
-]
+const CATEGORIAS = PRODUCT_CATEGORIES
 
 const CATEGORIA_ANVISA = FOOD_CATEGORIES
 
@@ -44,7 +41,7 @@ export function ProdutoForm({
   const [groupId, setGroupId] = useState(initial?.group_id ?? '')
   const [categoria, setCategoria] = useState(initial?.categoria ?? '')
   const [categoriaAnvisa, setCategoriaAnvisa] = useState(initial?.categoria_anvisa ?? '')
-  const [unidade, setUnidade] = useState(initial?.unidade_padrao ?? '')
+  const [unidade, setUnidade] = useState(initial?.unidade_padrao?.toLowerCase() ?? '')
   const [custo, setCusto] = useState(initial?.custo_padrao?.toString() ?? '')
   const [fornecedorId, setFornecedorId] = useState(initial?.fornecedor_id ?? '')
   const [perdas, setPerdas] = useState(initial?.perdas_padrao?.toString() ?? '')
@@ -70,30 +67,22 @@ export function ProdutoForm({
       unidade_padrao: unidade,
       ativo,
     }
-    if (codigo.trim()) payload.codigo = codigo.trim()
-    if (custo) payload.custo_padrao = Number(custo)
-    if (fornecedorId) payload.fornecedor_id = fornecedorId
-    if (perdas) payload.perdas_padrao = Number(perdas)
-    if (observacoes.trim()) payload.observacoes = observacoes.trim()
+    payload.codigo = codigo.trim() || null
+    payload.custo_padrao = custo ? Number(custo) : null
+    payload.fornecedor_id = fornecedorId || null
+    payload.perdas_padrao = perdas ? Number(perdas) : null
+    payload.observacoes = observacoes.trim() || null
 
-    const url = initial ? `/api/produtos/${initial.id}` : '/api/produtos'
-    const method = initial ? 'PATCH' : 'POST'
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) {
+    try {
+      const res = await fetch(initial ? `/api/produtos/${initial.id}` : '/api/produtos', {
+        method: initial ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      })
       const data = await res.json()
-      setError(data.error || 'Erro ao salvar produto.')
-      setSaving(false)
-      return
-    }
-
-    router.push('/cadastros/produtos')
-    router.refresh()
+      if (!res.ok || !data.id) throw new Error(data.error || 'Não foi possível confirmar a gravação do produto.')
+      router.push('/cadastros/produtos')
+      router.refresh()
+    } catch (error) { setError(error instanceof Error ? error.message : 'Não foi possível salvar o produto.') }
+    finally { setSaving(false) }
   }
 
   return (
@@ -142,8 +131,11 @@ export function ProdutoForm({
 
         <div>
           <label className="block text-xs font-medium text-ink-muted mb-1">Unidade padrão *</label>
-          <input value={unidade} onChange={e => setUnidade(e.target.value)} required placeholder="ex: kg, un, L"
-            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
+          <select value={unidade} onChange={e => setUnidade(e.target.value)} required
+            className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
+            <option value="">Selecionar unidade de medida</option>
+            {PRODUCT_UNITS.map(unit => <option key={unit} value={unit}>{unit === 'l' ? 'L (litro)' : unit}</option>)}
+          </select>
         </div>
 
         <div>

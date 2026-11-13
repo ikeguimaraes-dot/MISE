@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import { THEME_BOOTSTRAP } from '@/lib/theme'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -18,14 +19,15 @@ export const metadata: Metadata = {
   icons: { icon: '/icons/mise-mark.svg?v=4.4', apple: '/icons/mise-192.png?v=4.4' },
 }
 
-export const viewport: Viewport = { themeColor: '#171716', colorScheme: 'dark' }
+export const viewport: Viewport = { themeColor: '#171716', colorScheme: 'dark light' }
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black" />

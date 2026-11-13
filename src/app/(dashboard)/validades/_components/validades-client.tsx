@@ -1,156 +1,115 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import type { LabelRow, UnitOption } from '../page'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { applyConfirmedLabelAction, getValidityBucket, VALIDITY_CARDS, type ValidityData, type ValidityFilters } from '@/lib/label-validities'
 
-function startOfDaySP(offsetDays = 0): Date {
-  const spStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
-  const [y, m, d] = spStr.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d + offsetDays, 3, 0, 0, 0))
+function formatDate(value: string) {
+  return new Date(value).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function getBucket(validade: string, now: Date) {
-  const v = new Date(validade)
-  if (v < now) return 'vencidos'
-  if (v < startOfDaySP(1)) return 'hoje'
-  if (v < startOfDaySP(2)) return 'amanha'
-  if (v < startOfDaySP(3)) return 'tres_dias'
-  return 'ok'
-}
+export function ValidadesClient({ initialData }: { initialData: ValidityData }) {
+  const [data, setData] = useState(initialData)
+  const [filters, setFilters] = useState<ValidityFilters>({ unit: '', bucket: '', page: 1 })
+  const [loadedView, setLoadedView] = useState({ unit: '', bucket: '' })
+  const [loading, setLoading] = useState(false)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const requestId = useRef(0)
+  const controller = useRef<AbortController | null>(null)
+  const busy = useRef(false)
+  const firstRender = useRef(true)
 
-function getUrgencyClass(validade: string, now: Date) {
-  const diff = new Date(validade).getTime() - now.getTime()
-  if (diff < 0) return 'text-alert-bright bg-alert/10'
-  if (diff < 6 * 3600000) return 'text-warn-bright bg-warn/10'
-  if (diff < 24 * 3600000) return 'text-warn bg-warn/10'
-  if (diff < 72 * 3600000) return 'text-info bg-info/10'
-  return 'text-fresh-bright bg-fresh/10'
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    day: '2-digit', month: '2-digit', year: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
-
-function TimeRemaining({ validade, now }: { validade: string; now: Date }) {
-  const diff = new Date(validade).getTime() - now.getTime()
-  if (diff < 0) return <span className="text-xs font-medium text-alert-bright">VENCIDA</span>
-  const h = Math.floor(diff / 3600000)
-  const m = Math.floor((diff % 3600000) / 60000)
-  return <span className="text-xs font-medium text-ink-muted">{h}h {m}m</span>
-}
-
-export function ValidadesClient({ initialLabels, units }: { initialLabels: LabelRow[]; units: UnitOption[] }) {
-  const [labels, setLabels] = useState(initialLabels)
-  const [now, setNow] = useState(new Date())
-  const [unitFilter, setUnitFilter] = useState('')
-  const [bucketFilter, setBucketFilter] = useState<string | null>(null)
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 30000)
-    return () => clearInterval(id)
+  const reload = useCallback(async (next: ValidityFilters, showLoading = true) => {
+    const sequence = ++requestId.current
+    controller.current?.abort()
+    const abort = new AbortController()
+    controller.current = abort
+    if (showLoading) setLoading(true)
+    try {
+      const params = new URLSearchParams({ unit: next.unit, bucket: next.bucket, page: String(next.page) })
+      const response = await fetch(`/api/validades?${params}`, { signal: abort.signal, cache: 'no-store' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Não foi possível atualizar as validades.')
+      if (sequence === requestId.current && !abort.signal.aborted) { setData(result); setLoadedView({ unit: next.unit, bucket: next.bucket }) }
+    } catch (error) {
+      if (!abort.signal.aborted && sequence === requestId.current) setError(error instanceof Error ? error.message : 'Falha de conexão. Tente atualizar a lista.')
+    } finally {
+      if (sequence === requestId.current) setLoading(false)
+    }
   }, [])
 
-  const filtered = labels.filter(l => !unitFilter || l.unit_id === unitFilter)
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return }
+    void reload(filters)
+  }, [filters, reload])
 
-  const counts = {
-    vencidos: filtered.filter(l => getBucket(l.validade, now) === 'vencidos').length,
-    hoje: filtered.filter(l => getBucket(l.validade, now) === 'hoje').length,
-    amanha: filtered.filter(l => getBucket(l.validade, now) === 'amanha').length,
-    tres_dias: filtered.filter(l => getBucket(l.validade, now) === 'tres_dias').length,
-  }
+  useEffect(() => {
+    const timer = setInterval(() => { if (!busy.current) void reload(filters, false) }, 30000)
+    return () => clearInterval(timer)
+  }, [filters, reload])
 
-  const displayed = bucketFilter
-    ? filtered.filter(l => getBucket(l.validade, now) === bucketFilter)
-    : filtered
+  useEffect(() => () => { controller.current?.abort() }, [])
 
   async function handleAction(id: string, status: 'consumida' | 'descartada') {
-    setLabels(prev => prev.filter(l => l.id !== id))
-    const res = await fetch(`/api/labels/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    if (!res.ok) setLabels(initialLabels)
+    if (busy.current) return
+    busy.current = true
+    ++requestId.current
+    controller.current?.abort()
+    setPendingId(id)
+    setError('')
+    setNotice('')
+    try {
+      const response = await fetch(`/api/labels/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+      const result = await response.json()
+      if (result.label?.id === id && ['consumida', 'descartada'].includes(result.label.status)) setData(current => applyConfirmedLabelAction(current, id, result.label.status))
+      if (!response.ok) throw new Error(result.error || 'Não foi possível salvar a ação.')
+      if (result.label?.id !== id) throw new Error('Não foi possível confirmar a gravação. Atualize a lista.')
+      setNotice(status === 'consumida' ? 'Uso no preparo registrado.' : 'Perda registrada.')
+      await reload(filters)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Não foi possível confirmar a ação. Tente novamente.')
+      await reload(filters, false)
+    } finally { busy.current = false; setPendingId(null) }
   }
 
-  const CARDS = [
-    { key: 'vencidos', label: 'Vencidos', count: counts.vencidos, color: 'text-alert', border: 'border-alert' },
-    { key: 'hoje', label: 'Vencem Hoje', count: counts.hoje, color: 'text-warn-bright', border: 'border-warn' },
-    { key: 'amanha', label: 'Amanhã', count: counts.amanha, color: 'text-warn', border: 'border-warn' },
-    { key: 'tres_dias', label: 'Próximos 3 dias', count: counts.tres_dias, color: 'text-info', border: 'border-info' },
-  ]
+  const disabled = loading || Boolean(pendingId)
+  const viewMatches = loadedView.unit === filters.unit && loadedView.bucket === filters.bucket
+  const closedView = filters.bucket === 'consumida' || filters.bucket === 'descartada'
+  const title = VALIDITY_CARDS.find(card => card.key === filters.bucket)?.label
 
-  return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-ink">Validades</h1>
-          <p className="text-sm text-ink-muted">Monitoramento em tempo real</p>
-        </div>
-        <select value={unitFilter} onChange={e => setUnitFilter(e.target.value)}
-          className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-1.5 text-sm text-ink focus:outline-none">
-          <option value="">Todas as unidades</option>
-          {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-        </select>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {CARDS.map(({ key, label, count, color, border }) => (
-          <button key={key} onClick={() => setBucketFilter(bucketFilter === key ? null : key)}
-            className={`rounded-xl border bg-surface p-4 text-left transition-all ${
-              bucketFilter === key ? border : 'border-edge hover:border-edge-strong'
-            }`}>
-            <p className="text-xs font-medium text-ink-muted">{label}</p>
-            <p className={`mt-1 text-3xl font-bold ${color}`}>{count}</p>
-          </button>
-        ))}
-      </div>
-
-      <div className="rounded-xl border border-edge bg-surface">
-        <div className="border-b border-edge px-5 py-4 flex items-center justify-between">
-          <p className="text-sm font-semibold text-ink">
-            Etiquetas ativas{bucketFilter ? ` — ${CARDS.find(c => c.key === bucketFilter)?.label}` : ''}
-          </p>
-          <p className="text-xs text-ink-subtle">{displayed.length} etiqueta{displayed.length !== 1 ? 's' : ''}</p>
-        </div>
-
-        <div className="divide-y divide-edge">
-          {displayed.length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-ink-subtle">Nenhuma etiqueta neste filtro.</p>
-          )}
-          {displayed.map(l => (
-            <div key={l.id} className="flex items-center gap-4 px-5 py-3 hover:bg-surface-raised/50 transition-colors">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-ink truncate">{l.nome}</p>
-                <p className="text-xs text-ink-subtle">{l.unit_name} · {l.employee_name ?? '—'}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-xs text-ink-muted">{formatDate(l.validade)}</p>
-                <TimeRemaining validade={l.validade} now={now} />
-              </div>
-              <span className={`hidden sm:inline-block rounded-full px-2 py-0.5 text-xs font-medium shrink-0 ${getUrgencyClass(l.validade, now)}`}>
-                {getBucket(l.validade, now) === 'vencidos' ? 'Vencida' : 'Ativa'}
-              </span>
-              <div className="flex gap-1 shrink-0">
-                <button onClick={() => handleAction(l.id, 'consumida')}
-                  title="Este item foi utilizado na produção — não conta como desperdício"
-                  className="rounded border border-info px-2 py-1 text-xs text-info hover:bg-info-soft transition-colors">
-                  Usado no preparo
-                </button>
-                <button onClick={() => handleAction(l.id, 'descartada')}
-                  title="Este item foi jogado fora sem uso — conta como perda no relatório de desperdício"
-                  className="rounded border border-alert px-2 py-1 text-xs text-alert hover:bg-alert-soft transition-colors">
-                  Descartar (perda)
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+  return <div className="space-y-6 p-6">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div><h1 className="text-xl font-bold text-ink">Validades</h1><p className="mt-1 text-sm text-ink-muted">Acompanhe as etiquetas e registre o destino dos produtos.</p></div>
+      <div className="flex flex-wrap items-end gap-3">
+        <div><label htmlFor="validities-unit" className="mb-1 block text-xs text-ink-muted">Unidade</label><select id="validities-unit" value={filters.unit} disabled={disabled} onChange={event => { setError(''); setFilters(current => ({ ...current, unit: event.target.value, page: 1 })) }} className="rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink disabled:opacity-50"><option value="">Todas as unidades</option>{data.units.map(unit => <option key={unit.id} value={unit.id}>{unit.name}{unit.active === false ? ' (inativa)' : ''}</option>)}</select></div>
+        <button type="button" disabled={disabled} onClick={() => { setError(''); void reload(filters) }} className="rounded-lg border border-edge-strong px-3 py-2 text-sm text-ink-muted disabled:opacity-50">{loading ? 'Atualizando…' : 'Atualizar'}</button>
       </div>
     </div>
-  )
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      {VALIDITY_CARDS.map(card => <button key={card.key} type="button" disabled={disabled} aria-pressed={filters.bucket === card.key} onClick={() => { setError(''); setFilters(current => ({ ...current, bucket: current.bucket === card.key ? '' : card.key, page: 1 })) }} className={`rounded-xl border bg-surface p-4 text-left transition-colors disabled:opacity-60 ${filters.bucket === card.key ? card.border : 'border-edge hover:border-edge-strong'}`}>
+        <span className="block text-xs font-medium text-ink-muted">{card.label}</span><span className={`mt-1 block text-3xl font-bold ${card.color}`}>{viewMatches ? data.counts[card.key] : '—'}</span>
+        {(card.key === 'consumida' || card.key === 'descartada') && <span className="mt-1 block text-xs text-ink-subtle">Total registrado</span>}
+      </button>)}
+    </div>
+    {error && <p role="alert" className="rounded-lg border border-alert/30 bg-alert-soft p-3 text-sm text-alert-bright">{error}</p>}
+    {notice && <p role="status" className="text-sm text-fresh-bright">{notice}</p>}
+    <section className="rounded-xl border border-edge bg-surface" aria-busy={loading}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge px-5 py-4"><h2 className="text-sm font-semibold text-ink">{closedView ? title : `Etiquetas pendentes${title ? ` — ${title}` : ''}`}</h2><span className="text-xs text-ink-subtle">{viewMatches ? `${data.total} etiqueta${data.total !== 1 ? 's' : ''}` : 'Atualize para carregar este filtro'}</span></div>
+      {viewMatches && !data.labels.length && <p className="px-5 py-8 text-center text-sm text-ink-subtle">Nenhuma etiqueta neste filtro.</p>}
+      <div className="divide-y divide-edge">{(viewMatches ? data.labels : []).map(label => {
+        const terminal = label.status === 'consumida' || label.status === 'descartada'
+        const expired = getValidityBucket(label, new Date(data.now)) === 'vencidos'
+        return <div key={label.id} className="flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-surface-raised/50">
+          <div className="min-w-0 flex-1 basis-44"><p className="text-sm font-medium text-ink">{label.nome}</p><p className="mt-1 text-xs text-ink-subtle">{label.unit_name} · {label.employee_name ?? '—'}</p></div>
+          <div className="text-right"><p className="text-xs text-ink-muted">Validade: {formatDate(label.validade)}</p><span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${label.status === 'consumida' ? 'bg-fresh/10 text-fresh-bright' : label.status === 'descartada' || expired ? 'bg-alert/10 text-alert-bright' : 'bg-info/10 text-info'}`}>{terminal ? label.status === 'consumida' ? 'Usado no preparo' : 'Perda' : expired ? 'Vencida' : 'Ativa'}</span></div>
+          {!terminal && <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={disabled} onClick={() => void handleAction(label.id, 'consumida')} className="min-h-10 rounded-lg border border-info px-3 py-2 text-xs text-info hover:bg-info-soft disabled:opacity-50">{pendingId === label.id ? 'Salvando…' : 'Usado no preparo'}</button>
+            <button type="button" disabled={disabled} onClick={() => void handleAction(label.id, 'descartada')} className="min-h-10 rounded-lg border border-alert px-3 py-2 text-xs text-alert-bright hover:bg-alert-soft disabled:opacity-50">Descartar (perda)</button>
+          </div>}
+        </div>
+      })}</div>
+      {viewMatches && data.totalPages > 1 && <div className="flex items-center justify-between gap-3 border-t border-edge px-5 py-3 text-xs text-ink-muted"><span>Página {data.page} de {data.totalPages}</span><div className="flex gap-3"><button disabled={disabled || data.page <= 1} onClick={() => setFilters(current => ({ ...current, page: data.page - 1 }))} className="rounded border border-edge px-3 py-2 disabled:opacity-40">Anterior</button><button disabled={disabled || data.page >= data.totalPages} onClick={() => setFilters(current => ({ ...current, page: data.page + 1 }))} className="rounded border border-edge px-3 py-2 disabled:opacity-40">Próxima</button></div></div>}
+    </section>
+  </div>
 }

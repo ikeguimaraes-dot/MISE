@@ -7,6 +7,7 @@ import { ArrowUpRight, Bell, ChevronDown, ChevronRight, Command, LogOut, Menu, S
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { MiseBrand } from './mise-brand'
+import { ThemeToggle } from './theme-toggle'
 import { activeNavigation, canSeeItem, navigationGroups, workspaceHref, type WorkspaceRole } from './navigation'
 
 export function TopNav({ role = 'cozinheiro', isPinUser = false, employeeName, preview = false, previewPath = '/' }: {
@@ -124,6 +125,7 @@ export function TopNav({ role = 'cozinheiro', isPinUser = false, employeeName, p
         <span className="truncate text-xs font-medium text-ink-muted">{active?.label ?? 'Operação'}</span>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
+        <ThemeToggle />
         <button type="button" onClick={openSearch} className="workspace-search-trigger" aria-label="Buscar módulo" aria-haspopup="dialog" aria-controls="workspace-search-dialog"><Search size={15} /><span className="hidden sm:inline">Buscar módulo...</span><kbd className="hidden items-center gap-0.5 rounded border border-edge-strong px-1 py-0.5 text-[10px] md:flex"><Command size={10} /> K</kbd></button>
         {role === 'admin' && <Link href={workspaceHref('/alertas', preview)} className="workspace-icon-button" aria-label="Central de alertas"><Bell size={18} /></Link>}
         <span className="hidden h-5 w-px bg-edge sm:block" />

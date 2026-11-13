@@ -580,10 +580,10 @@ O cálculo está centralizado em `src/lib/shelf-life.ts`, usando o perfil de Sã
 
 ### ✅ Validades (`/validades`)
 
-- 4 cards clicáveis: Vencidos / Hoje / Amanhã / Próximos 3 dias
-- Countdown 30s via `setInterval`
-- Ações inline: Consumida / Descartar com optimistic update
-- `startOfDaySP(offsetDays)`: usa `en-CA` locale para calcular limites de dia em SP
+- 6 cards clicáveis: Vencidos / Hoje / Amanhã / Depois de amanhã / Usado no preparo / Perda.
+- Contadores exatos no banco, paginação de 20 etiquetas e atualização a cada 30 segundos.
+- Ações inline confirmam a gravação de status antes de remover a pendência; uso/perda ficam no histórico e nos cards, inclusive após recarregar.
+- Limites de dia em America/Sao_Paulo. Detalhes e testes em [docs/validades-persistencia-tema.md](docs/validades-persistencia-tema.md).
 
 ---
 
@@ -597,8 +597,8 @@ O cálculo está centralizado em `src/lib/shelf-life.ts`, usando o perfil de Sã
 
 ### 🟡 Média prioridade
 
-**2. Página de edição de unidades ausente**
-- Não existe `/configuracoes/unidades` — CNPJ e endereço só editáveis via SQL direto
+**2. Cadastro e edição de unidades — resolvido**
+- Empresas e unidades são gerenciadas em `/cadastros/empresas` e `/cadastros/unidades`, com CNPJ, endereço, contatos e vínculo entre empresa e unidade.
 
 ---
 

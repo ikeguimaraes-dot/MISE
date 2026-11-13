@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft, ClipboardCheck, Flame, Tag, BookOpen } from 'lucide-react'
 import { MiseBrand } from './mise-brand'
+import { ThemeToggle } from './theme-toggle'
 
 export function AuthShell({ children, preview = false }: { children: React.ReactNode; preview?: boolean }) {
   return <div className="auth-shell">
@@ -15,6 +16,7 @@ export function AuthShell({ children, preview = false }: { children: React.React
       <div className="auth-story-footer"><Flame size={20} strokeWidth={1.5} /><p>Consistência é o ingrediente<br />de uma boa experiência.</p><span className="ml-auto text-[10px] text-ink-faint">KPH Participações</span></div>
     </aside>
     <main className="auth-main" id="main-content">
+      <div className="auth-theme-toggle"><ThemeToggle /></div>
       <div className="auth-mobile-brand"><MiseBrand /><span className="section-eyebrow">ORKESTRI OPX</span></div>
       {preview && <div className="auth-preview-note"><Link href="/preview"><ArrowLeft size={13} />Voltar à central</Link><span>Prévia visual · sem autenticação</span></div>}
       <div className="auth-form-area">{children}</div>

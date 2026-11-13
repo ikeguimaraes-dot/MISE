@@ -51,7 +51,7 @@ export function BusinessForm({ kind, initial, companies = [], selectedCompanyId 
     try {
       const result = await fetch(`/api/${kind === 'empresa' ? 'empresas' : 'unidades'}${initial ? `/${initial.id}` : ''}`, { method: initial ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       const response = await result.json()
-      if (!result.ok) throw new Error(response.error || 'Não foi possível salvar o cadastro.')
+      if (!result.ok || !response.id) throw new Error(response.error || 'Não foi possível confirmar a gravação do cadastro.')
       router.push(basePath)
       router.refresh()
     } catch (error) { setError(error instanceof Error ? error.message : 'Não foi possível salvar o cadastro.') }
