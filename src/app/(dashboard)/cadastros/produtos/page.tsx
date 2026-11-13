@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { FOOD_CATEGORIES } from '@/lib/shelf-life'
 
 type SearchParams = Promise<{ q?: string; group?: string; page?: string }>
 
@@ -67,7 +68,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-edge">
-                {['Nome', 'Código', 'Grupo', 'Categoria', 'Cat. ANVISA', 'Unidade', ''].map(h => (
+                {['Nome', 'Código', 'Grupo', 'Categoria', 'Categoria sanitária', 'Unidade', ''].map(h => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-medium text-ink-muted">{h}</th>
                 ))}
               </tr>
@@ -79,7 +80,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
                   <td className="px-5 py-3 text-ink-muted">{p.codigo ?? '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{groupsMap[p.group_id ?? ''] ?? '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{p.categoria}</td>
-                  <td className="px-5 py-3 text-ink-muted">{p.categoria_anvisa ?? <span className="text-warn-bright">—</span>}</td>
+                  <td className="px-5 py-3 text-ink-muted">{FOOD_CATEGORIES.find(category => category.value === p.categoria_anvisa)?.label ?? p.categoria_anvisa ?? <span className="text-warn-bright">Não cadastrada</span>}</td>
                   <td className="px-5 py-3 text-ink-muted">{p.unidade_padrao ?? '—'}</td>
                   <td className="px-5 py-3">
                     <Link href={`/cadastros/produtos/${p.id}`} className="text-xs text-ink-subtle hover:text-ink transition-colors">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FOOD_CATEGORIES } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, getDefaultConservationMethod, getShelfLifeRule } from '@/lib/shelf-life'
 
 type Group = { id: string; name: string }
 type Supplier = { id: string; nome: string }
@@ -53,6 +53,8 @@ export function ProdutoForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const metodoSugerido = getDefaultConservationMethod(categoriaAnvisa)
+  const prazoSugerido = metodoSugerido ? getShelfLifeRule(categoriaAnvisa, metodoSugerido).prazo_horas : null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -64,11 +66,11 @@ export function ProdutoForm({
       nome: nome.trim(),
       group_id: groupId,
       categoria,
+      categoria_anvisa: categoriaAnvisa || null,
       unidade_padrao: unidade,
       ativo,
     }
     if (codigo.trim()) payload.codigo = codigo.trim()
-    if (categoriaAnvisa) payload.categoria_anvisa = categoriaAnvisa
     if (custo) payload.custo_padrao = Number(custo)
     if (fornecedorId) payload.fornecedor_id = fornecedorId
     if (perdas) payload.perdas_padrao = Number(perdas)
@@ -119,7 +121,7 @@ export function ProdutoForm({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-ink-muted mb-1">Categoria *</label>
+          <label className="block text-xs font-medium text-ink-muted mb-1">Categoria do produto *</label>
           <select value={categoria} onChange={e => setCategoria(e.target.value)} required
             className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Selecionar</option>
@@ -127,13 +129,15 @@ export function ProdutoForm({
           </select>
         </div>
 
-        <div>
-          <label className="block text-xs font-medium text-ink-muted mb-1">Categoria ANVISA</label>
-          <select value={categoriaAnvisa} onChange={e => setCategoriaAnvisa(e.target.value)}
+        <div className="sm:col-span-2 rounded-xl border border-edge bg-surface p-4">
+          <label htmlFor="product-food-category" className="block text-xs font-medium text-ink-muted mb-1">Categoria sanitária (CVS / ANVISA)</label>
+          <select id="product-food-category" value={categoriaAnvisa} onChange={e => setCategoriaAnvisa(e.target.value)} aria-describedby="product-food-category-help"
             className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
-            <option value="">Selecionar</option>
+            <option value="">Selecionar categoria sanitária</option>
             {CATEGORIA_ANVISA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
+          <p id="product-food-category-help" className="mt-2 text-xs leading-5 text-ink-muted">Salva no produto. Ao selecioná-lo para emitir uma etiqueta, a categoria sanitária, o método de conservação sugerido e a validade serão preenchidos automaticamente a partir da data de manipulação.</p>
+          {metodoSugerido && <p aria-live="polite" className="mt-2 text-xs font-medium text-fresh-bright">Sugestão para a etiqueta: {metodoSugerido} · prazo de até {prazoSugerido}h. O método pode ser ajustado na emissão conforme o armazenamento.</p>}
         </div>
 
         <div>
