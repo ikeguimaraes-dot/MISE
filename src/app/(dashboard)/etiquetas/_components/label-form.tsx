@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus, Trash2 } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
-import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, requiresManufacturerShelfLife, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, requiresManufacturerShelfLife, usesAmbientFallback, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -137,7 +137,8 @@ export function LabelForm({
   const ruleKey = JSON.stringify([selectedProduct?.id, categoria, metodo, exigePrazoFabricante ? prazoFabricante : null])
   const currentRule = ruleResult?.key === ruleKey ? ruleResult : null
   const shelfRule = currentRule?.rule
-  const loadingRule = Boolean(selectedProduct && categoria && metodo && !currentRule)
+  const podeCalcularSemCategoria = usesAmbientFallback(categoria, metodo)
+  const loadingRule = Boolean(selectedProduct && (categoria || podeCalcularSemCategoria) && metodo && !currentRule)
   let validade = ''
   let validityError = currentRule?.error ?? ''
   if (shelfRule) {
@@ -149,7 +150,7 @@ export function LabelForm({
   }
 
   useEffect(() => {
-    if (!selectedProduct || !categoria || !metodo) return
+    if (!selectedProduct || (!categoria && !podeCalcularSemCategoria) || !metodo) return
     const controller = new AbortController()
     const params = new URLSearchParams({ metodo, categoria })
     if (exigePrazoFabricante) params.set('prazo_fabricante_horas', prazoFabricante)
@@ -163,7 +164,7 @@ export function LabelForm({
         if (!controller.signal.aborted) setRuleResult({ key: ruleKey, error: 'Falha ao consultar a validade. Selecione o método novamente para tentar.' })
       })
     return () => controller.abort()
-  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoFabricante])
+  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoFabricante, podeCalcularSemCategoria])
 
   useEffect(() => {
     if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
@@ -389,7 +390,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
                 {selectedProduct.tipo === 'ingrediente' && !categoria && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-warn">
                     <AlertTriangle className="h-3 w-3" />
-                    <span>Sem categoria — <a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
+                    <span>{podeCalcularSemCategoria ? 'Sem categoria — validade automática de 7 dias em temperatura ambiente. ' : 'Sem categoria — '}<a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
                   </div>
                 )}
               </>
@@ -538,7 +539,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 
         <button
           type="submit"
-          disabled={saving || !selectedProduct || !selectedUnit || !categoria || !metodo || loadingRule || !validade || Boolean(validityError)}
+          disabled={saving || !selectedProduct || !selectedUnit || (!categoria && !podeCalcularSemCategoria) || !metodo || loadingRule || !validade || Boolean(validityError)}
           className="rounded-lg bg-ember px-4 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
         >
           {saving ? 'Salvando...' : 'Gerar Etiqueta'}

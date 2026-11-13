@@ -155,3 +155,29 @@ test('API recalcula farinha de amêndoa e remove prazo auxiliar antes de persist
   assert.equal((await api.POST({ json: async () => ({ ...payload, prazo_fabricante_horas: null }) })).status, 422)
   assert.equal(inserted, null)
 })
+
+
+test('ambiente sem categoria recebe sete dias pela regra operacional e respeita limites menores', () => {
+  for (const category of [null, undefined, '', '   ']) {
+    const rule = rules.getShelfLifeRule(category, 'Temperatura ambiente')
+    assert.equal(rule.prazo_horas, 168)
+    assert.equal(rule.source, 'operational')
+    assert.equal(rules.getShelfLifeRule(category, 'Temperatura ambiente', 24).prazo_horas, 24)
+    assert.equal(rules.getShelfLifeRule(category, 'Temperatura ambiente', 720).prazo_horas, 168)
+    assert.equal(rules.calculateExpiry('2026-11-13T10:00', rule.prazo_horas), '2026-11-20T13:00:00.000Z')
+    assert.equal(rules.calculateExpiry('2026-11-13T10:00', rule.prazo_horas, '2026-11-14'), '2026-11-15T02:59:59.999Z')
+  }
+  assert.throws(() => rules.getShelfLifeRule('desconhecida', 'Temperatura ambiente'), /categoria/)
+  assert.throws(() => rules.getShelfLifeRule(null, 'Refrigerado até 4°C'), /categoria/)
+})
+
+test('cadastro com categoria não permite forçar sete dias omitindo a categoria na requisição', async () => {
+  const results = { ingredients: { data: { categoria_anvisa: 'pescado_cozido' } }, ingredient_shelf_life: { data: null } }
+  const query = table => ({ select() { return this }, eq() { return this }, maybeSingle() { return Promise.resolve(results[table]) } })
+  const db = { from: query, schema() { return this } }
+  const server = load('src/lib/shelf-life-server.ts', { '@/lib/shelf-life': rules, '@/lib/supabase/server': { createServiceClient: () => db } })
+  const input = { method: 'Temperatura ambiente', category: '', ingredientId: 'product' }
+  await assert.rejects(server.resolveShelfLifeRule(input), /não possui prazo genérico/)
+  results.ingredients.data.categoria_anvisa = null
+  assert.equal((await server.resolveShelfLifeRule(input)).prazo_horas, 168)
+})

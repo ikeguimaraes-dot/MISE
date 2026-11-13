@@ -38,3 +38,8 @@ A validade parte da data/hora de manipulação, em America/Sao_Paulo. Quando inf
 Não se aplicam automaticamente mudanças futuras de legislação. Revisar este perfil com o responsável técnico antes da vigência da CVS 3/2026 informada para fevereiro de 2027, incluindo o texto republicado e os atos de prorrogação. Esta implementação não declara que a CVS 5 e a CVS 3 têm tabelas idênticas.
 
 Validação: `node --test tests/shelf-life.test.mjs` e `npx tsc --noEmit --incremental false`.
+
+
+## Exceção operacional para produtos sem categoria
+
+Por configuração solicitada pela operação, produtos sem categoria sanitária e com método **Temperatura ambiente** recebem automaticamente **168 horas (7 dias)** a partir da manipulação. A interface identifica o prazo como regra operacional, sem atribuí-lo à CVS/Anvisa. Uma regra específica de produto menor e a validade original do fornecedor, quando informada, continuam limitando o vencimento. A categoria cadastrada prevalece no servidor; categorias conhecidas, categorias inválidas e outros métodos não usam essa exceção. Selecionar uma categoria na emissão aplica a regra dessa categoria.

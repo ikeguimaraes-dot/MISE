@@ -39,7 +39,7 @@ export const CONSERVATION_METHODS = [
 
 export type ShelfLifeRule = {
   prazo_horas: number
-  source: 'cvs' | 'custom' | 'manufacturer'
+  source: 'cvs' | 'custom' | 'manufacturer' | 'operational'
   reference: string
 }
 
@@ -52,6 +52,10 @@ export function requiresManufacturerShelfLife(category: string | null | undefine
   return FOOD_CATEGORIES.some(item => item.value === category && item.hours === null)
 }
 
+export function usesAmbientFallback(category: string | null | undefined, method: string): boolean {
+  return !category?.trim() && method === 'Temperatura ambiente'
+}
+
 export function getShelfLifeRule(category: string | null | undefined, method: string, customHours?: number | null, manufacturerHours?: number | null): ShelfLifeRule {
   // Os rótulos antigos permanecem interpretáveis, sem ampliar seu limite térmico.
   const legacyMethods: Record<string, string> = {
@@ -59,6 +63,11 @@ export function getShelfLifeRule(category: string | null | undefined, method: st
     'Refrigerado 5-10°C': 'Refrigerado 5-10°C',
   }
   const normalized = legacyMethods[method] ?? method
+  if (usesAmbientFallback(category, normalized)) {
+    const hours = 168
+    const useCustom = typeof customHours === 'number' && Number.isFinite(customHours) && customHours > 0 && customHours < hours
+    return { prazo_horas: useCustom ? customHours : hours, source: useCustom ? 'custom' : 'operational', reference: 'Regra operacional: sem categoria em temperatura ambiente · 7 dias' }
+  }
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   if (!food) throw new Error('Selecione a categoria sanitária do produto para calcular a validade.')
   if (food.hours === null) {
