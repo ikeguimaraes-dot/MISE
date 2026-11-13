@@ -18,7 +18,7 @@ test('categoria seleciona automaticamente uma refrigeração compatível e calcu
   assert.equal(rules.getDefaultConservationMethod('pescado_cozido'), 'Refrigerado até 2°C')
   assert.equal(rules.getDefaultConservationMethod('proteina_animal_crua'), 'Refrigerado até 4°C')
   assert.equal(rules.getDefaultConservationMethod('vegetal_cru'), 'Refrigerado até 5°C')
-  for (const category of rules.FOOD_CATEGORIES) {
+  for (const category of rules.FOOD_CATEGORIES.filter(item => item.hours !== null)) {
     assert.equal(rules.getShelfLifeRule(category.value, rules.getDefaultConservationMethod(category.value)).prazo_horas, category.hours)
   }
   for (const missing of [null, undefined, '', 'desconhecida']) assert.equal(rules.getDefaultConservationMethod(missing), '')
@@ -114,5 +114,44 @@ test('POST recalcula validade no servidor e não persiste prazo manipulado nem c
   inserted = null
   const invalid = await api.POST({ json: async () => ({ ...payload, metodo_conservacao: 'Refrigerado até 5°C' }) })
   assert.equal(invalid.status, 422)
+  assert.equal(inserted, null)
+})
+
+
+test('ingredientes secos exigem prazo do fabricante e não herdam prazos de perecíveis', () => {
+  for (const category of rules.FOOD_CATEGORIES.filter(item => item.hours === null)) {
+    assert.equal(rules.requiresManufacturerShelfLife(category.value), true)
+    assert.equal(rules.getDefaultConservationMethod(category.value), '')
+    for (const method of ['Temperatura ambiente', 'Refrigerado até 4°C', 'Congelado -18°C']) {
+      for (const hours of [null, undefined, 0, -1, NaN, Infinity, '168']) {
+        assert.throws(() => rules.getShelfLifeRule(category.value, method, null, hours), /prazo após abertura/)
+      }
+      const result = rules.getShelfLifeRule(category.value, method, null, 168)
+      assert.equal(result.prazo_horas, 168)
+      assert.equal(result.source, 'manufacturer')
+      assert.equal(rules.getShelfLifeRule(category.value, method, 24, 168).prazo_horas, 24)
+      assert.equal(rules.getShelfLifeRule(category.value, method, 720, 168).prazo_horas, 168)
+    }
+    assert.throws(() => rules.getShelfLifeRule(category.value, '', null, 168), /método/)
+  }
+  assert.equal(rules.requiresManufacturerShelfLife('vegetal_cru'), false)
+  assert.throws(() => rules.getShelfLifeRule('vegetal_cru', 'Temperatura ambiente', null, 168), /não possui prazo genérico/)
+})
+
+test('API recalcula farinha de amêndoa e remove prazo auxiliar antes de persistir', async () => {
+  let inserted
+  const db = { schema() { return this }, from() { return this }, insert(body) { inserted = body; return this }, select() { return this }, single: async () => ({ data: { id: 'label' } }) }
+  const api = load('src/app/api/labels/route.ts', {
+    '@/lib/supabase/server': { createServiceClient: () => db },
+    '@/lib/shelf-life': rules,
+    '@/lib/shelf-life-server': { resolveShelfLifeRule: async ({ method, category, manufacturerHours }) => rules.getShelfLifeRule(category, method, null, manufacturerHours) },
+    'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
+  })
+  const payload = { categoria_anvisa: 'farinhas_feculas', prazo_fabricante_horas: 168, metodo_conservacao: 'Temperatura ambiente', data_manipulacao: '2026-11-13T13:00:00Z', validade_fornecedor: '2026-11-14', validade: '2030-01-01T00:00:00Z' }
+  assert.equal((await api.POST({ json: async () => payload })).status, 200)
+  assert.equal(inserted.validade, '2026-11-15T02:59:59.999Z')
+  assert.equal('prazo_fabricante_horas' in inserted, false)
+  inserted = null
+  assert.equal((await api.POST({ json: async () => ({ ...payload, prazo_fabricante_horas: null }) })).status, 422)
   assert.equal(inserted, null)
 })

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus, Trash2 } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
-import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, requiresManufacturerShelfLife, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
 
 type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
 type MenuItem = { id: string; nome: string }
@@ -76,6 +76,8 @@ export function LabelForm({
   const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
   const [categoria, setCategoria] = useState(initialProduct?.categoria_anvisa ?? '')
   const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(Boolean(initialProduct?.categoria_anvisa))
+  const [prazoFabricante, setPrazoFabricante] = useState('')
+  const exigePrazoFabricante = requiresManufacturerShelfLife(categoria)
   const [pesoKg, setPesoKg] = useState('')
   const [selectedResponsavel, setSelectedResponsavel] = useState<string>('')
   const [empSearch, setEmpSearch] = useState('')
@@ -132,7 +134,7 @@ export function LabelForm({
     return () => { cancelled = true }
   }, [selectedProduct, selectedUnit])
 
-  const ruleKey = JSON.stringify([selectedProduct?.id, categoria, metodo])
+  const ruleKey = JSON.stringify([selectedProduct?.id, categoria, metodo, exigePrazoFabricante ? prazoFabricante : null])
   const currentRule = ruleResult?.key === ruleKey ? ruleResult : null
   const shelfRule = currentRule?.rule
   const loadingRule = Boolean(selectedProduct && categoria && metodo && !currentRule)
@@ -150,6 +152,7 @@ export function LabelForm({
     if (!selectedProduct || !categoria || !metodo) return
     const controller = new AbortController()
     const params = new URLSearchParams({ metodo, categoria })
+    if (exigePrazoFabricante) params.set('prazo_fabricante_horas', prazoFabricante)
     if (selectedProduct.tipo === 'ingrediente') params.set('ingredient_id', selectedProduct.id)
     fetch(`/api/shelf-life-rule?${params}`, { signal: controller.signal })
       .then(async response => {
@@ -160,7 +163,7 @@ export function LabelForm({
         if (!controller.signal.aborted) setRuleResult({ key: ruleKey, error: 'Falha ao consultar a validade. Selecione o método novamente para tentar.' })
       })
     return () => controller.abort()
-  }, [categoria, metodo, selectedProduct, ruleKey])
+  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoFabricante])
 
   useEffect(() => {
     if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
@@ -171,6 +174,7 @@ export function LabelForm({
   }, [selectedUnit])
 
   function handleSelectProduct(p: { id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null }) {
+    setPrazoFabricante('')
     setSelectedProduct(p)
     setSearch(p.nome)
     setTipo(p.tipo === 'ingrediente' ? 'ingrediente' : 'preparacao')
@@ -209,6 +213,7 @@ export function LabelForm({
 
     const payload = {
       categoria_anvisa: categoria,
+      prazo_fabricante_horas: exigePrazoFabricante ? Number(prazoFabricante) : null,
       unit_id: selectedUnit,
       responsavel_id: selectedResponsavel || null,
       responsavel_nome: selectedResponsavelNome || null,
@@ -376,7 +381,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               </div>
             ) : (
               <>
-                <select id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
+                <select id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setPrazoFabricante(''); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
                   className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
                   <option value="">Selecionar categoria</option>
                   {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -396,13 +401,22 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Método de conservação */}
           <div>
             <label htmlFor="label-conservation-method" className="block text-xs font-medium text-ink-muted mb-1">Método de conservação *</label>
-            <select id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setRuleResult(null) }}
+            <select id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setPrazoFabricante(''); setRuleResult(null) }}
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar método</option>
               {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
-            <p className="mt-1 text-xs text-ink-subtle">A categoria sugere refrigeração. Ajuste conforme o armazenamento do produto.</p>
+            <p className="mt-1 text-xs text-ink-subtle">{exigePrazoFabricante ? 'Selecione a conservação indicada na embalagem para o prazo após abertura.' : 'A categoria sugere refrigeração. Ajuste conforme o armazenamento do produto.'}</p>
           </div>
+
+          {exigePrazoFabricante && (
+            <div>
+              <label htmlFor="label-manufacturer-hours" className="block text-xs font-medium text-ink-muted mb-1">Prazo após abertura do fabricante (horas) *</label>
+              <input id="label-manufacturer-hours" type="number" required min="0.01" step="any" value={prazoFabricante} onChange={e => setPrazoFabricante(e.target.value)} aria-describedby="label-manufacturer-help"
+                className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
+              <p id="label-manufacturer-help" className="mt-1 text-xs text-ink-subtle">Use o prazo indicado para o método selecionado. Ex.: 7 dias = 168 horas. Informe também a validade original para limitar o vencimento.</p>
+            </div>
+          )}
 
           {/* Peso */}
           <div>
@@ -446,7 +460,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
             <label className="block text-xs font-medium text-ink-muted mb-1">Validade *</label>
             <div aria-live="polite" className={`rounded-lg border px-3 py-2 ${validade ? 'border-fresh/40 bg-fresh-soft' : 'border-edge-strong bg-surface-raised'}`}>
               <p className="text-sm text-ink">{loadingRule ? 'Calculando validade…' : validade ? new Date(`${validade}-03:00`).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Selecione a categoria e o método de conservação.'}</p>
-              {shelfRule && validade && <p className="mt-1 text-xs text-fresh-bright">{shelfRule.source === 'custom' ? 'Prazo do produto limitado pela CVS' : shelfRule.reference} · {shelfRule.prazo_horas}h{validadeFornecedor ? ' · respeita a validade do fornecedor' : ''}</p>}
+              {shelfRule && validade && <p className="mt-1 text-xs text-fresh-bright">{shelfRule.source === 'custom' ? 'Prazo do produto limitado pela referência da categoria' : shelfRule.reference} · {shelfRule.prazo_horas}h{validadeFornecedor ? ' · respeita a validade do fornecedor' : ''}</p>}
             </div>
             {validityError && <p role="alert" className="mt-2 text-xs text-alert-bright">{validityError}</p>}
           </div>

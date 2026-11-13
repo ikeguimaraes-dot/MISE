@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from '@/lib/product-registration'
-import { FOOD_CATEGORIES, getDefaultConservationMethod, getShelfLifeRule } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, getDefaultConservationMethod, getShelfLifeRule, requiresManufacturerShelfLife } from '@/lib/shelf-life'
 
 type Group = { id: string; name: string }
 type Supplier = { id: string; nome: string }
@@ -126,6 +126,7 @@ export function ProdutoForm({
             {CATEGORIA_ANVISA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
           <p id="product-food-category-help" className="mt-2 text-xs leading-5 text-ink-muted">Salva no produto. Ao selecioná-lo para emitir uma etiqueta, a categoria sanitária, o método de conservação sugerido e a validade serão preenchidos automaticamente a partir da data de manipulação.</p>
+          {requiresManufacturerShelfLife(categoriaAnvisa) && <p className="mt-2 text-xs text-ink-muted">Na emissão, informe o método de conservação e o prazo após abertura indicados pelo fabricante. Esta categoria não possui prazo automático genérico.</p>}
           {metodoSugerido && <p aria-live="polite" className="mt-2 text-xs font-medium text-fresh-bright">Sugestão para a etiqueta: {metodoSugerido} · prazo de até {prazoSugerido}h. O método pode ser ajustado na emissão conforme o armazenamento.</p>}
         </div>
 

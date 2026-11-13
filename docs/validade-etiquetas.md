@@ -21,7 +21,9 @@ O agrupamento de carnes temperadas com as preparações cárneas de 48h é uma o
 
 Congelados: 0 a −5 °C = 240h; −6 a −10 °C = 480h; −11 a −18 °C = 720h; abaixo de −18 °C = 2160h. Exatamente −18 °C pertence ao prazo de 30 dias. A seleção representa a faixa efetivamente mantida pelo equipamento. Para categorias explicitamente pós-cocção, as faixas mais quentes são bloqueadas conforme o item 4.8.16 da RDC 216; existe uma opção separada de −18 °C (30 dias), além da opção abaixo de −18 °C (90 dias).
 
-Não há prazo genérico de 30 dias em temperatura ambiente. O sistema informa a falta de regra e impede a emissão nesse método. Produtos estáveis à temperatura ambiente exigem fluxo específico e critério validado pelo responsável técnico; não são classificados automaticamente como seguros.
+Não há prazo genérico de 30 dias em temperatura ambiente. Categorias de perecíveis continuam bloqueadas nesse método. As novas categorias de farinhas/féculas (incluindo farinha de amêndoa), oleaginosas/sementes, grãos/massas secas, açúcares, temperos secos, óleos/gorduras e chocolates/cacau não recebem os prazos de alimentos preparados. São agrupamentos operacionais, não uma declaração de estabilidade de todos os produtos incluídos.
+
+Para esses ingredientes, a emissão exige selecionar a conservação e informar em horas o prazo após abertura indicado pelo fabricante para esse método. Não há temperatura ou prazo sugeridos automaticamente. O servidor exige prazo positivo e finito, aplica eventual prazo menor já configurado para o produto e limita a validade pela data original quando informada. O prazo informado é usado no cálculo, sem alterar o cadastro. A informação depende da conferência da embalagem pelo operador. Referência: [Guia da Anvisa sobre prazos de validade](https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/2018/guia-orienta-sobre-prazos-de-validade-de-alimentos/).
 
 ## Cálculo e integração
 

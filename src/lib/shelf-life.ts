@@ -16,6 +16,13 @@ export const FOOD_CATEGORIES = [
   { value: 'laticinios', label: 'Preparações com laticínios', hours: 72, maxTemperature: 4 },
   { value: 'sobremesa', label: 'Sobremesas e confeitaria com recheio ou cobertura', hours: 72, maxTemperature: 4 },
   { value: 'fritura', label: 'Frituras prontas (exceto pescados)', hours: 72, maxTemperature: 4 },
+  { value: 'farinhas_feculas', label: 'Farinhas e féculas (inclui farinha de amêndoa)', hours: null, maxTemperature: null },
+  { value: 'oleaginosas_sementes', label: 'Castanhas, amêndoas, nozes e sementes', hours: null, maxTemperature: null },
+  { value: 'graos_massas_secas', label: 'Grãos, cereais, leguminosas e massas secas', hours: null, maxTemperature: null },
+  { value: 'acucares_adocantes', label: 'Açúcares e adoçantes', hours: null, maxTemperature: null },
+  { value: 'temperos_especiarias_secos', label: 'Temperos, especiarias e ervas secas', hours: null, maxTemperature: null },
+  { value: 'oleos_gorduras', label: 'Óleos e gorduras industrializados', hours: null, maxTemperature: null },
+  { value: 'chocolates_cacau', label: 'Chocolates e cacau em pó', hours: null, maxTemperature: null },
 ] as const
 
 export const CONSERVATION_METHODS = [
@@ -32,25 +39,35 @@ export const CONSERVATION_METHODS = [
 
 export type ShelfLifeRule = {
   prazo_horas: number
-  source: 'cvs' | 'custom'
+  source: 'cvs' | 'custom' | 'manufacturer'
   reference: string
 }
 
 export function getDefaultConservationMethod(category: string | null | undefined): string {
   const food = FOOD_CATEGORIES.find(item => item.value === category)
-  return food ? `Refrigerado até ${food.maxTemperature}°C` : ''
+  return food?.maxTemperature != null ? `Refrigerado até ${food.maxTemperature}°C` : ''
 }
 
-export function getShelfLifeRule(category: string | null | undefined, method: string, customHours?: number | null): ShelfLifeRule {
+export function requiresManufacturerShelfLife(category: string | null | undefined): boolean {
+  return FOOD_CATEGORIES.some(item => item.value === category && item.hours === null)
+}
+
+export function getShelfLifeRule(category: string | null | undefined, method: string, customHours?: number | null, manufacturerHours?: number | null): ShelfLifeRule {
   // Os rótulos antigos permanecem interpretáveis, sem ampliar seu limite térmico.
   const legacyMethods: Record<string, string> = {
     'Resfriado 0-5°C': 'Refrigerado até 5°C',
     'Refrigerado 5-10°C': 'Refrigerado 5-10°C',
   }
   const normalized = legacyMethods[method] ?? method
-  if (normalized === 'Temperatura ambiente') throw new Error('Temperatura ambiente não possui prazo genérico. Escolha refrigeração ou congelamento; produtos estáveis exigem orientação específica do responsável técnico.')
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   if (!food) throw new Error('Selecione a categoria sanitária do produto para calcular a validade.')
+  if (food.hours === null) {
+    if (!CONSERVATION_METHODS.some(item => item.value === normalized)) throw new Error('Selecione o método de conservação indicado pelo fabricante.')
+    if (typeof manufacturerHours !== 'number' || !Number.isFinite(manufacturerHours) || manufacturerHours <= 0) throw new Error('Informe o prazo após abertura em horas, conforme o fabricante, para o método selecionado.')
+    const useCustom = typeof customHours === 'number' && Number.isFinite(customHours) && customHours > 0 && customHours < manufacturerHours
+    return { prazo_horas: useCustom ? customHours : manufacturerHours, source: useCustom ? 'custom' : 'manufacturer', reference: 'Prazo após abertura informado conforme o fabricante' }
+  }
+  if (normalized === 'Temperatura ambiente') throw new Error('Temperatura ambiente não possui prazo genérico. Escolha refrigeração ou congelamento; produtos estáveis exigem orientação específica do responsável técnico.')
   const conservation = CONSERVATION_METHODS.find(item => item.value === normalized)
   if (!conservation) throw new Error('Método sem prazo automático seguro. Selecione uma das faixas de temperatura disponíveis.')
   let hours: number
