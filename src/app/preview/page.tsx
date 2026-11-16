@@ -1,3 +1,4 @@
+import { WORKSPACE_BADGE } from '@/lib/workspace'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Database, Info } from 'lucide-react'
@@ -41,7 +42,7 @@ export default async function PreviewPage({ searchParams }: { searchParams: Prom
   const groups: LabelGroup[] = labels.map(item => ({ key: item.id, nome: item.nome, unit_name: item.unit_name, status: 'ativa', count: 1, items: [item] }))
 
   return <div className="min-h-screen bg-base">
-    <TopNav role="admin" employeeName="Equipe KPH" preview previewPath={path} />
+    <TopNav role="admin" employeeName={`Equipe ${WORKSPACE_BADGE}`} preview previewPath={path} />
     <main id="main-content" tabIndex={-1} className="workspace-main">
       <div className="preview-banner"><span className="flex items-center gap-2"><Info size={13} />Prévia de layout · ambiente local</span><span>{path === '/painel' ? 'Dados demonstrativos, sem conexão com a operação.' : 'Os módulos com dados dependem da configuração do banco.'}</span><span className="flex flex-wrap gap-4"><Link href="/preview?module=login" className="underline underline-offset-4">Telas de acesso</Link><Link href="/preview/brand" className="underline underline-offset-4">Identidade visual</Link></span></div>
       {path === '/' ? <OperationsHome role="admin" preview /> : path === '/etiquetas' ? <EtiquetasHome preview /> : path === '/etiquetas/cadastros' ? <EtiquetasCadastros preview /> : path === '/painel' ? <DashboardClient units={units} currentUnit={currentUnit} kpiEtiquetasHoje={labels} kpiCriticas={labels} kpiProducoes={[]} kpiDescartes={[]} labelGroups={groups} preview /> : (

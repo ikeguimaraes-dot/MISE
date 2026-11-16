@@ -1,5 +1,6 @@
 'use client'
 
+import { WORKSPACE_BADGE } from '@/lib/workspace'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -86,7 +87,7 @@ export function PrintPointForm({ units, initial }: { units: Unit[]; initial?: In
 
       <div>
         <label className="block text-xs font-medium text-ink-muted mb-1">Rede</label>
-        <input value={rede} onChange={e => setRede(e.target.value)} placeholder="ex: KPH-Interno"
+        <input value={rede} onChange={e => setRede(e.target.value)} placeholder={`ex: ${WORKSPACE_BADGE}-Interno`}
           className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
       </div>
 
