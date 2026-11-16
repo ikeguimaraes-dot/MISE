@@ -1,4 +1,5 @@
 import test from 'node:test'
+import { loadTs } from './helpers/load-ts.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -32,11 +33,12 @@ test('seals and inline report header carry the approved monochrome signature', (
   assert.equal(printSvg, master('mono').replace('<svg ', '<svg width="86" height="31" '))
 })
 
-test('compact icon uses the same M and manifest assets exist', () => {
+test('compact icon uses the same M and manifest assets exist', async () => {
   const m = master('dark').match(/<g data-letter="m"[^>]*>([\s\S]*?)<\/g>/)[1]
   assert.ok(read('public/brand/mise-symbol.svg').includes(m))
   assert.ok(read('public/icons/mise-mark.svg').includes(m))
-  const manifest = JSON.parse(read('public/manifest.json'))
+  const { GET } = loadTs('src/app/manifest.json/route.ts', { '@/lib/workspace': loadTs('src/lib/workspace.ts') })
+  const manifest = await GET().json()
   for (const icon of manifest.icons) {
     const pathname = new URL(icon.src, 'http://localhost').pathname
     assert.ok(existsSync(fileURLToPath(new URL(`public${pathname}`, root))))

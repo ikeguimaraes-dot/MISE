@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Printer, ChevronDown, ChevronUp, Tag, Clock3, ChefHat, Trash2, ArrowUpRight, CalendarDays } from 'lucide-react'
 import type { KpiItem, LabelGroup } from '../painel/page'
-import { printBrandHeader } from '@/lib/brand'
+import { printBrandHeader, printBrandFooter } from '@/lib/brand'
 
 const STATUS_BADGE: Record<string, string> = {
   ativa: 'text-fresh-bright bg-fresh/10',
@@ -52,7 +52,7 @@ ${printBrandHeader()}
 <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
 <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>
 </table>
-<div class="foot">MISE · KPH Participações</div>
+${printBrandFooter()}
 </body></html>`
   const w = window.open('', '_blank')
   if (!w) return

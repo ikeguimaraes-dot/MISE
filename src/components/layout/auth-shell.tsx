@@ -1,3 +1,4 @@
+import { WORKSPACE_NAME } from '@/lib/workspace'
 import Link from 'next/link'
 import { ArrowLeft, ClipboardCheck, Flame, Tag, BookOpen } from 'lucide-react'
 import { MiseBrand } from './mise-brand'
@@ -13,7 +14,7 @@ export function AuthShell({ children, preview = false }: { children: React.React
         <p>O cuidado com cada detalhe começa aqui.<br />Conecte sua equipe, organize a rotina e mantenha o padrão da casa.</p>
         <div className="auth-pillars"><span><Tag size={16} />Identificar</span><span><ClipboardCheck size={16} />Conferir</span><span><BookOpen size={16} />Registrar</span></div>
       </div>
-      <div className="auth-story-footer"><Flame size={20} strokeWidth={1.5} /><p>Consistência é o ingrediente<br />de uma boa experiência.</p><span className="ml-auto text-[10px] text-ink-faint">KPH Participações</span></div>
+      <div className="auth-story-footer"><Flame size={20} strokeWidth={1.5} /><p>Consistência é o ingrediente<br />de uma boa experiência.</p><span className="ml-auto text-[10px] text-ink-faint">{WORKSPACE_NAME}</span></div>
     </aside>
     <main className="auth-main" id="main-content">
       <div className="auth-theme-toggle"><ThemeToggle /></div>

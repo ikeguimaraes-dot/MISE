@@ -1,5 +1,6 @@
 'use client'
 
+import { WORKSPACE_NAME, WORKSPACE_BADGE } from '@/lib/workspace'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
@@ -82,8 +83,8 @@ export function TopNav({ role = 'cozinheiro', isPinUser = false, employeeName, p
         <span className="ml-auto rounded border border-edge-strong px-1.5 py-0.5 text-[9px] font-semibold tracking-[.16em] text-ink-subtle">OPX</span>
       </Link>
       <div className="mx-4 mb-5 flex items-center gap-2.5 rounded-lg border border-edge bg-surface px-3 py-3">
-        <span className="flex size-8 items-center justify-center rounded-md bg-surface-raised text-[11px] font-bold text-ink-muted">KPH</span>
-        <div><p className="text-xs font-medium text-ink">KPH Participações</p><p className="mt-0.5 text-[10px] text-ink-subtle">Workspace da operação</p></div>
+        <span className="flex size-8 items-center justify-center rounded-md bg-surface-raised text-[11px] font-bold text-ink-muted">{WORKSPACE_BADGE}</span>
+        <div><p className="text-xs font-medium text-ink">{WORKSPACE_NAME}</p><p className="mt-0.5 text-[10px] text-ink-subtle">Workspace da operação</p></div>
       </div>
       <nav className="workspace-nav" aria-label="Navegação principal">
         {groups.map(group => {

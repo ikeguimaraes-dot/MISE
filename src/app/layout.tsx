@@ -1,3 +1,4 @@
+import { SITE_DESCRIPTION } from '@/lib/workspace'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: { default: 'MISE · Orkestri OPX', template: '%s · MISE' },
-  description: 'Operação, rotinas e qualidade em cada unidade — KPH Participações',
+  description: SITE_DESCRIPTION,
   icons: { icon: '/icons/mise-mark.svg?v=4.4', apple: '/icons/mise-192.png?v=4.4' },
 }
 
