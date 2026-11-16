@@ -38,7 +38,9 @@ export async function POST(request: Request) {
     .eq('employee_id', employeeId)
     .single()
 
-  if (!pinRecord || !(await bcrypt.compare(pin, pinRecord.pin_hash))) {
+  const { data: employee } = await supabase.from('employees').select('id').eq('id', employeeId).eq('ativo', true).eq('mise_ativo', true).maybeSingle()
+
+  if (!employee || !pinRecord || !(await bcrypt.compare(pin, pinRecord.pin_hash))) {
     await recordPinFailure(supabase, key)
     await new Promise((resolve) => setTimeout(resolve, 350))
     return NextResponse.json({ error: 'Credenciais invalidas.' }, { status: 401 })

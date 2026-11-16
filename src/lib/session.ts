@@ -20,6 +20,8 @@ async function getGestorSession(): Promise<MiseSession | null> {
     .from('employees')
     .select('id, nome, role_id')
     .eq('user_id', user.id)
+    .eq('ativo', true)
+    .eq('mise_ativo', true)
     .single()
 
   if (!employee) return null
@@ -70,7 +72,11 @@ export async function getMiseSession(): Promise<MiseSession | null> {
     .from('employees')
     .select('nome')
     .eq('id', session.employee_id)
+    .eq('ativo', true)
+    .eq('mise_ativo', true)
     .single()
+
+  if (!employee) return null
 
   return {
     sessionId: session.id,
