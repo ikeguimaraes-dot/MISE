@@ -13,6 +13,7 @@ function load(path, dependencies = {}) {
   return exports
 }
 const rules = load('src/lib/shelf-life.ts')
+const expiry = load('src/lib/label-expiry.ts', { '@/lib/shelf-life': rules })
 
 test('categoria seleciona automaticamente uma refrigeração compatível e calculável', () => {
   assert.equal(rules.getDefaultConservationMethod('pescado_cozido'), 'Refrigerado até 2°C')
@@ -25,7 +26,7 @@ test('categoria seleciona automaticamente uma refrigeração compatível e calcu
 })
 
 test('impressão Bluetooth preserva data e hora do vencimento sem ultrapassar a etiqueta', () => {
-  const print = load('src/lib/etiqueta-tspl.ts')
+  const print = load('src/lib/etiqueta-tspl.ts', { '@/lib/label-expiry': expiry })
   const tspl = print.buildTSPL({ nome: 'Pescado cozido com um nome comprido para ocupar cinco linhas na etiqueta', metodo: 'Congelado abaixo de -18°C', dataManipulacao: '2026-11-13T13:00:00Z', validade: '2026-11-14T13:30:00Z', respNome: 'Ana', id: '123456' })
   assert.match(tspl, /14\/11\/26/)
   assert.match(tspl, /ATE 10:30/)
@@ -103,6 +104,8 @@ test('POST recalcula validade no servidor e não persiste prazo manipulado nem c
   const api = load('src/app/api/labels/route.ts', {
     '@/lib/supabase/server': { createServiceClient: () => db },
     '@/lib/shelf-life': rules,
+    '@/lib/label-expiry': expiry,
+    '@/lib/session': { getMiseSession: async () => ({ role: 'cozinheiro', employeeId: 'employee' }) },
     '@/lib/shelf-life-server': { resolveShelfLifeRule: async ({ method, category }) => rules.getShelfLifeRule(category, method) },
     'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
   })
@@ -144,6 +147,8 @@ test('API recalcula farinha de amêndoa e remove prazo auxiliar antes de persist
   const api = load('src/app/api/labels/route.ts', {
     '@/lib/supabase/server': { createServiceClient: () => db },
     '@/lib/shelf-life': rules,
+    '@/lib/label-expiry': expiry,
+    '@/lib/session': { getMiseSession: async () => ({ role: 'cozinheiro', employeeId: 'employee' }) },
     '@/lib/shelf-life-server': { resolveShelfLifeRule: async ({ method, category, manufacturerHours }) => rules.getShelfLifeRule(category, method, null, manufacturerHours) },
     'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
   })

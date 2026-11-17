@@ -11,6 +11,7 @@ function load(path, dependencies = {}) {
 }
 const business = load('src/lib/business-registration.ts')
 const shelf = load('src/lib/shelf-life.ts')
+const expiry = load('src/lib/label-expiry.ts', { '@/lib/shelf-life': shelf })
 const products = load('src/lib/product-registration.ts', { '@/lib/business-registration': business, '@/lib/shelf-life': shelf })
 const model = load('src/lib/label-validities.ts')
 const u1 = '00000000-0000-4000-8000-000000000001'
@@ -48,7 +49,7 @@ function actionHarness({ session = true, fail = false, initial = 'ativa', exists
       return { data: { ...row } }
     } }
   } }
-  const api = load('src/app/api/labels/[id]/route.ts', { 'next/server': jsonResponse, '@/lib/supabase/server': { createServiceClient: () => { dbCalls++; return db } }, '@/lib/session': { getMiseSession: async () => session ? { role: 'cozinheiro' } : null }, '@/lib/business-registration': business })
+  const api = load('src/app/api/labels/[id]/route.ts', { 'next/server': jsonResponse, '@/lib/label-expiry': expiry, '@/lib/supabase/server': { createServiceClient: () => { dbCalls++; return db } }, '@/lib/session': { getMiseSession: async () => session ? { role: 'cozinheiro' } : null }, '@/lib/business-registration': business })
   const action = status => api.PATCH({ json: async () => ({ status, nome: 'Tentativa de mudar o nome' }) }, { params: Promise.resolve({ id }) })
   return { action, row, writes: () => writes, dbCalls: () => dbCalls }
 }

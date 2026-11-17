@@ -16,6 +16,8 @@ type Initial = {
   id: string
   nome: string
   codigo: string | null
+  sif?: string | null
+  marca?: string | null
   group_id: string | null
   categoria: string
   categoria_anvisa: string | null
@@ -37,6 +39,8 @@ export function ProdutoForm({
   initial?: Initial
 }) {
   const [nome, setNome] = useState(initial?.nome ?? '')
+  const [sif, setSif] = useState(initial?.sif ?? '')
+  const [marca, setMarca] = useState(initial?.marca ?? '')
   const [codigo, setCodigo] = useState(initial?.codigo ?? '')
   const [groupId, setGroupId] = useState(initial?.group_id ?? '')
   const [categoria, setCategoria] = useState(initial?.categoria ?? '')
@@ -61,6 +65,8 @@ export function ProdutoForm({
 
     const payload: Record<string, string | number | boolean | null> = {
       nome: nome.trim(),
+      sif: sif.trim() || null,
+      marca: marca.trim() || null,
       group_id: groupId,
       categoria,
       categoria_anvisa: categoriaAnvisa || null,
@@ -116,6 +122,16 @@ export function ProdutoForm({
             <option value="">Selecionar</option>
             {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+        </div>
+
+        <div>
+          <label htmlFor="product-sif" className="block text-xs font-medium text-ink-muted mb-1">Registro SIF</label>
+          <input id="product-sif" value={sif} onChange={e => setSif(e.target.value)} maxLength={30} placeholder="Número do registro de inspeção" className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+          <p className="mt-1 text-xs text-ink-muted">Quando preenchido, será impresso automaticamente na etiqueta.</p>
+        </div>
+        <div>
+          <label htmlFor="product-brand" className="block text-xs font-medium text-ink-muted mb-1">Marca</label>
+          <input id="product-brand" value={marca} onChange={e => setMarca(e.target.value)} maxLength={120} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
         </div>
 
         <div className="sm:col-span-2 rounded-xl border border-edge bg-surface p-4">

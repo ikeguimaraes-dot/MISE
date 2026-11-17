@@ -1,4 +1,8 @@
+import { inspectionText } from '@/lib/label-expiry'
+
 export type EtiquetaTsplData = {
+  sif?: string | null
+  selo?: string | null
   nome: string
   metodo?: string | null
   dataManipulacao: string | Date
@@ -26,6 +30,7 @@ function ascii(s?: string | null): string {
     .replace(diacritics, '')
     .replace(/°C/gi, ' C')
     .replace(/°/g, '')
+    .replace(/[\u0000-\u001f]/g, ' ')
     .replace(/"/g, "'")
 }
 
@@ -87,7 +92,7 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   y = Math.max(180, y + 14)
   cmds.push(`BAR ${left},${y},448,3`)
   y += 24
-  cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)}"`)
+  cmds.push(`TEXT ${left},${y},"2",0,1,1,"MANIPULACAO: ${fmtDate(dataManipulacao)} ${new Date(dataManipulacao).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}"`)
   y += 30
   // Validade em destaque — fonte "4" (24x32) só na data, é a info mais crítica pra cozinha.
   // Rótulo fica na fonte "2" de sempre, centralizado verticalmente contra a data maior.
@@ -101,6 +106,11 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   y += 32
   cmds.push(`TEXT ${left},${y},"2",0,1,1,"RESP.: ${ascii(respNome)}"`)
   y += 28
+  const inspection = inspectionText(data.sif, data.selo)
+  if (inspection) {
+    cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(inspection).slice(0, 54)}"`)
+    y += 20
+  }
   cmds.push(`TEXT ${left},${y},"1",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
   cmds.push(`PRINT ${quantidade}`)
 

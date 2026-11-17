@@ -7,7 +7,7 @@ export default async function EditarProdutoPage({ params }: { params: Promise<{ 
   const supabase = createServiceClient()
 
   const [{ data: produto }, { data: groups }, { data: suppliers }] = await Promise.all([
-    supabase.from('ingredients').select('id, nome, codigo, group_id, categoria, categoria_anvisa, unidade_padrao, custo_padrao, fornecedor_id, perdas_padrao, observacoes, ativo').eq('id', id).single(),
+    supabase.from('ingredients').select('id, nome, codigo, sif, marca, group_id, categoria, categoria_anvisa, unidade_padrao, custo_padrao, fornecedor_id, perdas_padrao, observacoes, ativo').eq('id', id).single(),
     supabase.from('groups').select('id, name').order('name'),
     supabase.from('suppliers').select('id, nome').eq('ativo', true).order('nome'),
   ])

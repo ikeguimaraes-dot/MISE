@@ -17,7 +17,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
   const { data: groups } = await supabase.from('groups').select('id, name').order('name')
 
   let query = supabase.from('ingredients')
-    .select('id, nome, codigo, group_id, categoria, categoria_anvisa, unidade_padrao, ativo', { count: 'exact' })
+    .select('id, nome, codigo, marca, sif, group_id, categoria, categoria_anvisa, unidade_padrao, ativo', { count: 'exact' })
     .eq('ativo', true)
     .order('nome')
     .range(from, to)
@@ -68,7 +68,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-edge">
-                {['Nome', 'Código', 'Grupo', 'Categoria', 'Categoria sanitária', 'Unidade', ''].map(h => (
+                {['Nome', 'Marca', 'SIF', 'Código', 'Grupo', 'Categoria', 'Categoria sanitária', 'Unidade', ''].map(h => (
                   <th key={h} className="px-5 py-3 text-left text-xs font-medium text-ink-muted">{h}</th>
                 ))}
               </tr>
@@ -77,6 +77,8 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
               {(produtos ?? []).map(p => (
                 <tr key={p.id} className="hover:bg-surface-raised/50 transition-colors">
                   <td className="px-5 py-3 font-medium text-ink">{p.nome}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.marca || '—'}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.sif || '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{p.codigo ?? '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{groupsMap[p.group_id ?? ''] ?? '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{p.categoria}</td>
@@ -90,7 +92,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
                 </tr>
               ))}
               {(produtos ?? []).length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-8 text-center text-ink-subtle">Nenhum produto encontrado.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-8 text-center text-ink-subtle">Nenhum produto encontrado.</td></tr>
               )}
             </tbody>
           </table>

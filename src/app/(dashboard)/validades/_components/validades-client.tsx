@@ -1,5 +1,7 @@
 'use client'
 
+import { BotaoReimprimir } from '../../etiquetas/_components/botao-reimprimir'
+import { LabelExpiryEditor } from '@/components/labels/label-expiry-editor'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { applyConfirmedLabelAction, getValidityBucket, VALIDITY_CARDS, type ValidityData, type ValidityFilters } from '@/lib/label-validities'
 
@@ -7,7 +9,7 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-export function ValidadesClient({ initialData }: { initialData: ValidityData }) {
+export function ValidadesClient({ initialData, isAdmin = false }: { initialData: ValidityData; isAdmin?: boolean }) {
   const [data, setData] = useState(initialData)
   const [filters, setFilters] = useState<ValidityFilters>({ unit: '', bucket: '', page: 1 })
   const [loadedView, setLoadedView] = useState({ unit: '', bucket: '' })
@@ -103,6 +105,8 @@ export function ValidadesClient({ initialData }: { initialData: ValidityData }) 
         return <div key={label.id} className="flex flex-wrap items-center gap-4 px-5 py-4 hover:bg-surface-raised/50">
           <div className="min-w-0 flex-1 basis-44"><p className="text-sm font-medium text-ink">{label.nome}</p><p className="mt-1 text-xs text-ink-subtle">{label.unit_name} · {label.employee_name ?? '—'}</p></div>
           <div className="text-right"><p className="text-xs text-ink-muted">Validade: {formatDate(label.validade)}</p><span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs ${label.status === 'consumida' ? 'bg-fresh/10 text-fresh-bright' : label.status === 'descartada' || expired ? 'bg-alert/10 text-alert-bright' : 'bg-info/10 text-info'}`}>{terminal ? label.status === 'consumida' ? 'Usado no preparo' : 'Perda' : expired ? 'Vencida' : 'Ativa'}</span></div>
+          {isAdmin && !terminal && <BotaoReimprimir id={label.id} nome={label.nome} metodo={label.metodo_conservacao} dataManipulacao={label.data_manipulacao} validade={label.validade} respNome={label.employee_name ?? ''} sif={label.sif} selo={label.selo} />}
+          {isAdmin && !terminal && <LabelExpiryEditor key={`${label.id}-${label.validade}`} id={label.id} manipulation={label.data_manipulacao} expiry={label.validade} onSaved={() => reload(filters)} />}
           {!terminal && <div className="flex flex-wrap gap-2">
             <button type="button" disabled={disabled} onClick={() => void handleAction(label.id, 'consumida')} className="min-h-10 rounded-lg border border-info px-3 py-2 text-xs text-info hover:bg-info-soft disabled:opacity-50">{pendingId === label.id ? 'Salvando…' : 'Usado no preparo'}</button>
             <button type="button" disabled={disabled} onClick={() => void handleAction(label.id, 'descartada')} className="min-h-10 rounded-lg border border-alert px-3 py-2 text-xs text-alert-bright hover:bg-alert-soft disabled:opacity-50">Descartar (perda)</button>
