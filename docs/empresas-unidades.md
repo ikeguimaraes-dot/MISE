@@ -20,10 +20,40 @@ O CNPJ é normalizado e tem os dígitos verificadores conferidos, aceitando as f
 - Empresas e unidades podem ser inativadas pelo formulário. Inativar a empresa não inativa automaticamente suas unidades. Inativar uma unidade a remove dos seletores operacionais que já filtram `active = true`.
 - Não há exclusão definitiva no novo fluxo. O banco impede remover uma empresa enquanto houver unidades vinculadas.
 
-Migração: `supabase/migrations/20261113144754_company_unit_registration.sql`. A versão local acompanha a versão registrada no banco.
+Migração: `supabase/migrations/20261113144754_company_unit_registration.sql`. Essa migração deve ser aplicada em cada banco usado pelas instalações do MISE antes de usar o cadastro. Publicar o código na Vercel não aplica a migração no Supabase.
 
 ## Verificação
 
 `node --test tests/business-registration.test.mjs tests/shelf-life.test.mjs` e `npx tsc --noEmit --incremental false`.
 
-Testes de CNPJ, validação, autorização, duplicidade, criação, edição e carregamento de formulário. A estrutura real foi verificada com inserção e vínculo em transação desfeita por `ROLLBACK`, confirmando a preservação das 12 unidades anteriores e a ausência de registros de teste persistidos.
+Testes de CNPJ, validação, autorização, duplicidade, criação, edição e carregamento de formulário. Na validação original da implementação, a estrutura real foi verificada com inserção e vínculo em transação desfeita por `ROLLBACK`, confirmando a preservação das 12 unidades anteriores e a ausência de registros de teste persistidos.
+
+
+## Aplicação no Maza — 17/11/2026
+
+A instalação em `mise-opal-nu.vercel.app` usa o projeto Supabase `maza` (`dncqjezvndoxeqpklefy`). O erro de servidor ao abrir Empresas e Unidades ocorria porque esse banco ainda não tinha `mise.companies` nem as colunas adicionais de `public.units` esperadas pelo código.
+
+Foi aplicada a migração já versionada `20261113144754_company_unit_registration.sql`, em transação, e registrada a versão `20261113144754` em `supabase_migrations.schema_migrations`. As duas unidades existentes foram preservadas, com os mesmos IDs e status; nenhuma empresa ou unidade de teste foi criada. As unidades legadas continuam sem empresa vinculada até que um administrador complete o cadastro.
+
+Verificações concluídas:
+
+- Tabela `mise.companies`, vínculo `public.units.company_id` e campos cadastrais disponíveis.
+- RLS habilitada e permissões da tabela de empresas limitadas ao backend (`service_role`), sem acesso direto de `anon` ou `authenticated`.
+- Leitura autenticada em produção das listas de empresas e unidades, dos dois formulários de criação e da edição das duas unidades existentes: seis páginas retornaram HTTP 200 e renderizaram o conteúdo esperado.
+- Sete testes de `tests/business-registration.test.mjs` passaram; nenhum erro nos logs da janela de verificação após a correção.
+
+A correção foi feita no banco Maza, usando a migração existente; não exigiu alteração do código da aplicação ou novo deploy. Antes de reaplicar a migração, consulte o histórico para evitar recriar tabelas, colunas e índices já existentes:
+
+```sql
+select version, name
+from supabase_migrations.schema_migrations
+where version = '20261113144754';
+
+select to_regclass('mise.companies') as companies_table;
+
+select column_name
+from information_schema.columns
+where table_schema = 'public'
+  and table_name = 'units'
+  and column_name = 'company_id';
+```
