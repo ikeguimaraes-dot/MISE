@@ -1,5 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { getMiseSession } from '@/lib/session'
+import { LabelExpiryEditor } from '@/components/labels/label-expiry-editor'
 import { LabelForm } from '../_components/label-form'
 import { BotaoReimprimir } from '../_components/botao-reimprimir'
 
@@ -33,6 +35,8 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
+  const session = await getMiseSession()
+  const isAdmin = session?.role === 'admin'
   const supabase = createServiceClient()
 
   const [
@@ -43,11 +47,11 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
     { data: ultimaEtiqueta },
   ] = await Promise.all([
     supabase.from('units').select('id, name, cnpj, address').eq('active', true),
-    supabase.from('ingredients').select('id, nome, categoria_anvisa').eq('ativo', true).order('nome'),
+    supabase.from('ingredients').select('id, nome, categoria_anvisa, sif').eq('ativo', true).order('nome'),
     supabase.from('menu_items').select('id, nome').order('nome'),
     supabase.schema('mise').from('responsaveis').select('id, nome, responsavel_unidades(unit_id)').eq('ativo', true).order('nome'),
     supabase.schema('mise').from('labels')
-      .select('id, employee_id, responsavel_nome, nome, metodo_conservacao, data_manipulacao, validade, created_at')
+      .select('id, employee_id, responsavel_nome, nome, sif, selo, metodo_conservacao, data_manipulacao, validade, created_at')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -60,7 +64,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
   }))
 
   let query = supabase.schema('mise').from('labels')
-    .select('id, unit_id, employee_id, responsavel_nome, nome, tipo, peso_kg, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
+    .select('id, unit_id, employee_id, responsavel_nome, nome, tipo, peso_kg, sif, selo, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
     .order('data_manipulacao', { ascending: false })
     .range(from, to)
 
@@ -98,6 +102,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
 
       <LabelForm
         key={ingredient ?? 'nova'}
+        isAdmin={isAdmin}
         initialProductId={ingredient}
         ingredients={ingredients ?? []}
         menuItems={menuItems ?? []}
@@ -108,13 +113,15 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
       <div className="rounded-xl border border-edge bg-surface">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge px-5 py-4">
           <p className="text-sm font-semibold text-ink">Histórico de Etiquetas</p>
-          {ultimaEtiqueta && podeReimprimir(ultimaEtiqueta.created_at) && (
+          {ultimaEtiqueta && (isAdmin || podeReimprimir(ultimaEtiqueta.created_at)) && (
             <BotaoReimprimir
               id={ultimaEtiqueta.id}
               nome={ultimaEtiqueta.nome}
               metodo={ultimaEtiqueta.metodo_conservacao}
               dataManipulacao={ultimaEtiqueta.data_manipulacao}
               validade={ultimaEtiqueta.validade}
+              sif={ultimaEtiqueta.sif}
+              selo={ultimaEtiqueta.selo}
               respNome={(ultimaEtiqueta.responsavel_nome ?? empsMap[ultimaEtiqueta.employee_id ?? ''] ?? '').split(' ')[0]}
               label={`Reimprimir última: ${ultimaEtiqueta.nome}`}
             />
@@ -186,14 +193,17 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
                   <td className="px-5 py-3 text-ink-muted">
                     {l.peso_kg != null ? `${(l.peso_kg * 1000).toLocaleString('pt-BR')} g` : '—'}
                   </td>
-                  <td className="px-5 py-3">
-                    {podeReimprimir(l.created_at) && (
+                  <td className="px-5 py-3 space-y-2">
+                    {isAdmin && ['ativa', 'vencida'].includes(l.status) && <LabelExpiryEditor id={l.id} manipulation={l.data_manipulacao} expiry={l.validade} />}
+                    {(isAdmin || podeReimprimir(l.created_at)) && (
                       <BotaoReimprimir
                         id={l.id}
                         nome={l.nome}
                         metodo={l.metodo_conservacao}
                         dataManipulacao={l.data_manipulacao}
                         validade={l.validade}
+                        sif={l.sif}
+                        selo={l.selo}
                         respNome={(l.responsavel_nome ?? empsMap[l.employee_id ?? ''] ?? '').split(' ')[0]}
                       />
                     )}

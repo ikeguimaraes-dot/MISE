@@ -43,3 +43,18 @@ Validação: `node --test tests/shelf-life.test.mjs` e `npx tsc --noEmit --incre
 ## Exceção operacional para produtos sem categoria
 
 Por configuração solicitada pela operação, produtos sem categoria sanitária e com método **Temperatura ambiente** recebem automaticamente **168 horas (7 dias)** a partir da manipulação. A interface identifica o prazo como regra operacional, sem atribuí-lo à CVS/Anvisa. Uma regra específica de produto menor e a validade original do fornecedor, quando informada, continuam limitando o vencimento. A categoria cadastrada prevalece no servidor; categorias conhecidas, categorias inválidas e outros métodos não usam essa exceção. Selecionar uma categoria na emissão aplica a regra dessa categoria.
+
+
+## Prazos em horas, edição administrativa e SIF — 17/11/2026
+
+A emissão oferece **Prazo de validade (horas)**. Exemplo: manipulação às 10:15 com prazo de 8h vence às 18:15 do mesmo dia; manipulação às 20:15 vence às 04:15 do dia seguinte. O cálculo soma milissegundos ao instante de manipulação, sem arredondar para o fim do dia. Datas sem offset nos formulários são interpretadas no horário de São Paulo, independentemente do fuso do dispositivo. O fim do dia permanece somente para a validade original do fornecedor quando informada sem horário.
+
+Operadores podem reduzir o prazo sugerido. Administradores podem definir outro prazo em horas ou uma data/hora explícita, inclusive em etiquetas já emitidas, por **Validades → Alterar validade (admin)** ou pelo histórico de etiquetas. Etiquetas consumidas/descartadas não podem ser alteradas. A validade original do fornecedor continua limitando o vencimento. Edições registram a validade anterior, o administrador e o instante da alteração; uma gravação concorrente exige atualizar a lista. Uma alteração administrativa não é apresentada como prazo definido pela CVS.
+
+O painel agrupa vencimentos nas próximas 24h, entre 24–48h e entre 48–72h, contando a partir do instante da consulta. As chaves internas dos filtros foram preservadas para compatibilidade. A mudança de data à meia-noite não equivale a transcorrer 24 horas.
+
+O cadastro de produto inclui **Registro SIF** e **Marca**. O SIF preenchido é carregado na seleção do produto e confirmado novamente pelo servidor. Uma cópia do registro é salva na etiqueta e usada na impressão web, na prévia, na impressão Bluetooth e nas reimpressões. Marca fica no cadastro do produto. Etiquetas antigas permanecem com os dados originalmente registrados. Bluetooth passa a mostrar também a hora de manipulação, além da hora de vencimento.
+
+A migração `20261117200037_label_hours_product_sif_brand.sql` deve ser aplicada antes de publicar o código em cada banco utilizado pelo MISE. Ela adiciona campos opcionais, sem alterar validades ou cadastros existentes.
+
+Verificação: `node --test tests/hourly-labels.test.mjs tests/shelf-life.test.mjs tests/validities-persistence.test.mjs`, `npx tsc --noEmit --incremental false` e build de produção. Os testes incluem 8h, virada de dia/ano, fuso do dispositivo, permissão de administrador, prazo do fornecedor, concorrência, SIF vindo do cadastro, limpeza de marca/SIF e limites físicos da etiqueta Bluetooth.

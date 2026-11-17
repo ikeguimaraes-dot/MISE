@@ -7,7 +7,8 @@ export type { ValidityLabel as LabelRow } from '@/lib/label-validities'
 export type UnitOption = { id: string; name: string }
 
 export default async function ValidadesPage() {
-  if (!await getMiseSession()) redirect('/login')
+  const session = await getMiseSession()
+  if (!session) redirect('/login')
   const initialData = await loadValidities({ unit: '', bucket: '', page: 1 })
-  return <ValidadesClient initialData={initialData} />
+  return <ValidadesClient isAdmin={session.role === 'admin'} initialData={initialData} />
 }

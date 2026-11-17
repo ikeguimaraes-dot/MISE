@@ -14,6 +14,10 @@ export function validateProduct(input: unknown) {
   if (!PRODUCT_CATEGORIES.some(value => value === text('categoria'))) throw new Error('Selecione a categoria do produto.')
   const unidade = text('unidade_padrao').toLowerCase()
   if (!PRODUCT_UNITS.some(value => value === unidade)) throw new Error('Selecione uma unidade de medida válida.')
+  const sif = text('sif') || null
+  const marca = text('marca') || null
+  if (sif && !/^[A-Za-z0-9][A-Za-z0-9 ./-]{0,29}$/.test(sif)) throw new Error('Informe um registro SIF de até 30 caracteres, sem símbolos especiais.')
+  if (marca && (marca.length > 120 || /[\u0000-\u001f]/.test(marca))) throw new Error('Informe uma marca de até 120 caracteres.')
   const sanitaryCategory = text('categoria_anvisa') || null
   if (sanitaryCategory && !FOOD_CATEGORIES.some(value => value.value === sanitaryCategory)) throw new Error('Selecione uma categoria sanitária válida.')
   if (body.fornecedor_id && !isUuid(body.fornecedor_id)) throw new Error('Selecione um fornecedor válido.')
@@ -24,5 +28,5 @@ export function validateProduct(input: unknown) {
     return number
   }
   if (typeof body.ativo !== 'boolean') throw new Error('Informe se o produto está ativo.')
-  return { nome, group_id: body.group_id, categoria: text('categoria'), categoria_anvisa: sanitaryCategory, unidade_padrao: unidade, codigo: text('codigo') || null, custo_padrao: numeric('custo_padrao') ?? 0, fornecedor_id: body.fornecedor_id || null, perdas_padrao: numeric('perdas_padrao', 100), observacoes: text('observacoes') || null, ativo: body.ativo }
+  return { nome, sif, marca, group_id: body.group_id, categoria: text('categoria'), categoria_anvisa: sanitaryCategory, unidade_padrao: unidade, codigo: text('codigo') || null, custo_padrao: numeric('custo_padrao') ?? 0, fornecedor_id: body.fornecedor_id || null, perdas_padrao: numeric('perdas_padrao', 100), observacoes: text('observacoes') || null, ativo: body.ativo }
 }

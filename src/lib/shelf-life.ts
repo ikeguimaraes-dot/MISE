@@ -66,7 +66,7 @@ export function getShelfLifeRule(category: string | null | undefined, method: st
   if (usesAmbientFallback(category, normalized)) {
     const hours = 168
     const useCustom = typeof customHours === 'number' && Number.isFinite(customHours) && customHours > 0 && customHours < hours
-    return { prazo_horas: useCustom ? customHours : hours, source: useCustom ? 'custom' : 'operational', reference: 'Regra operacional: sem categoria em temperatura ambiente · 7 dias' }
+    return { prazo_horas: useCustom ? customHours : hours, source: useCustom ? 'custom' : 'operational', reference: 'Regra operacional: sem categoria em temperatura ambiente · 168 horas' }
   }
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   if (!food) throw new Error('Selecione a categoria sanitária do produto para calcular a validade.')
