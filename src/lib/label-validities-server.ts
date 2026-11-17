@@ -1,19 +1,20 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import { startOfDaySP, type ValidityBucket, type ValidityData, type ValidityFilters } from '@/lib/label-validities'
+import { type ValidityBucket, type ValidityData, type ValidityFilters } from '@/lib/label-validities'
 
-const LABEL_FIELDS = 'id,unit_id,employee_id,responsavel_nome,nome,tipo,peso_kg,metodo_conservacao,validade,data_manipulacao,status'
+const LABEL_FIELDS = 'id,sif,selo,unit_id,employee_id,responsavel_nome,nome,tipo,peso_kg,metodo_conservacao,validade,data_manipulacao,status'
 
 export async function loadValidities(filters: ValidityFilters, now = new Date()): Promise<ValidityData> {
   const db = createServiceClient()
   const current = now.toISOString()
+  const afterHours = (hours: number) => new Date(now.getTime() + hours * 3_600_000).toISOString()
   function queryFor(bucket: ValidityBucket, head = false) {
     let query = db.schema('mise').from('labels').select(head ? 'id' : LABEL_FIELDS, { count: 'exact', head })
     if (filters.unit) query = query.eq('unit_id', filters.unit)
     if (bucket === 'consumida' || bucket === 'descartada') return query.eq('status', bucket)
     if (bucket === 'vencidos') return query.in('status', ['ativa', 'vencida']).or(`status.eq.vencida,validade.lte.${current}`)
-    if (bucket === 'hoje') return query.eq('status', 'ativa').gt('validade', current).lt('validade', startOfDaySP(now, 1))
-    if (bucket === 'amanha') return query.eq('status', 'ativa').gte('validade', startOfDaySP(now, 1)).lt('validade', startOfDaySP(now, 2))
-    if (bucket === 'tres_dias') return query.eq('status', 'ativa').gte('validade', startOfDaySP(now, 2)).lt('validade', startOfDaySP(now, 3))
+    if (bucket === 'hoje') return query.eq('status', 'ativa').gt('validade', current).lt('validade', afterHours(24))
+    if (bucket === 'amanha') return query.eq('status', 'ativa').gte('validade', afterHours(24)).lt('validade', afterHours(48))
+    if (bucket === 'tres_dias') return query.eq('status', 'ativa').gte('validade', afterHours(48)).lt('validade', afterHours(72))
     return query.in('status', ['ativa', 'vencida'])
   }
   const keys = ['vencidos', 'hoje', 'amanha', 'tres_dias', 'consumida', 'descartada'] as const

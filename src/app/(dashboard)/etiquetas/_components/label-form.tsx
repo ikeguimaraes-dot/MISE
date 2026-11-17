@@ -1,12 +1,13 @@
 'use client'
 
+import { requestedLabelExpiry, saoPauloIso, inspectionText, escapeLabelHtml } from '@/lib/label-expiry'
 import { useState, useEffect, useRef } from 'react'
 import { Printer, AlertTriangle, CheckCircle, Bluetooth, Minus, Plus, Trash2 } from 'lucide-react'
 import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
-import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, requiresManufacturerShelfLife, usesAmbientFallback, calculateExpiry, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, requiresManufacturerShelfLife, usesAmbientFallback, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
 
-type Ingredient = { id: string; nome: string; categoria_anvisa: string | null }
+type Ingredient = { id: string; nome: string; categoria_anvisa: string | null; sif?: string | null }
 type MenuItem = { id: string; nome: string }
 type Responsavel = { id: string; nome: string; unit_ids: string[] }
 type Unit = { id: string; name: string; cnpj?: string | null; address?: string | null }
@@ -58,11 +59,13 @@ function nowLocalISO(): string {
 
 export function LabelForm({
   ingredients,
+  isAdmin = false,
   initialProductId,
   menuItems,
   responsaveis,
   units,
 }: {
+  isAdmin?: boolean
   initialProductId?: string
   ingredients: Ingredient[]
   menuItems: MenuItem[]
@@ -72,26 +75,27 @@ export function LabelForm({
   const initialProduct = ingredients.find(product => product.id === initialProductId)
   const [search, setSearch] = useState(initialProduct?.nome ?? '')
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null } | null>(initialProduct ? { ...initialProduct, tipo: 'ingrediente' } : null)
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null; sif?: string | null } | null>(initialProduct ? { ...initialProduct, tipo: 'ingrediente' } : null)
   const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
   const [categoria, setCategoria] = useState(initialProduct?.categoria_anvisa ?? '')
   const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(Boolean(initialProduct?.categoria_anvisa))
-  const [prazoFabricante, setPrazoFabricante] = useState('')
   const exigePrazoFabricante = requiresManufacturerShelfLife(categoria)
+  const [prazoHoras, setPrazoHoras] = useState('')
+  const [validadeManual, setValidadeManual] = useState('')
   const [pesoKg, setPesoKg] = useState('')
   const [selectedResponsavel, setSelectedResponsavel] = useState<string>('')
   const [empSearch, setEmpSearch] = useState('')
   const [selectedUnit, setSelectedUnit] = useState<string>('')
   const [setor, setSetor] = useState('')
   const [lote, setLote] = useState('')
-  const [selo, setSelo] = useState<'Nenhum' | 'SIF' | 'SISP' | 'SIM'>('Nenhum')
+  const [selo, setSelo] = useState<'Nenhum' | 'SIF' | 'SISP' | 'SIM'>(initialProduct?.sif ? 'SIF' : 'Nenhum')
   const [validadeFornecedor, setValidadeFornecedor] = useState('')
   const [metodo, setMetodo] = useState(() => getDefaultConservationMethod(initialProduct?.categoria_anvisa))
   const [dataManipulacao, setDataManipulacao] = useState(nowLocalISO)
   const [ruleResult, setRuleResult] = useState<{ key: string; rule?: ShelfLifeRule; error?: string } | null>(null)
   const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
   const [printPointId, setPrintPointId] = useState('')
-  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; unit?: Unit; validade: string; dataManipulacao: string; metodo: string; respNome: string } | null>(null)
+  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; sif?: string | null; selo?: string | null; unit?: Unit; validade: string; dataManipulacao: string; metodo: string; respNome: string } | null>(null)
   const [quantidade, setQuantidade] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -134,7 +138,7 @@ export function LabelForm({
     return () => { cancelled = true }
   }, [selectedProduct, selectedUnit])
 
-  const ruleKey = JSON.stringify([selectedProduct?.id, categoria, metodo, exigePrazoFabricante ? prazoFabricante : null])
+  const ruleKey = JSON.stringify([selectedProduct?.id, categoria, metodo, exigePrazoFabricante ? prazoHoras : null])
   const currentRule = ruleResult?.key === ruleKey ? ruleResult : null
   const shelfRule = currentRule?.rule
   const podeCalcularSemCategoria = usesAmbientFallback(categoria, metodo)
@@ -143,7 +147,7 @@ export function LabelForm({
   let validityError = currentRule?.error ?? ''
   if (shelfRule) {
     try {
-      validade = expiryToLocalInput(calculateExpiry(dataManipulacao, shelfRule.prazo_horas, validadeFornecedor))
+      validade = expiryToLocalInput(requestedLabelExpiry({ manipulation: dataManipulacao, baseHours: shelfRule.prazo_horas, hours: prazoHoras === '' ? null : Number(prazoHoras), manualExpiry: validadeManual, admin: isAdmin, supplierExpiry: validadeFornecedor }))
     } catch (error) {
       validityError = error instanceof Error ? error.message : 'Data inválida.'
     }
@@ -153,7 +157,7 @@ export function LabelForm({
     if (!selectedProduct || (!categoria && !podeCalcularSemCategoria) || !metodo) return
     const controller = new AbortController()
     const params = new URLSearchParams({ metodo, categoria })
-    if (exigePrazoFabricante) params.set('prazo_fabricante_horas', prazoFabricante)
+    if (exigePrazoFabricante) params.set('prazo_fabricante_horas', prazoHoras)
     if (selectedProduct.tipo === 'ingrediente') params.set('ingredient_id', selectedProduct.id)
     fetch(`/api/shelf-life-rule?${params}`, { signal: controller.signal })
       .then(async response => {
@@ -164,7 +168,7 @@ export function LabelForm({
         if (!controller.signal.aborted) setRuleResult({ key: ruleKey, error: 'Falha ao consultar a validade. Selecione o método novamente para tentar.' })
       })
     return () => controller.abort()
-  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoFabricante, podeCalcularSemCategoria])
+  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoHoras, podeCalcularSemCategoria])
 
   useEffect(() => {
     if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
@@ -174,8 +178,10 @@ export function LabelForm({
       .catch(() => {})
   }, [selectedUnit])
 
-  function handleSelectProduct(p: { id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null }) {
-    setPrazoFabricante('')
+  function handleSelectProduct(p: { id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null; sif?: string | null }) {
+    setPrazoHoras('')
+    setValidadeManual('')
+    setSelo(p.sif ? 'SIF' : 'Nenhum')
     setSelectedProduct(p)
     setSearch(p.nome)
     setTipo(p.tipo === 'ingrediente' ? 'ingrediente' : 'preparacao')
@@ -202,7 +208,7 @@ export function LabelForm({
     setSaving(true)
     setError('')
 
-    const validadeEfetiva = calculateExpiry(dataManipulacao, shelfRule.prazo_horas, validadeFornecedor)
+    const validadeEfetiva = requestedLabelExpiry({ manipulation: dataManipulacao, baseHours: shelfRule.prazo_horas, hours: prazoHoras === '' ? null : Number(prazoHoras), manualExpiry: validadeManual, admin: isAdmin, supplierExpiry: validadeFornecedor })
 
     if (conflictLabel && conflictResolution === 'overwrite') {
       await fetch(`/api/labels/${conflictLabel.id}`, {
@@ -214,7 +220,9 @@ export function LabelForm({
 
     const payload = {
       categoria_anvisa: categoria,
-      prazo_fabricante_horas: exigePrazoFabricante ? Number(prazoFabricante) : null,
+      prazo_horas: prazoHoras === '' ? null : Number(prazoHoras),
+      validade_manual: isAdmin && validadeManual ? saoPauloIso(validadeManual) : null,
+      prazo_fabricante_horas: exigePrazoFabricante ? Number(prazoHoras) : null,
       unit_id: selectedUnit,
       responsavel_id: selectedResponsavel || null,
       responsavel_nome: selectedResponsavelNome || null,
@@ -247,15 +255,15 @@ export function LabelForm({
       return
     }
 
-    const { id, validade: savedExpiry } = await res.json()
+    const { id, validade: savedExpiry, sif: savedSif, selo: savedSelo } = await res.json()
     const unitObj = units.find(u => u.id === selectedUnit)
-    setSavedLabel({ id, nome: selectedProduct.nome, unit: unitObj, validade: savedExpiry, dataManipulacao: payload.data_manipulacao, metodo, respNome: selectedResponsavelNome.split(' ')[0] })
+    setSavedLabel({ id, sif: savedSif, selo: savedSelo, nome: selectedProduct.nome, unit: unitObj, validade: savedExpiry, dataManipulacao: payload.data_manipulacao, metodo, respNome: selectedResponsavelNome.split(' ')[0] })
     setSaving(false)
   }
 
   function handlePrint() {
     if (!savedLabel) return
-    const fmtDate = (v: string) => new Date(v).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+    const fmtDate = (v: string) => new Date(v).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
     const respNome = savedLabel.respNome
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Etiqueta</title>
 <style>@page{size:60mm 60mm;margin:0}
@@ -273,14 +281,15 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 </style></head><body>
 <div class="label">
   <div>
-    <div class="nome">${savedLabel.nome}</div>
-    ${savedLabel.metodo ? `<div class="metodo">${savedLabel.metodo}</div>` : ''}
+    <div class="nome">${escapeLabelHtml(savedLabel.nome)}</div>
+    ${savedLabel.metodo ? `<div class="metodo">${escapeLabelHtml(savedLabel.metodo)}</div>` : ''}
   </div>
+  ${inspectionText(savedLabel.sif, savedLabel.selo) ? `<div class="metodo">${escapeLabelHtml(inspectionText(savedLabel.sif, savedLabel.selo))}</div>` : ''}
   <div class="dates">
     <div class="row"><span class="lbl">MANIPULAÇÃO:</span><span>${fmtDate(savedLabel.dataManipulacao)}</span></div>
     <div class="row"><span class="lbl">VALIDADE:</span><span class="validade-valor">${fmtDate(savedLabel.validade)}</span></div>
   </div>
-  <div class="resp"><b>RESP.:</b> ${respNome}</div>
+  <div class="resp"><b>RESP.:</b> ${escapeLabelHtml(respNome)}</div>
   <div class="id">#${savedLabel.id.slice(0, 6).toUpperCase()}</div>
 </div>
 </body></html>`
@@ -298,6 +307,8 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     const respNome = savedLabel.respNome
     const tspl = buildTSPL({
       nome: savedLabel.nome,
+      sif: savedLabel.sif,
+      selo: savedLabel.selo,
       metodo: savedLabel.metodo,
       dataManipulacao: savedLabel.dataManipulacao,
       validade: savedLabel.validade,
@@ -382,7 +393,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               </div>
             ) : (
               <>
-                <select id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setPrazoFabricante(''); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
+                <select id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setPrazoHoras(''); setValidadeManual(''); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
                   className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
                   <option value="">Selecionar categoria</option>
                   {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -390,7 +401,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
                 {selectedProduct.tipo === 'ingrediente' && !categoria && (
                   <div className="mt-1 flex items-center gap-1.5 text-xs text-warn">
                     <AlertTriangle className="h-3 w-3" />
-                    <span>{podeCalcularSemCategoria ? 'Sem categoria — validade automática de 7 dias em temperatura ambiente. ' : 'Sem categoria — '}<a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
+                    <span>{podeCalcularSemCategoria ? 'Sem categoria — validade automática de 168 horas em temperatura ambiente. ' : 'Sem categoria — '}<a href={`/cadastros/produtos/${selectedProduct.id}`} className="underline">preencher no cadastro</a></span>
                   </div>
                 )}
               </>
@@ -402,22 +413,13 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Método de conservação */}
           <div>
             <label htmlFor="label-conservation-method" className="block text-xs font-medium text-ink-muted mb-1">Método de conservação *</label>
-            <select id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setPrazoFabricante(''); setRuleResult(null) }}
+            <select id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setPrazoHoras(''); setValidadeManual(''); setRuleResult(null) }}
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar método</option>
               {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <p className="mt-1 text-xs text-ink-subtle">{exigePrazoFabricante ? 'Selecione a conservação indicada na embalagem para o prazo após abertura.' : 'A categoria sugere refrigeração. Ajuste conforme o armazenamento do produto.'}</p>
           </div>
-
-          {exigePrazoFabricante && (
-            <div>
-              <label htmlFor="label-manufacturer-hours" className="block text-xs font-medium text-ink-muted mb-1">Prazo após abertura do fabricante (horas) *</label>
-              <input id="label-manufacturer-hours" type="number" required min="0.01" step="any" value={prazoFabricante} onChange={e => setPrazoFabricante(e.target.value)} aria-describedby="label-manufacturer-help"
-                className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none" />
-              <p id="label-manufacturer-help" className="mt-1 text-xs text-ink-subtle">Use o prazo indicado para o método selecionado. Ex.: 7 dias = 168 horas. Informe também a validade original para limitar o vencimento.</p>
-            </div>
-          )}
 
           {/* Peso */}
           <div>
@@ -456,12 +458,22 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
             <DatePicker value={dataManipulacao} onChange={setDataManipulacao} withTime placeholder="Selecionar data e hora" />
           </div>
 
+          <div>
+            <label htmlFor="label-duration-hours" className="block text-xs font-medium text-ink-muted mb-1">Prazo de validade (horas)</label>
+            <input id="label-duration-hours" type="number" min="0.01" step="any" value={prazoHoras} placeholder={shelfRule ? String(shelfRule.prazo_horas) : 'Ex.: 8'} onChange={e => { setPrazoHoras(e.target.value); setValidadeManual('') }} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+            <p className="mt-1 text-xs text-ink-muted">{exigePrazoFabricante && 'Informe o prazo após abertura indicado pelo fabricante. '}Contado a partir da data e hora de manipulação. Vazio: usa o prazo sugerido.{!isAdmin && ' Somente admin pode ampliar o prazo.'}</p>
+          </div>
+          {isAdmin && <div>
+            <label htmlFor="label-manual-expiry" className="block text-xs font-medium text-ink-muted mb-1">Ajustar vencimento (admin · horário de São Paulo)</label>
+            <input id="label-manual-expiry" type="datetime-local" value={validadeManual} onChange={e => setValidadeManual(e.target.value)} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+          </div>}
+
           {/* Validade */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Validade *</label>
             <div aria-live="polite" className={`rounded-lg border px-3 py-2 ${validade ? 'border-fresh/40 bg-fresh-soft' : 'border-edge-strong bg-surface-raised'}`}>
               <p className="text-sm text-ink">{loadingRule ? 'Calculando validade…' : validade ? new Date(`${validade}-03:00`).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Selecione a categoria e o método de conservação.'}</p>
-              {shelfRule && validade && <p className="mt-1 text-xs text-fresh-bright">{shelfRule.source === 'custom' ? 'Prazo do produto limitado pela referência da categoria' : shelfRule.reference} · {shelfRule.prazo_horas}h{validadeFornecedor ? ' · respeita a validade do fornecedor' : ''}</p>}
+              {shelfRule && validade && <p className="mt-1 text-xs text-fresh-bright">{isAdmin && (validadeManual || (prazoHoras !== '' && Number(prazoHoras) > shelfRule.prazo_horas)) ? 'Validade definida pelo administrador' : shelfRule.source === 'custom' ? 'Prazo do produto limitado pela referência da categoria' : shelfRule.reference} · {validade ? Math.round((new Date(saoPauloIso(validade)).getTime() - new Date(saoPauloIso(dataManipulacao)).getTime()) / 3_600_000 * 100) / 100 : shelfRule.prazo_horas}h{validadeFornecedor ? ' · respeita a validade do fornecedor' : ''}</p>}
             </div>
             {validityError && <p role="alert" className="mt-2 text-xs text-alert-bright">{validityError}</p>}
           </div>
@@ -471,8 +483,9 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
         <div>
           <label className="block text-xs font-medium text-ink-muted mb-2">Selo de inspeção</label>
           <div className="flex gap-2">
+            {selectedProduct?.sif && <span className="text-sm text-ink-muted">SIF {selectedProduct.sif} · do cadastro</span>}
             {SELOS.map(s => (
-              <button key={s} type="button" onClick={() => setSelo(s)}
+              <button key={s} type="button" disabled={Boolean(selectedProduct?.sif)} onClick={() => setSelo(s)}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                   selo === s ? 'border-ember bg-ember text-ember-ink' : 'border-edge-strong text-ink-muted hover:text-ink'
                 }`}>
@@ -587,10 +600,11 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               <div style={{ fontWeight: 'bold', fontSize: '13pt', lineHeight: 1.1 }}>{savedLabel.nome}</div>
               {savedLabel.metodo && <div style={{ fontSize: '8pt', lineHeight: 1.2, marginTop: '0.5mm', textTransform: 'uppercase' }}>{savedLabel.metodo}</div>}
             </div>
+            {inspectionText(savedLabel.sif, savedLabel.selo) && <div style={{ fontSize: '8pt' }}>{inspectionText(savedLabel.sif, savedLabel.selo)}</div>}
             <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '3mm 0', margin: '3mm 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>
                 <span style={{ fontWeight: 'bold' }}>MANIPULAÇÃO:</span>
-                <span>{new Date(savedLabel.dataManipulacao).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                <span>{new Date(savedLabel.dataManipulacao).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '9.5pt', lineHeight: 1.4 }}>
                 <span style={{ fontWeight: 'bold' }}>VALIDADE:</span>
