@@ -68,6 +68,6 @@ Em **Cadastro → Produtos**, o admin define `metodo_conservacao` e `prazo_valid
 
 `ingredients.lote` serve como lote inicial da emissão e pode ser ajustado para o lote efetivamente manipulado. Marca, SIF e lote são capturados na etiqueta; reimpressões usam essa cópia. A emissão retorna também a manipulação e o método efetivamente persistidos, usados na prévia e impressão. Funcionários não podem enviar prazos ou datas finais próprias, e o servidor ignora métodos, categorias e datas de manipulação enviados por eles.
 
-Aplicar a migração **20261119174803_product_label_defaults.sql** antes da publicação do app. Ela amplia o CHECK de categorias e adiciona colunas opcionais no catálogo e na etiqueta; não modifica registros de empresas, unidades, produtos ou etiquetas existentes. Nenhuma configuração de conservação é presumida para produtos antigos.
+Migração **20261119180245_product_label_defaults.sql** aplicada no banco do MISE em 19/11/2026, com colunas, categorias e limites verificados após a execução. Ela amplia o CHECK de categorias e adiciona colunas opcionais no catálogo e na etiqueta; não modifica registros de empresas, unidades, produtos ou etiquetas existentes. Nenhuma configuração de conservação é presumida para produtos antigos.
 
 Verificação adicional: `node --test tests/product-label-defaults.test.mjs` cobre relógio do servidor, falsificação de configurações, permissões, conservação ambiente, prazo do fabricante, lote, limites de shari/empanados e impressão de 60mm com metadados.
