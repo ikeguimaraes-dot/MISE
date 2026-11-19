@@ -31,7 +31,7 @@ test('datas manuais e ampliação só para admin; fornecedor limita; prazos inv�
  assert.throws(()=>expiry.requestedLabelExpiry({...base,admin:true,manualExpiry:'2026-11-16T10:00'}))
 })
 
-function creation(role='cozinheiro'){
+function creation(role='admin'){
  let saved
  const db={schema(){return this},from(table){return table==='ingredients'?{select(){return this},eq(){return this},maybeSingle:async()=>({data:{sif:'1234'}})}:{insert(body){saved=body;return this},select(){return this},single:async()=>({data:{id}})}}}
  const api=loadTs('src/app/api/labels/route.ts',{'next/server':json,'@/lib/supabase/server':{createServiceClient:()=>db},'@/lib/session':{getMiseSession:async()=>role?{role,employeeId:actorId}:null},'@/lib/label-expiry':expiry,'@/lib/shelf-life-server':{resolveShelfLifeRule:async()=>({prazo_horas:72})}})
@@ -44,13 +44,13 @@ test('criação persiste 8h e SIF do cadastro; o cliente não injeta SIF, audito
  assert.equal(result.status,200)
  assert.equal(app.saved().validade,'2026-11-17T21:15:00.000Z')
  assert.equal(app.saved().sif,'1234');assert.equal(app.saved().selo,'SIF')
- assert.equal(app.saved().validade_alterada_por,undefined)
+ assert.equal(app.saved().validade_alterada_por,actorId)
  assert.equal(result.body.sif,'1234')
 })
 
 test('criação exige sessão e bloqueia data manual sem admin; admin tem autoria confiável',async()=>{
  assert.equal((await creation(null).post(payload)).status,401)
- assert.equal((await creation().post({...payload,validade_manual:'2026-11-17T19:00'})).status,403)
+ assert.equal((await creation('cozinheiro').post({...payload,validade_manual:'2026-11-17T19:00'})).status,403)
  const app=creation('admin');const result=await app.post({...payload,validade_manual:'2026-11-18T19:00'})
  assert.equal(result.status,200)
  assert.equal(app.saved().validade,'2026-11-18T22:00:00.000Z')

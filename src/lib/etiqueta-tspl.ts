@@ -1,6 +1,8 @@
 import { inspectionText } from '@/lib/label-expiry'
 
 export type EtiquetaTsplData = {
+  marca?: string | null
+  lote?: string | null
   sif?: string | null
   selo?: string | null
   nome: string
@@ -59,9 +61,9 @@ function wrapText(value: string, maxChars: number, maxLines: number): string[] {
 }
 
 // Mantém a fonte grande ("4" = 24x32) e quebra o nome na largura útil de 448 dots.
-function productNameLines(value: string): string[] {
+function productNameLines(value: string, maxLines = 5): string[] {
   const name = ascii(value).trim() || 'SEM NOME'
-  return wrapText(name, 18, 5)
+  return wrapText(name, 18, maxLines)
 }
 
 // Monta os comandos TSPL da etiqueta 60x60mm (480x480 dots @ 203dpi),
@@ -79,7 +81,7 @@ export function buildTSPL(data: EtiquetaTsplData): string {
 
   let y = 24
   // Nome sempre na fonte grande; quando necessário, continua na linha seguinte.
-  for (const line of productNameLines(nome)) {
+  for (const line of productNameLines(nome, data.marca || data.lote ? 4 : 5)) {
     cmds.push(`TEXT ${left},${y},"4",0,1,1,"${line}"`)
     y += 36
   }
@@ -110,6 +112,12 @@ export function buildTSPL(data: EtiquetaTsplData): string {
   if (inspection) {
     cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(inspection).slice(0, 54)}"`)
     y += 20
+  }
+  for (const [title, value] of [['MARCA', data.marca], ['LOTE', data.lote]]) {
+    if (value) {
+      cmds.push(`TEXT ${left},${y},"1",0,1,1,"${ascii(`${title}: ${value}`).slice(0, 54)}"`)
+      y += 16
+    }
   }
   cmds.push(`TEXT ${left},${y},"1",0,1,1,"#${id.slice(0, 6).toUpperCase()}"`)
   cmds.push(`PRINT ${quantidade}`)

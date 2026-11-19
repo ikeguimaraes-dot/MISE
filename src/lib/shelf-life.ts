@@ -2,6 +2,9 @@
 export const SHELF_LIFE_REFERENCE = 'CVS 5/2013 · art. 34'
 
 export const FOOD_CATEGORIES = [
+  { value: 'shari', label: 'Shari (arroz japonês) · 8 horas', hours: 8, maxTemperature: 4 },
+  { value: 'feitos_empanados', label: 'Feitos / empanados · 24 horas', hours: 24, maxTemperature: 4 },
+  { value: 'ovos', label: 'Ovos (prazo conforme fabricante)', hours: null, maxTemperature: null },
   { value: 'proteina_animal_cozida', label: 'Carnes e aves cozidas', hours: 72, maxTemperature: 4 },
   { value: 'proteina_animal_crua', label: 'Carnes e aves cruas manipuladas', hours: 72, maxTemperature: 4 },
   { value: 'carne_preparada_crua', label: 'Carnes temperadas, moídas, empanadas, espetos e bife rolê crus', hours: 48, maxTemperature: 4 },
@@ -44,6 +47,7 @@ export type ShelfLifeRule = {
 }
 
 export function getDefaultConservationMethod(category: string | null | undefined): string {
+  if (category === 'shari') return 'Temperatura ambiente'
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   return food?.maxTemperature != null ? `Refrigerado até ${food.maxTemperature}°C` : ''
 }
@@ -70,6 +74,14 @@ export function getShelfLifeRule(category: string | null | undefined, method: st
   }
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   if (!food) throw new Error('Selecione a categoria sanitária do produto para calcular a validade.')
+  if (food.value === 'shari' || food.value === 'feitos_empanados') {
+    if (!CONSERVATION_METHODS.some(item => item.value === normalized)) throw new Error('Selecione o método de conservação.')
+    if (food.value === 'feitos_empanados' && normalized === 'Temperatura ambiente') throw new Error('Empanados exigem refrigeração ou congelamento.')
+    if (normalized === 'Refrigerado até 5°C') throw new Error('Esta categoria exige refrigeração de no máximo 4 °C.')
+    const hours = food.hours
+    const reduced = typeof customHours === 'number' && Number.isFinite(customHours) && customHours > 0 && customHours < hours
+    return { prazo_horas: reduced ? customHours : hours, source: 'operational', reference: 'Prazo operacional definido pela administração' }
+  }
   if (food.hours === null) {
     if (!CONSERVATION_METHODS.some(item => item.value === normalized)) throw new Error('Selecione o método de conservação indicado pelo fabricante.')
     if (typeof manufacturerHours !== 'number' || !Number.isFinite(manufacturerHours) || manufacturerHours <= 0) throw new Error('Informe o prazo após abertura em horas, conforme o fabricante, para o método selecionado.')

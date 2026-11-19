@@ -7,7 +7,7 @@ import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 import { DatePicker } from '@/components/ui/date-picker'
 import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, requiresManufacturerShelfLife, usesAmbientFallback, expiryToLocalInput, type ShelfLifeRule } from '@/lib/shelf-life'
 
-type Ingredient = { id: string; nome: string; categoria_anvisa: string | null; sif?: string | null }
+type Ingredient = { id: string; nome: string; categoria_anvisa: string | null; sif?: string | null; marca?: string | null; lote?: string | null; metodo_conservacao?: string | null; prazo_validade_horas?: number | null }
 type MenuItem = { id: string; nome: string }
 type Responsavel = { id: string; nome: string; unit_ids: string[] }
 type Unit = { id: string; name: string; cnpj?: string | null; address?: string | null }
@@ -75,11 +75,12 @@ export function LabelForm({
   const initialProduct = ingredients.find(product => product.id === initialProductId)
   const [search, setSearch] = useState(initialProduct?.nome ?? '')
   const [activeIndex, setActiveIndex] = useState(-1)
-  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null; sif?: string | null } | null>(initialProduct ? { ...initialProduct, tipo: 'ingrediente' } : null)
+  const [selectedProduct, setSelectedProduct] = useState<{ id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null; sif?: string | null; marca?: string | null; lote?: string | null; metodo_conservacao?: string | null; prazo_validade_horas?: number | null } | null>(initialProduct ? { ...initialProduct, tipo: 'ingrediente' } : null)
   const [tipo, setTipo] = useState<'ingrediente' | 'preparacao' | 'porcao'>('ingrediente')
   const [categoria, setCategoria] = useState(initialProduct?.categoria_anvisa ?? '')
   const [categoriaFromCadastro, setCategoriaFromCadastro] = useState(Boolean(initialProduct?.categoria_anvisa))
-  const exigePrazoFabricante = requiresManufacturerShelfLife(categoria)
+  const exigePrazoFabricante = requiresManufacturerShelfLife(categoria) && !selectedProduct?.prazo_validade_horas
+  const faltaPadronizacao = !isAdmin && !selectedProduct?.metodo_conservacao
   const [prazoHoras, setPrazoHoras] = useState('')
   const [validadeManual, setValidadeManual] = useState('')
   const [pesoKg, setPesoKg] = useState('')
@@ -87,15 +88,16 @@ export function LabelForm({
   const [empSearch, setEmpSearch] = useState('')
   const [selectedUnit, setSelectedUnit] = useState<string>('')
   const [setor, setSetor] = useState('')
-  const [lote, setLote] = useState('')
+  const [lote, setLote] = useState(initialProduct?.lote ?? '')
   const [selo, setSelo] = useState<'Nenhum' | 'SIF' | 'SISP' | 'SIM'>(initialProduct?.sif ? 'SIF' : 'Nenhum')
   const [validadeFornecedor, setValidadeFornecedor] = useState('')
-  const [metodo, setMetodo] = useState(() => getDefaultConservationMethod(initialProduct?.categoria_anvisa))
+  const [metodo, setMetodo] = useState(() => initialProduct?.metodo_conservacao || getDefaultConservationMethod(initialProduct?.categoria_anvisa))
+  const [dataManual, setDataManual] = useState(false)
   const [dataManipulacao, setDataManipulacao] = useState(nowLocalISO)
   const [ruleResult, setRuleResult] = useState<{ key: string; rule?: ShelfLifeRule; error?: string } | null>(null)
   const [printPoints, setPrintPoints] = useState<PrintPoint[]>([])
   const [printPointId, setPrintPointId] = useState('')
-  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; sif?: string | null; selo?: string | null; unit?: Unit; validade: string; dataManipulacao: string; metodo: string; respNome: string } | null>(null)
+  const [savedLabel, setSavedLabel] = useState<{ id: string; nome: string; sif?: string | null; marca?: string | null; lote?: string | null; selo?: string | null; unit?: Unit; validade: string; dataManipulacao: string; metodo: string; respNome: string } | null>(null)
   const [quantidade, setQuantidade] = useState(1)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -103,10 +105,16 @@ export function LabelForm({
   const [showConflictModal, setShowConflictModal] = useState(false)
   const [conflictResolution, setConflictResolution] = useState<'none' | 'overwrite' | 'keep'>('none')
 
+  useEffect(() => {
+    if (dataManual) return
+    const timer = setInterval(() => setDataManipulacao(nowLocalISO()), 30_000)
+    return () => clearInterval(timer)
+  }, [dataManual])
+
   const searchResults = search.length >= 2
     ? [
         ...ingredients.filter(i => i.nome.toLowerCase().includes(search.toLowerCase())).map(i => ({ ...i, tipo: 'ingrediente' as const })),
-        ...menuItems.filter(m => m.nome.toLowerCase().includes(search.toLowerCase())).map(m => ({ id: m.id, nome: m.nome, tipo: 'preparacao' as const, categoria_anvisa: null })),
+        ...(isAdmin ? menuItems : []).filter(m => m.nome.toLowerCase().includes(search.toLowerCase())).map(m => ({ id: m.id, nome: m.nome, tipo: 'preparacao' as const, categoria_anvisa: null })),
       ].slice(0, 8)
     : []
 
@@ -154,7 +162,7 @@ export function LabelForm({
   }
 
   useEffect(() => {
-    if (!selectedProduct || (!categoria && !podeCalcularSemCategoria) || !metodo) return
+    if (faltaPadronizacao || !selectedProduct || (!categoria && !podeCalcularSemCategoria) || !metodo) return
     const controller = new AbortController()
     const params = new URLSearchParams({ metodo, categoria })
     if (exigePrazoFabricante) params.set('prazo_fabricante_horas', prazoHoras)
@@ -168,7 +176,7 @@ export function LabelForm({
         if (!controller.signal.aborted) setRuleResult({ key: ruleKey, error: 'Falha ao consultar a validade. Selecione o método novamente para tentar.' })
       })
     return () => controller.abort()
-  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoHoras, podeCalcularSemCategoria])
+  }, [categoria, metodo, selectedProduct, ruleKey, exigePrazoFabricante, prazoHoras, podeCalcularSemCategoria, faltaPadronizacao])
 
   useEffect(() => {
     if (!selectedUnit) { setPrintPoints([]); setPrintPointId(''); return }
@@ -178,8 +186,11 @@ export function LabelForm({
       .catch(() => {})
   }, [selectedUnit])
 
-  function handleSelectProduct(p: { id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null; sif?: string | null }) {
+  function handleSelectProduct(p: { id: string; nome: string; tipo: 'ingrediente' | 'preparacao'; categoria_anvisa?: string | null; sif?: string | null; marca?: string | null; lote?: string | null; metodo_conservacao?: string | null; prazo_validade_horas?: number | null }) {
     setPrazoHoras('')
+    setLote(p.lote ?? '')
+    setDataManipulacao(nowLocalISO())
+    setDataManual(false)
     setValidadeManual('')
     setSelo(p.sif ? 'SIF' : 'Nenhum')
     setSelectedProduct(p)
@@ -187,7 +198,7 @@ export function LabelForm({
     setTipo(p.tipo === 'ingrediente' ? 'ingrediente' : 'preparacao')
     setCategoria('')
     setCategoriaFromCadastro(false)
-    setMetodo(getDefaultConservationMethod(p.tipo === 'ingrediente' ? p.categoria_anvisa : null))
+    setMetodo(p.metodo_conservacao || getDefaultConservationMethod(p.tipo === 'ingrediente' ? p.categoria_anvisa : null))
     setRuleResult(null)
     if (p.tipo === 'ingrediente' && p.categoria_anvisa) {
       setCategoria(p.categoria_anvisa)
@@ -220,9 +231,9 @@ export function LabelForm({
 
     const payload = {
       categoria_anvisa: categoria,
-      prazo_horas: prazoHoras === '' ? null : Number(prazoHoras),
+      prazo_horas: isAdmin && prazoHoras !== '' ? Number(prazoHoras) : null,
       validade_manual: isAdmin && validadeManual ? saoPauloIso(validadeManual) : null,
-      prazo_fabricante_horas: exigePrazoFabricante ? Number(prazoHoras) : null,
+      prazo_fabricante_horas: isAdmin && exigePrazoFabricante ? Number(prazoHoras) : null,
       unit_id: selectedUnit,
       responsavel_id: selectedResponsavel || null,
       responsavel_nome: selectedResponsavelNome || null,
@@ -236,7 +247,7 @@ export function LabelForm({
       selo: selo !== 'Nenhum' ? selo : null,
       validade_fornecedor: validadeFornecedor || null,
       metodo_conservacao: metodo || null,
-      data_manipulacao: new Date(`${dataManipulacao}-03:00`).toISOString(),
+      data_manipulacao: isAdmin && dataManual ? saoPauloIso(dataManipulacao) : null,
       validade: new Date(validadeEfetiva).toISOString(),
       print_point_id: printPointId || null,
       status: 'ativa',
@@ -255,9 +266,9 @@ export function LabelForm({
       return
     }
 
-    const { id, validade: savedExpiry, sif: savedSif, selo: savedSelo } = await res.json()
+    const { id, validade: savedExpiry, sif: savedSif, selo: savedSelo, marca: savedMarca, lote: savedLote, nome: savedNome, data_manipulacao: savedManipulation, metodo_conservacao: savedMethod } = await res.json()
     const unitObj = units.find(u => u.id === selectedUnit)
-    setSavedLabel({ id, sif: savedSif, selo: savedSelo, nome: selectedProduct.nome, unit: unitObj, validade: savedExpiry, dataManipulacao: payload.data_manipulacao, metodo, respNome: selectedResponsavelNome.split(' ')[0] })
+    setSavedLabel({ id, sif: savedSif, selo: savedSelo, marca: savedMarca, lote: savedLote, nome: savedNome, unit: unitObj, validade: savedExpiry, dataManipulacao: savedManipulation, metodo: savedMethod, respNome: selectedResponsavelNome.split(' ')[0] })
     setSaving(false)
   }
 
@@ -284,6 +295,8 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     <div class="nome">${escapeLabelHtml(savedLabel.nome)}</div>
     ${savedLabel.metodo ? `<div class="metodo">${escapeLabelHtml(savedLabel.metodo)}</div>` : ''}
   </div>
+  ${savedLabel.marca ? `<div class="metodo">Marca: ${escapeLabelHtml(savedLabel.marca)}</div>` : ''}
+  ${savedLabel.lote ? `<div class="metodo">Lote: ${escapeLabelHtml(savedLabel.lote)}</div>` : ''}
   ${inspectionText(savedLabel.sif, savedLabel.selo) ? `<div class="metodo">${escapeLabelHtml(inspectionText(savedLabel.sif, savedLabel.selo))}</div>` : ''}
   <div class="dates">
     <div class="row"><span class="lbl">MANIPULAÇÃO:</span><span>${fmtDate(savedLabel.dataManipulacao)}</span></div>
@@ -307,6 +320,8 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
     const respNome = savedLabel.respNome
     const tspl = buildTSPL({
       nome: savedLabel.nome,
+      marca: savedLabel.marca,
+      lote: savedLabel.lote,
       sif: savedLabel.sif,
       selo: savedLabel.selo,
       metodo: savedLabel.metodo,
@@ -393,7 +408,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               </div>
             ) : (
               <>
-                <select id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setPrazoHoras(''); setValidadeManual(''); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
+                <select disabled={!isAdmin} id="label-food-category" value={categoria} onChange={e => { setCategoria(e.target.value); setPrazoHoras(''); setValidadeManual(''); setMetodo(getDefaultConservationMethod(e.target.value)); setRuleResult(null) }}
                   className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
                   <option value="">Selecionar categoria</option>
                   {CATEGORIA_ANVISA_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -413,12 +428,13 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Método de conservação */}
           <div>
             <label htmlFor="label-conservation-method" className="block text-xs font-medium text-ink-muted mb-1">Método de conservação *</label>
-            <select id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setPrazoHoras(''); setValidadeManual(''); setRuleResult(null) }}
+            <select disabled={!isAdmin || Boolean(selectedProduct?.metodo_conservacao)} id="label-conservation-method" value={metodo} onChange={e => { setMetodo(e.target.value); setPrazoHoras(''); setValidadeManual(''); setRuleResult(null) }}
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
               <option value="">Selecionar método</option>
               {METODOS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
-            <p className="mt-1 text-xs text-ink-subtle">{exigePrazoFabricante ? 'Selecione a conservação indicada na embalagem para o prazo após abertura.' : 'A categoria sugere refrigeração. Ajuste conforme o armazenamento do produto.'}</p>
+            <p className="mt-1 text-xs text-ink-subtle">Conservação definida pela administração no cadastro do produto.</p>
+            {isAdmin && selectedProduct?.tipo === 'ingrediente' && <a href={`/cadastros/produtos/${selectedProduct.id}`} className="mt-1 inline-block text-xs text-fresh-bright underline">Editar padrão no cadastro</a>}
           </div>
 
           {/* Peso */}
@@ -442,7 +458,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Lote */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Lote</label>
-            <input value={lote} onChange={e => setLote(e.target.value)} placeholder="ex: L2024001"
+            <input maxLength={80} value={lote} onChange={e => setLote(e.target.value)} placeholder="ex: L2024001"
               className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink placeholder-ink-subtle focus:outline-none" />
           </div>
 
@@ -455,14 +471,14 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           {/* Data manipulação */}
           <div>
             <label className="block text-xs font-medium text-ink-muted mb-1">Data de manipulação *</label>
-            <DatePicker value={dataManipulacao} onChange={setDataManipulacao} withTime placeholder="Selecionar data e hora" />
+            {isAdmin ? <DatePicker value={dataManipulacao} onChange={value => { setDataManipulacao(value); setDataManual(true) }} withTime placeholder="Selecionar data e hora" /> : <p className="rounded-lg border border-edge px-3 py-2 text-sm text-ink-muted">Automática: data e hora da emissão</p>}
           </div>
 
-          <div>
+          {isAdmin && <div>
             <label htmlFor="label-duration-hours" className="block text-xs font-medium text-ink-muted mb-1">Prazo de validade (horas)</label>
             <input id="label-duration-hours" type="number" min="0.01" step="any" value={prazoHoras} placeholder={shelfRule ? String(shelfRule.prazo_horas) : 'Ex.: 8'} onChange={e => { setPrazoHoras(e.target.value); setValidadeManual('') }} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
             <p className="mt-1 text-xs text-ink-muted">{exigePrazoFabricante && 'Informe o prazo após abertura indicado pelo fabricante. '}Contado a partir da data e hora de manipulação. Vazio: usa o prazo sugerido.{!isAdmin && ' Somente admin pode ampliar o prazo.'}</p>
-          </div>
+          </div>}
           {isAdmin && <div>
             <label htmlFor="label-manual-expiry" className="block text-xs font-medium text-ink-muted mb-1">Ajustar vencimento (admin · horário de São Paulo)</label>
             <input id="label-manual-expiry" type="datetime-local" value={validadeManual} onChange={e => setValidadeManual(e.target.value)} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
@@ -485,7 +501,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           <div className="flex gap-2">
             {selectedProduct?.sif && <span className="text-sm text-ink-muted">SIF {selectedProduct.sif} · do cadastro</span>}
             {SELOS.map(s => (
-              <button key={s} type="button" disabled={Boolean(selectedProduct?.sif)} onClick={() => setSelo(s)}
+              <button key={s} type="button" disabled={!isAdmin || Boolean(selectedProduct?.sif)} onClick={() => setSelo(s)}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                   selo === s ? 'border-ember bg-ember text-ember-ink' : 'border-edge-strong text-ink-muted hover:text-ink'
                 }`}>
@@ -540,6 +556,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
           </div>
         )}
 
+        {faltaPadronizacao && selectedProduct && <p role="alert" className="text-sm text-warn">Peça a um administrador para padronizar conservação e validade no cadastro deste produto.</p>}
         {error && <p className="text-sm text-alert-bright">{error}</p>}
 
         {conflictLabel && conflictResolution === 'none' && (
@@ -552,7 +569,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
 
         <button
           type="submit"
-          disabled={saving || !selectedProduct || !selectedUnit || (!categoria && !podeCalcularSemCategoria) || !metodo || loadingRule || !validade || Boolean(validityError)}
+          disabled={saving || faltaPadronizacao || !selectedProduct || !selectedUnit || (!categoria && !podeCalcularSemCategoria) || !metodo || loadingRule || !validade || Boolean(validityError)}
           className="rounded-lg bg-ember px-4 py-2.5 text-sm font-semibold text-ember-ink hover:bg-ember-hover disabled:opacity-40 transition-colors"
         >
           {saving ? 'Salvando...' : 'Gerar Etiqueta'}
@@ -600,6 +617,7 @@ html,body{margin:0;padding:0;width:60mm;height:60mm;overflow:hidden;font-family:
               <div style={{ fontWeight: 'bold', fontSize: '13pt', lineHeight: 1.1 }}>{savedLabel.nome}</div>
               {savedLabel.metodo && <div style={{ fontSize: '8pt', lineHeight: 1.2, marginTop: '0.5mm', textTransform: 'uppercase' }}>{savedLabel.metodo}</div>}
             </div>
+            {(savedLabel.marca || savedLabel.lote) && <div style={{ fontSize: '7pt' }}>{savedLabel.marca && <div>Marca: {savedLabel.marca}</div>}{savedLabel.lote && <div>Lote: {savedLabel.lote}</div>}</div>}
             {inspectionText(savedLabel.sif, savedLabel.selo) && <div style={{ fontSize: '8pt' }}>{inspectionText(savedLabel.sif, savedLabel.selo)}</div>}
             <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '3mm 0', margin: '3mm 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5pt', lineHeight: 1.4 }}>

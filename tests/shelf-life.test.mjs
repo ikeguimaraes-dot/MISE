@@ -105,7 +105,7 @@ test('POST recalcula validade no servidor e não persiste prazo manipulado nem c
     '@/lib/supabase/server': { createServiceClient: () => db },
     '@/lib/shelf-life': rules,
     '@/lib/label-expiry': expiry,
-    '@/lib/session': { getMiseSession: async () => ({ role: 'cozinheiro', employeeId: 'employee' }) },
+    '@/lib/session': { getMiseSession: async () => ({ role: 'admin', employeeId: 'employee' }) },
     '@/lib/shelf-life-server': { resolveShelfLifeRule: async ({ method, category }) => rules.getShelfLifeRule(category, method) },
     'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
   })
@@ -148,7 +148,7 @@ test('API recalcula farinha de amêndoa e remove prazo auxiliar antes de persist
     '@/lib/supabase/server': { createServiceClient: () => db },
     '@/lib/shelf-life': rules,
     '@/lib/label-expiry': expiry,
-    '@/lib/session': { getMiseSession: async () => ({ role: 'cozinheiro', employeeId: 'employee' }) },
+    '@/lib/session': { getMiseSession: async () => ({ role: 'admin', employeeId: 'employee' }) },
     '@/lib/shelf-life-server': { resolveShelfLifeRule: async ({ method, category, manufacturerHours }) => rules.getShelfLifeRule(category, method, null, manufacturerHours) },
     'next/server': { NextResponse: { json: (body, init) => ({ body, status: init?.status ?? 200 }) } },
   })

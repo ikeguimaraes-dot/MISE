@@ -1,7 +1,9 @@
+import { getMiseSession } from '@/lib/session'
 import { createServiceClient } from '@/lib/supabase/server'
 import { ProdutoForm } from '../_components/produto-form'
 
 export default async function NovoProdutoPage() {
+  const actor = await getMiseSession()
   const supabase = createServiceClient()
   const [{ data: groups }, { data: suppliers }] = await Promise.all([
     supabase.from('groups').select('id, name').order('name'),
@@ -14,7 +16,7 @@ export default async function NovoProdutoPage() {
         <h1 className="text-xl font-bold text-ink">Novo Produto</h1>
         <p className="text-sm text-ink-muted">Cadastrar insumo ou ingrediente</p>
       </div>
-      <ProdutoForm groups={groups ?? []} suppliers={suppliers ?? []} />
+      <ProdutoForm isAdmin={actor?.role === 'admin'} groups={groups ?? []} suppliers={suppliers ?? []} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { type ValidityBucket, type ValidityData, type ValidityFilters } from '@/lib/label-validities'
 
-const LABEL_FIELDS = 'id,sif,selo,unit_id,employee_id,responsavel_nome,nome,tipo,peso_kg,metodo_conservacao,validade,data_manipulacao,status'
+const LABEL_FIELDS = 'id,marca,lote,sif,selo,unit_id,employee_id,responsavel_nome,nome,tipo,peso_kg,metodo_conservacao,validade,data_manipulacao,status'
 
 export async function loadValidities(filters: ValidityFilters, now = new Date()): Promise<ValidityData> {
   const db = createServiceClient()

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { PRODUCT_CATEGORIES, PRODUCT_UNITS } from '@/lib/product-registration'
-import { FOOD_CATEGORIES, getDefaultConservationMethod, getShelfLifeRule, requiresManufacturerShelfLife } from '@/lib/shelf-life'
+import { FOOD_CATEGORIES, CONSERVATION_METHODS, getDefaultConservationMethod, getShelfLifeRule, requiresManufacturerShelfLife } from '@/lib/shelf-life'
 
 type Group = { id: string; name: string }
 type Supplier = { id: string; nome: string }
@@ -11,6 +11,8 @@ type Supplier = { id: string; nome: string }
 const CATEGORIAS = PRODUCT_CATEGORIES
 
 const CATEGORIA_ANVISA = FOOD_CATEGORIES
+const CATEGORY_LABELS: Record<string, string> = { molhos: 'Molhos', ovos: 'Ovos', shari: 'Shari (arroz japonês)', feitos_empanados: 'Feitos / empanados' }
+const SANITARY_CATEGORIES: Record<string, string> = { molhos: 'molho_caldo', ovos: 'ovos', shari: 'shari', feitos_empanados: 'feitos_empanados' }
 
 type Initial = {
   id: string
@@ -18,6 +20,9 @@ type Initial = {
   codigo: string | null
   sif?: string | null
   marca?: string | null
+  lote?: string | null
+  metodo_conservacao?: string | null
+  prazo_validade_horas?: number | null
   group_id: string | null
   categoria: string
   categoria_anvisa: string | null
@@ -31,9 +36,11 @@ type Initial = {
 
 export function ProdutoForm({
   groups,
+  isAdmin = false,
   suppliers,
   initial,
 }: {
+  isAdmin?: boolean
   groups: Group[]
   suppliers: Supplier[]
   initial?: Initial
@@ -41,6 +48,9 @@ export function ProdutoForm({
   const [nome, setNome] = useState(initial?.nome ?? '')
   const [sif, setSif] = useState(initial?.sif ?? '')
   const [marca, setMarca] = useState(initial?.marca ?? '')
+  const [lote, setLote] = useState(initial?.lote ?? '')
+  const [metodo, setMetodo] = useState(initial?.metodo_conservacao ?? '')
+  const [prazo, setPrazo] = useState(initial?.prazo_validade_horas?.toString() ?? '')
   const [codigo, setCodigo] = useState(initial?.codigo ?? '')
   const [groupId, setGroupId] = useState(initial?.group_id ?? '')
   const [categoria, setCategoria] = useState(initial?.categoria ?? '')
@@ -54,8 +64,8 @@ export function ProdutoForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
-  const metodoSugerido = getDefaultConservationMethod(categoriaAnvisa)
-  const prazoSugerido = metodoSugerido ? getShelfLifeRule(categoriaAnvisa, metodoSugerido).prazo_horas : null
+  let prazoSugerido: number | null = null
+  try { if (metodo) prazoSugerido = getShelfLifeRule(categoriaAnvisa, metodo, prazo ? Number(prazo) : null, prazo ? Number(prazo) : null).prazo_horas } catch { /* O servidor valida a configuração ao salvar. */ }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -66,6 +76,9 @@ export function ProdutoForm({
     const payload: Record<string, string | number | boolean | null> = {
       nome: nome.trim(),
       sif: sif.trim() || null,
+      lote: lote.trim() || null,
+      metodo_conservacao: metodo || null,
+      prazo_validade_horas: prazo ? Number(prazo) : null,
       marca: marca.trim() || null,
       group_id: groupId,
       categoria,
@@ -117,33 +130,51 @@ export function ProdutoForm({
 
         <div>
           <label className="block text-xs font-medium text-ink-muted mb-1">Categoria do produto *</label>
-          <select value={categoria} onChange={e => setCategoria(e.target.value)} required
+          <select value={categoria} onChange={e => {
+            setCategoria(e.target.value)
+            const sanitary = SANITARY_CATEGORIES[e.target.value]
+            if (isAdmin && sanitary) {
+              setCategoriaAnvisa(sanitary)
+              setMetodo(getDefaultConservationMethod(sanitary))
+              setPrazo('')
+            }
+          }} required
             className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Selecionar</option>
-            {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIAS.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c] ?? c}</option>)}
           </select>
         </div>
 
         <div>
+          <label htmlFor="product-lot" className="block text-xs font-medium text-ink-muted mb-1">Lote do produto</label>
+          <input id="product-lot" value={lote} onChange={e => setLote(e.target.value)} maxLength={80} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+        </div>
+        <div>
           <label htmlFor="product-sif" className="block text-xs font-medium text-ink-muted mb-1">Registro SIF</label>
-          <input id="product-sif" value={sif} onChange={e => setSif(e.target.value)} maxLength={30} placeholder="Número do registro de inspeção" className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+          <input id="product-sif" disabled={!isAdmin} value={sif} onChange={e => setSif(e.target.value)} maxLength={30} placeholder="Número do registro de inspeção" className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
           <p className="mt-1 text-xs text-ink-muted">Quando preenchido, será impresso automaticamente na etiqueta.</p>
         </div>
         <div>
           <label htmlFor="product-brand" className="block text-xs font-medium text-ink-muted mb-1">Marca</label>
-          <input id="product-brand" value={marca} onChange={e => setMarca(e.target.value)} maxLength={120} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+          <input id="product-brand" disabled={!isAdmin} value={marca} onChange={e => setMarca(e.target.value)} maxLength={120} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
         </div>
 
         <div className="sm:col-span-2 rounded-xl border border-edge bg-surface p-4">
           <label htmlFor="product-food-category" className="block text-xs font-medium text-ink-muted mb-1">Categoria sanitária (CVS / ANVISA)</label>
-          <select id="product-food-category" value={categoriaAnvisa} onChange={e => setCategoriaAnvisa(e.target.value)} aria-describedby="product-food-category-help"
+          <select id="product-food-category" disabled={!isAdmin} value={categoriaAnvisa} onChange={e => { setCategoriaAnvisa(e.target.value); setMetodo(getDefaultConservationMethod(e.target.value)); setPrazo('') }} aria-describedby="product-food-category-help"
             className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink focus:outline-none">
             <option value="">Selecionar categoria sanitária</option>
             {CATEGORIA_ANVISA.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <p id="product-food-category-help" className="mt-2 text-xs leading-5 text-ink-muted">Salva no produto. Ao selecioná-lo para emitir uma etiqueta, a categoria sanitária, o método de conservação sugerido e a validade serão preenchidos automaticamente a partir da data de manipulação.</p>
-          {requiresManufacturerShelfLife(categoriaAnvisa) && <p className="mt-2 text-xs text-ink-muted">Na emissão, informe o método de conservação e o prazo após abertura indicados pelo fabricante. Esta categoria não possui prazo automático genérico.</p>}
-          {metodoSugerido && <p aria-live="polite" className="mt-2 text-xs font-medium text-fresh-bright">Sugestão para a etiqueta: {metodoSugerido} · prazo de até {prazoSugerido}h. O método pode ser ajustado na emissão conforme o armazenamento.</p>}
+          <p id="product-food-category-help" className="mt-2 text-xs text-ink-muted">Conservação, prazo, SIF e marca são padronizados somente pela administração. A manipulação e o vencimento são gerados automaticamente na emissão.</p>
+          <label htmlFor="product-conservation" className="mt-3 block text-xs font-medium text-ink-muted">Modo de conservação</label>
+          <select id="product-conservation" disabled={!isAdmin} value={metodo} onChange={e => { setMetodo(e.target.value); setPrazo('') }} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink">
+            <option value="">Pendente de padronização</option>
+            {CONSERVATION_METHODS.map(item => <option key={item.value} value={item.value}>{item.value}</option>)}
+          </select>
+          <label htmlFor="product-duration" className="mt-3 block text-xs font-medium text-ink-muted">Prazo de validade em horas{requiresManufacturerShelfLife(categoriaAnvisa) ? ' (conforme fabricante)' : ''}</label>
+          <input id="product-duration" disabled={!isAdmin} type="number" min="0.01" max="87600" step="any" value={prazo} onChange={e => setPrazo(e.target.value)} placeholder={prazoSugerido ? String(prazoSugerido) : 'Informe o prazo'} className="w-full rounded-lg border border-edge-strong bg-surface-raised px-3 py-2 text-sm text-ink" />
+          {prazoSugerido && <p className="mt-2 text-xs text-fresh-bright">Prazo aplicado: {prazoSugerido}h a partir da emissão. Os limites da categoria e do fornecedor são respeitados.</p>}
         </div>
 
         <div>

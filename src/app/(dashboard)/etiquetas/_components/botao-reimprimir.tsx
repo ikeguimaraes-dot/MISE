@@ -6,6 +6,8 @@ import { buildTSPL, tsplToBase64 } from '@/lib/etiqueta-tspl'
 export function BotaoReimprimir({
   id,
   nome,
+  marca,
+  lote,
   sif,
   selo,
   metodo,
@@ -15,6 +17,8 @@ export function BotaoReimprimir({
   label = 'Reimprimir',
 }: {
   id: string
+  marca?: string | null
+  lote?: string | null
   sif?: string | null
   selo?: string | null
   nome: string
@@ -27,6 +31,8 @@ export function BotaoReimprimir({
   function handleReprint() {
     const tspl = buildTSPL({
       nome,
+      marca,
+      lote,
       sif,
       selo,
       metodo,

@@ -1,7 +1,7 @@
 export type ValidityBucket = '' | 'vencidos' | 'hoje' | 'amanha' | 'tres_dias' | 'consumida' | 'descartada'
 export type ValidityFilters = { unit: string; bucket: ValidityBucket; page: number }
 export type ValidityCounts = Record<Exclude<ValidityBucket, ''>, number>
-export type ValidityLabel = { id: string; sif?: string | null; selo?: string | null; unit_id: string; employee_id: string | null; nome: string; tipo: string; peso_kg: number | null; metodo_conservacao: string | null; validade: string; data_manipulacao: string; status: string; unit_name: string; employee_name: string | null }
+export type ValidityLabel = { id: string; marca?: string | null; lote?: string | null; sif?: string | null; selo?: string | null; unit_id: string; employee_id: string | null; nome: string; tipo: string; peso_kg: number | null; metodo_conservacao: string | null; validade: string; data_manipulacao: string; status: string; unit_name: string; employee_name: string | null }
 export type ValidityData = { labels: ValidityLabel[]; units: { id: string; name: string; active?: boolean | null }[]; counts: ValidityCounts; total: number; page: number; totalPages: number; now: string }
 
 export const VALIDITY_CARDS = [

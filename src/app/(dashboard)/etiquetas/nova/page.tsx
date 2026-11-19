@@ -47,11 +47,11 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
     { data: ultimaEtiqueta },
   ] = await Promise.all([
     supabase.from('units').select('id, name, cnpj, address').eq('active', true),
-    supabase.from('ingredients').select('id, nome, categoria_anvisa, sif').eq('ativo', true).order('nome'),
+    supabase.from('ingredients').select('id, nome, categoria_anvisa, sif, marca, lote, metodo_conservacao, prazo_validade_horas').eq('ativo', true).order('nome'),
     supabase.from('menu_items').select('id, nome').order('nome'),
     supabase.schema('mise').from('responsaveis').select('id, nome, responsavel_unidades(unit_id)').eq('ativo', true).order('nome'),
     supabase.schema('mise').from('labels')
-      .select('id, employee_id, responsavel_nome, nome, sif, selo, metodo_conservacao, data_manipulacao, validade, created_at')
+      .select('id, employee_id, responsavel_nome, nome, marca, lote, sif, selo, metodo_conservacao, data_manipulacao, validade, created_at')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -64,7 +64,7 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
   }))
 
   let query = supabase.schema('mise').from('labels')
-    .select('id, unit_id, employee_id, responsavel_nome, nome, tipo, peso_kg, sif, selo, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
+    .select('id, unit_id, employee_id, responsavel_nome, nome, tipo, peso_kg, marca, lote, sif, selo, metodo_conservacao, data_manipulacao, validade, status, created_at', { count: 'exact' })
     .order('data_manipulacao', { ascending: false })
     .range(from, to)
 
@@ -120,6 +120,8 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
               metodo={ultimaEtiqueta.metodo_conservacao}
               dataManipulacao={ultimaEtiqueta.data_manipulacao}
               validade={ultimaEtiqueta.validade}
+              marca={ultimaEtiqueta.marca}
+              lote={ultimaEtiqueta.lote}
               sif={ultimaEtiqueta.sif}
               selo={ultimaEtiqueta.selo}
               respNome={(ultimaEtiqueta.responsavel_nome ?? empsMap[ultimaEtiqueta.employee_id ?? ''] ?? '').split(' ')[0]}
@@ -202,6 +204,8 @@ export default async function EtiquetasPage({ searchParams }: { searchParams: Se
                         metodo={l.metodo_conservacao}
                         dataManipulacao={l.data_manipulacao}
                         validade={l.validade}
+                        marca={l.marca}
+                        lote={l.lote}
                         sif={l.sif}
                         selo={l.selo}
                         respNome={(l.responsavel_nome ?? empsMap[l.employee_id ?? ''] ?? '').split(' ')[0]}
