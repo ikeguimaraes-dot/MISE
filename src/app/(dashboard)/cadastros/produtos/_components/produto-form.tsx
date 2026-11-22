@@ -11,8 +11,8 @@ type Supplier = { id: string; nome: string }
 const CATEGORIAS = PRODUCT_CATEGORIES
 
 const CATEGORIA_ANVISA = FOOD_CATEGORIES
-const CATEGORY_LABELS: Record<string, string> = { molhos: 'Molhos', ovos: 'Ovos', shari: 'Shari (arroz japonês)', feitos_empanados: 'Feitos / empanados' }
-const SANITARY_CATEGORIES: Record<string, string> = { molhos: 'molho_caldo', ovos: 'ovos', shari: 'shari', feitos_empanados: 'feitos_empanados' }
+const CATEGORY_LABELS: Record<string, string> = { congelados_30_dias: 'Congelados (30 dias)', molhos: 'Molhos', ovos: 'Ovos', shari: 'Shari (arroz japonês)', feitos_empanados: 'Feitos / empanados' }
+const SANITARY_CATEGORIES: Record<string, string> = { congelados_30_dias: 'congelados_30_dias', molhos: 'molho_caldo', ovos: 'ovos', shari: 'shari', feitos_empanados: 'feitos_empanados' }
 
 type Initial = {
   id: string

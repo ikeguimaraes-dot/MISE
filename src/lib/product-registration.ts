@@ -1,7 +1,7 @@
-import { FOOD_CATEGORIES, CONSERVATION_METHODS, getShelfLifeRule } from '@/lib/shelf-life'
+import { MAZA_FROZEN_ENABLED, FOOD_CATEGORIES, CONSERVATION_METHODS, getShelfLifeRule } from '@/lib/shelf-life'
 import { isUuid } from '@/lib/business-registration'
 
-export const PRODUCT_CATEGORIES = ['molhos', 'ovos', 'shari', 'feitos_empanados', 'proteina', 'fruta', 'legume', 'verdura', 'graos', 'laticinios', 'panificacao', 'oleo_gordura', 'tempero', 'bebida_alcoolica', 'bebida_nao_alcoolica', 'descartavel', 'limpeza', 'outro'] as const
+export const PRODUCT_CATEGORIES = [...(MAZA_FROZEN_ENABLED ? ['congelados_30_dias' as const] : []), 'molhos', 'ovos', 'shari', 'feitos_empanados', 'proteina', 'fruta', 'legume', 'verdura', 'graos', 'laticinios', 'panificacao', 'oleo_gordura', 'tempero', 'bebida_alcoolica', 'bebida_nao_alcoolica', 'descartavel', 'limpeza', 'outro'] as const
 export const PRODUCT_UNITS = ['kg', 'g', 'l', 'ml', 'un', 'cx', 'fardo', 'duzia'] as const
 
 export function validateProduct(input: unknown) {

@@ -7,7 +7,7 @@ import ts from 'typescript'
 function load(path, dependencies = {}) {
   const exports = {}
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports, Date, Number, Error, URL, Request,
+    exports, process: { env: {} }, Date, Number, Error, URL, Request,
     require(name) { if (!(name in dependencies)) throw new Error(`Unexpected import: ${name}`); return dependencies[name] },
   })
   return exports

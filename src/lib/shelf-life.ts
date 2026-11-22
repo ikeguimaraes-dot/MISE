@@ -1,7 +1,13 @@
 // Perfil de São Paulo: CVS 5/2013, art. 34. Ver docs/validade-etiquetas.md.
 export const SHELF_LIFE_REFERENCE = 'CVS 5/2013 · art. 34'
 
+// Este padrão operacional pertence apenas ao workspace Maza. A referência direta
+// à variável pública mantém a mesma lista no navegador e no servidor.
+export const MAZA_FROZEN_ENABLED = process.env.NEXT_PUBLIC_MISE_WORKSPACE_BADGE?.trim().toUpperCase() === 'MAZA'
+const MAZA_FROZEN_CATEGORY = { value: 'congelados_30_dias', label: 'Congelados (30 dias) · Maza', hours: 720, maxTemperature: -18 } as const
+
 export const FOOD_CATEGORIES = [
+  ...(MAZA_FROZEN_ENABLED ? [MAZA_FROZEN_CATEGORY] : []),
   { value: 'shari', label: 'Shari (arroz japonês) · 8 horas', hours: 8, maxTemperature: 4 },
   { value: 'feitos_empanados', label: 'Feitos / empanados · 24 horas', hours: 24, maxTemperature: 4 },
   { value: 'ovos', label: 'Ovos (prazo conforme fabricante)', hours: null, maxTemperature: null },
@@ -47,6 +53,7 @@ export type ShelfLifeRule = {
 }
 
 export function getDefaultConservationMethod(category: string | null | undefined): string {
+  if (category === 'congelados_30_dias' && MAZA_FROZEN_ENABLED) return 'Congelado -18°C'
   if (category === 'shari') return 'Temperatura ambiente'
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   return food?.maxTemperature != null ? `Refrigerado até ${food.maxTemperature}°C` : ''
@@ -74,6 +81,11 @@ export function getShelfLifeRule(category: string | null | undefined, method: st
   }
   const food = FOOD_CATEGORIES.find(item => item.value === category)
   if (!food) throw new Error('Selecione a categoria sanitária do produto para calcular a validade.')
+  if (food.value === 'congelados_30_dias') {
+    if (!['Congelado -18°C', 'Congelado abaixo de -18°C'].includes(normalized)) throw new Error('Congelados (30 dias) exige conservação a -18 °C ou menos.')
+    const reduced = typeof customHours === 'number' && Number.isFinite(customHours) && customHours > 0 && customHours < 720
+    return { prazo_horas: reduced ? customHours : 720, source: 'operational', reference: 'Padrão operacional Maza · congelados · 30 dias' }
+  }
   if (food.value === 'shari' || food.value === 'feitos_empanados') {
     if (!CONSERVATION_METHODS.some(item => item.value === normalized)) throw new Error('Selecione o método de conservação.')
     if (food.value === 'feitos_empanados' && normalized === 'Temperatura ambiente') throw new Error('Empanados exigem refrigeração ou congelamento.')

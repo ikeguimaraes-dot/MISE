@@ -81,7 +81,7 @@ export default async function ProdutosPage({ searchParams }: { searchParams: Sea
                   <td className="px-5 py-3 text-ink-muted">{p.sif || '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{p.codigo ?? '—'}</td>
                   <td className="px-5 py-3 text-ink-muted">{groupsMap[p.group_id ?? ''] ?? '—'}</td>
-                  <td className="px-5 py-3 text-ink-muted">{p.categoria}</td>
+                  <td className="px-5 py-3 text-ink-muted">{p.categoria === 'congelados_30_dias' ? 'Congelados (30 dias)' : p.categoria}</td>
                   <td className="px-5 py-3 text-ink-muted">{FOOD_CATEGORIES.find(category => category.value === p.categoria_anvisa)?.label ?? p.categoria_anvisa ?? <span className="text-warn-bright">Não cadastrada</span>}</td>
                   <td className="px-5 py-3 text-ink-muted">{p.unidade_padrao ?? '—'}</td>
                   <td className="px-5 py-3">

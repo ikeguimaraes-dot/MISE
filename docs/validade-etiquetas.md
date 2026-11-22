@@ -71,3 +71,14 @@ Em **Cadastro → Produtos**, o admin define `metodo_conservacao` e `prazo_valid
 Migração **20261119180245_product_label_defaults.sql** aplicada no banco do MISE em 19/11/2026, com colunas, categorias e limites verificados após a execução. Ela amplia o CHECK de categorias e adiciona colunas opcionais no catálogo e na etiqueta; não modifica registros de empresas, unidades, produtos ou etiquetas existentes. Nenhuma configuração de conservação é presumida para produtos antigos.
 
 Verificação adicional: `node --test tests/product-label-defaults.test.mjs` cobre relógio do servidor, falsificação de configurações, permissões, conservação ambiente, prazo do fabricante, lote, limites de shari/empanados e impressão de 60mm com metadados.
+
+
+## Congelados por 30 dias — exclusivo Maza — 22/11/2026
+
+O workspace com `NEXT_PUBLIC_MISE_WORKSPACE_BADGE=MAZA` oferece **Congelados (30 dias)** no cadastro comercial e sanitário. Selecionar essa categoria comercial preenche a categoria de validade correspondente e a conservação **Congelado -18°C**. A validade operacional é **720 horas** desde a manipulação automática. A opção abaixo de −18 °C mantém 720h para essa categoria, em vez de ampliar para 90 dias. Temperaturas mais quentes e conservação ambiente são rejeitadas. Prazos menores já cadastrados e a validade do fornecedor continuam limitando o vencimento.
+
+A categoria foi solicitada para sorvetes, salmão, atum, lagostim, lula, lagosta, wagyu, blackcod, edamame, milho, manteiga, carrot cake, massa chocopie, gyozas (legumes, suína e wagyu), ovas (massago, tobico e ikura), filé mignon, peixe branco, molho tunaktsu e costela wagyu. Ela é uma opção reutilizável pelo admin: os cadastros existentes, inclusive os refrigerados, não são convertidos automaticamente; produtos ausentes não são criados com dados presumidos. Etiquetas anteriores preservam sua validade.
+
+A migração em `supabase/tenant-migrations/maza/20261122211933_maza_frozen_thirty_days.sql` foi aplicada e verificada em 22/11/2026 e amplia apenas o CHECK de categorias no banco Maza (`dncqjezvndoxeqpklefy`). Ela fica fora das migrações globais para evitar aplicação acidental no KPH. A lista e a validação do app também excluem a categoria quando o workspace não é Maza. Não publicar este ajuste no projeto KPH como parte desta solicitação.
+
+Verificação: `node --test tests/maza-frozen.test.mjs` cobre isolamento entre perfis, validação do cadastro, limites térmicos, regras menores e fornecedor; `node --test tests/*.test.mjs` e build com as variáveis públicas do Maza verificam a integração.
